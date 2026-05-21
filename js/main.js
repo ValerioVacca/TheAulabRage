@@ -325,6 +325,7 @@ function init() {
     resetGame();
     updateGameScale();
     updateMuteButtonVisual();
+    MapEditor.init();
     requestAnimationFrame(gameLoop);
 }
 
@@ -815,7 +816,12 @@ function getCurrentLevelConfig() {
 function buildLevel(levelNumber, resetPlayerLives = false) {
     state.currentLevel = levelNumber;
     const level = getCurrentLevelConfig();
-    createObstacles(level.obstacles);
+
+    // Usa la mappa personalizzata dell'editor se disponibile, altrimenti usa il default
+    const customObstacles = (typeof MapEditor !== "undefined")
+        ? MapEditor.getObstaclesForLevel(levelNumber)
+        : null;
+    createObstacles(customObstacles || level.obstacles);
 
     if (!state.player) {
         state.player = createPlayer(level.playerSpawn, resetPlayerLives);
@@ -2735,5 +2741,310 @@ function updateMuteButtonVisual() {
         muteBtn.classList.remove("muted");
     }
 }
+
+// =====================================================
+// MAP EDITOR MODULE
+// =====================================================
+
+const MapEditor = (() => {
+    const STORAGE_KEY = "aulab_rage_custom_map_";
+    const GAME_W = 1280;
+    const GAME_H = 720;
+    const SNAP = 12; // snap grid in game-pixels
+
+    let editingLevel = 1;
+    let editorObstacles = []; // { x, y, width, height, type, perimeter }
+    let canvas = null;
+    let toast = null;
+
+    // Drag state for canvas obstacles (move existing)
+    let draggingEl = null;
+    let draggingObs = null;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    // Drag state for palette → canvas (new element)
+    let paletteDragType = null;
+    let paletteDragW = 0;
+    let paletteDragH = 0;
+    let ghostEl = null;
+
+    // ── localStorage helpers ──────────────────────────
+
+    function storageKey(level) {
+        return STORAGE_KEY + level;
+    }
+
+    function loadCustomMap(level) {
+        try {
+            const raw = localStorage.getItem(storageKey(level));
+            if (raw) return JSON.parse(raw);
+        } catch (e) { /* ignore */ }
+        return null;
+    }
+
+    function saveCustomMap(level, obstacles) {
+        const serializable = obstacles.map(({ x, y, width, height, type, perimeter }) =>
+            ({ x, y, width, height, type, perimeter: perimeter || false })
+        );
+        localStorage.setItem(storageKey(level), JSON.stringify(serializable));
+    }
+
+    function clearCustomMap(level) {
+        localStorage.removeItem(storageKey(level));
+    }
+
+    // ── Snap helper ───────────────────────────────────
+
+    function snapVal(v) {
+        return Math.round(v / SNAP) * SNAP;
+    }
+
+    function clampObstacle(obs) {
+        obs.x = Math.max(0, Math.min(GAME_W - obs.width, obs.x));
+        obs.y = Math.max(0, Math.min(GAME_H - obs.height, obs.y));
+    }
+
+    // ── Render editor canvas ──────────────────────────
+
+    function renderCanvas() {
+        canvas.innerHTML = "";
+        editorObstacles.forEach((obs, idx) => {
+            const el = document.createElement("div");
+            el.className = `obstacle ${obs.type}${obs.perimeter ? " perimeter" : ""}`;
+            el.style.left = obs.x + "px";
+            el.style.top = obs.y + "px";
+            el.style.width = obs.width + "px";
+            el.style.height = obs.height + "px";
+            el.dataset.idx = idx;
+
+            if (!obs.perimeter) {
+                // Move on mousedown
+                el.addEventListener("mousedown", (e) => {
+                    if (e.button !== 0) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    draggingEl = el;
+                    draggingObs = obs;
+                    const canvasRect = canvas.getBoundingClientRect();
+                    const scale = canvasRect.width / GAME_W;
+                    dragOffsetX = (e.clientX - canvasRect.left) / scale - obs.x;
+                    dragOffsetY = (e.clientY - canvasRect.top) / scale - obs.y;
+                    el.style.zIndex = 20;
+                    el.style.outline = "2px solid rgba(255,234,0,0.9)";
+                });
+
+                // Right-click → delete
+                el.addEventListener("contextmenu", (e) => {
+                    e.preventDefault();
+                    editorObstacles.splice(idx, 1);
+                    renderCanvas();
+                });
+
+                // Hover tooltip
+                el.title = "Trascina per spostare • Click destro per eliminare";
+            }
+
+            canvas.appendChild(el);
+        });
+    }
+
+    // ── Palette drag (new element onto canvas) ────────
+
+    function initPaletteDrag() {
+        document.querySelectorAll(".palette-item").forEach((item) => {
+            item.addEventListener("dragstart", (e) => {
+                paletteDragType = item.dataset.type;
+                paletteDragW = parseInt(item.dataset.w, 10);
+                paletteDragH = parseInt(item.dataset.h, 10);
+                e.dataTransfer.effectAllowed = "copy";
+                // Create ghost
+                ghostEl = document.createElement("div");
+                ghostEl.className = `obstacle ${paletteDragType} map-editor-drag-ghost`;
+                ghostEl.style.width = paletteDragW + "px";
+                ghostEl.style.height = paletteDragH + "px";
+                document.body.appendChild(ghostEl);
+                e.dataTransfer.setDragImage(new Image(), 0, 0);
+            });
+
+            item.addEventListener("dragend", () => {
+                if (ghostEl) { ghostEl.remove(); ghostEl = null; }
+                paletteDragType = null;
+            });
+        });
+
+        canvas.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "copy";
+            canvas.classList.add("drag-over");
+            if (ghostEl && paletteDragType) {
+                ghostEl.style.left = (e.clientX - paletteDragW / 2) + "px";
+                ghostEl.style.top = (e.clientY - paletteDragH / 2) + "px";
+            }
+        });
+
+        canvas.addEventListener("dragleave", () => {
+            canvas.classList.remove("drag-over");
+        });
+
+        canvas.addEventListener("drop", (e) => {
+            e.preventDefault();
+            canvas.classList.remove("drag-over");
+            if (!paletteDragType) return;
+            const canvasRect = canvas.getBoundingClientRect();
+            const scale = canvasRect.width / GAME_W;
+            const rawX = (e.clientX - canvasRect.left) / scale - paletteDragW / 2;
+            const rawY = (e.clientY - canvasRect.top) / scale - paletteDragH / 2;
+            const obs = {
+                x: snapVal(rawX),
+                y: snapVal(rawY),
+                width: paletteDragW,
+                height: paletteDragH,
+                type: paletteDragType,
+                perimeter: false
+            };
+            clampObstacle(obs);
+            editorObstacles.push(obs);
+            renderCanvas();
+        });
+    }
+
+    // ── Mouse move/up for repositioning canvas obstacles ──
+
+    function initCanvasDrag() {
+        window.addEventListener("mousemove", (e) => {
+            if (!draggingEl || !draggingObs) return;
+            const canvasRect = canvas.getBoundingClientRect();
+            const scale = canvasRect.width / GAME_W;
+            const rawX = (e.clientX - canvasRect.left) / scale - dragOffsetX;
+            const rawY = (e.clientY - canvasRect.top) / scale - dragOffsetY;
+            draggingObs.x = snapVal(rawX);
+            draggingObs.y = snapVal(rawY);
+            clampObstacle(draggingObs);
+            draggingEl.style.left = draggingObs.x + "px";
+            draggingEl.style.top = draggingObs.y + "px";
+        });
+
+        window.addEventListener("mouseup", () => {
+            if (draggingEl) {
+                draggingEl.style.zIndex = "";
+                draggingEl.style.outline = "";
+                draggingEl = null;
+                draggingObs = null;
+            }
+        });
+    }
+
+    // ── Level selector ────────────────────────────────
+
+    function initLevelBtns() {
+        document.querySelectorAll(".map-level-btn").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                document.querySelectorAll(".map-level-btn").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                editingLevel = parseInt(btn.dataset.level, 10);
+                loadLevelIntoEditor(editingLevel);
+            });
+        });
+    }
+
+    // ── Load a level's obstacles into the editor ──────
+
+    function loadLevelIntoEditor(level) {
+        // Try custom first, fall back to default
+        const custom = loadCustomMap(level);
+        if (custom) {
+            editorObstacles = custom.map(o => ({ ...o }));
+        } else {
+            const levelCfg = levelConfigs.find(l => l.id === level) || levelConfigs[0];
+            editorObstacles = levelCfg.obstacles.map(o => ({ ...o, perimeter: isPerimeter(o) }));
+        }
+        renderCanvas();
+    }
+
+    // Identifies the 4 perimeter walls by checking if they span edge-to-edge
+    function isPerimeter(obs) {
+        return (
+            (obs.y === 0 && obs.width >= GAME_W - 10) ||       // top wall
+            (obs.y + obs.height >= GAME_H - 10 && obs.width >= GAME_W - 10) || // bottom wall
+            (obs.x === 0 && obs.height >= GAME_H - 10) ||      // left wall
+            (obs.x + obs.width >= GAME_W - 10 && obs.height >= GAME_H - 10)    // right wall
+        );
+    }
+
+    // ── Toast notification ────────────────────────────
+
+    function showToast(msg) {
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add("show");
+        setTimeout(() => toast.classList.remove("show"), 2200);
+    }
+
+    // ── Public API ────────────────────────────────────
+
+    function open() {
+        editingLevel = 1;
+        document.querySelectorAll(".map-level-btn").forEach(b => {
+            b.classList.toggle("active", parseInt(b.dataset.level, 10) === 1);
+        });
+        loadLevelIntoEditor(1);
+        document.getElementById("mapEditorOverlay").classList.remove("d-none");
+    }
+
+    function close() {
+        document.getElementById("mapEditorOverlay").classList.add("d-none");
+    }
+
+    function save() {
+        // Ensure perimeter walls are preserved
+        const levelCfg = levelConfigs.find(l => l.id === editingLevel) || levelConfigs[0];
+        const perimeterWalls = levelCfg.obstacles
+            .filter(o => isPerimeter(o))
+            .map(o => ({ ...o, perimeter: true }));
+
+        // Remove any existing perimeter entries from editorObstacles and re-add canonical ones
+        const withoutPerimeter = editorObstacles.filter(o => !o.perimeter);
+        const finalObstacles = [...perimeterWalls, ...withoutPerimeter];
+
+        saveCustomMap(editingLevel, finalObstacles);
+        showToast("✔ Mappa salvata!");
+    }
+
+    function reset() {
+        clearCustomMap(editingLevel);
+        loadLevelIntoEditor(editingLevel);
+        showToast("↺ Mappa ripristinata ai valori di default");
+    }
+
+    // ── getObstaclesForLevel (used by buildLevel) ─────
+
+    function getObstaclesForLevel(level) {
+        return loadCustomMap(level);
+    }
+
+    // ── Init ──────────────────────────────────────────
+
+    function init() {
+        canvas = document.getElementById("mapEditorCanvas");
+        if (!canvas) return;
+
+        // Toast
+        toast = document.createElement("div");
+        toast.className = "map-editor-toast";
+        document.body.appendChild(toast);
+
+        initPaletteDrag();
+        initCanvasDrag();
+        initLevelBtns();
+
+        document.getElementById("openMapEditorBtn")?.addEventListener("click", open);
+        document.getElementById("mapEditorCloseBtn")?.addEventListener("click", close);
+        document.getElementById("mapEditorSaveBtn")?.addEventListener("click", save);
+        document.getElementById("mapEditorResetBtn")?.addEventListener("click", reset);
+    }
+
+    return { init, getObstaclesForLevel };
+})();
 
 init();

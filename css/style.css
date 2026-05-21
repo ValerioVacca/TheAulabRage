@@ -2135,3 +2135,338 @@ kbd {
     }
 }
 
+/* =====================================================
+   MAP EDITOR
+   ===================================================== */
+
+#mapEditorOverlay {
+    align-items: flex-start;
+    padding: 0;
+    background: rgba(7, 9, 19, 0.97);
+    backdrop-filter: blur(12px);
+    overflow-y: auto;
+}
+
+.map-editor-card {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+}
+
+.map-editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    background: rgba(11, 13, 26, 0.95);
+    border-bottom: 2px solid rgba(255, 234, 0, 0.2);
+    gap: 1rem;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.map-editor-title {
+    margin: 0;
+    color: var(--accent);
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.map-editor-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.map-editor-hint {
+    margin: 0;
+    padding: 0.5rem 1.5rem;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-family: monospace;
+    letter-spacing: 0.03em;
+    background: rgba(255, 234, 0, 0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.map-editor-body {
+    display: flex;
+    flex: 1;
+    gap: 0;
+    min-height: 0;
+}
+
+/* --- PALETTE --- */
+.map-editor-palette {
+    width: 140px;
+    flex-shrink: 0;
+    background: rgba(11, 13, 26, 0.9);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 1rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    overflow-y: auto;
+}
+
+.palette-title {
+    margin: 0 0 0.25rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(255, 234, 0, 0.6);
+    font-family: monospace;
+    font-weight: 700;
+}
+
+.palette-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 0.4rem 0;
+}
+
+.palette-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.5rem 0.4rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    cursor: grab;
+    user-select: none;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.palette-item:hover {
+    background: rgba(255, 234, 0, 0.1);
+    border-color: rgba(255, 234, 0, 0.35);
+    transform: translateY(-1px);
+}
+
+.palette-item:active {
+    cursor: grabbing;
+    transform: scale(0.96);
+}
+
+.palette-item span {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: monospace;
+    letter-spacing: 0.04em;
+}
+
+.palette-preview {
+    width: 44px;
+    height: 28px;
+    border-radius: 5px;
+    position: relative;
+}
+
+/* Inherit existing obstacle visuals in smaller preview size */
+.palette-preview.desk      { background: linear-gradient(180deg, #2b3151, var(--desk)); border-radius: 7px; }
+.palette-preview.chair     { background: linear-gradient(180deg, #fff171, var(--chair)); border-radius: 5px; }
+.palette-preview.computer  { background: linear-gradient(180deg, #1b2135, var(--pc)); border-radius: 4px; }
+.palette-preview.board     { background: linear-gradient(180deg, #121626, var(--board)); border: 2px solid #ffea00; border-radius: 5px; }
+.palette-preview.wall      { background: linear-gradient(180deg, #171c31, var(--wall)); }
+.palette-preview.plant, .palette-preview.bin { background: transparent; }
+.palette-preview.plant::after {
+    content: "🌿";
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+}
+.palette-preview.bin::after {
+    content: "🗑️";
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+}
+
+/* --- LEVEL BUTTONS --- */
+.map-editor-level-btns {
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+}
+
+.map-level-btn {
+    flex: 1;
+    min-width: 36px;
+    padding: 0.3rem 0.2rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.72rem;
+    font-family: monospace;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.map-level-btn:hover {
+    background: rgba(255, 234, 0, 0.12);
+    border-color: rgba(255, 234, 0, 0.4);
+    color: var(--accent);
+}
+
+.map-level-btn.active {
+    background: rgba(255, 234, 0, 0.18);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* --- CANVAS AREA --- */
+.map-editor-canvas-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    overflow: auto;
+    background:
+        radial-gradient(circle at 60% 40%, rgba(255, 234, 0, 0.03), transparent 55%);
+}
+
+.map-editor-canvas {
+    position: relative;
+    width: 1280px;
+    height: 720px;
+    border-radius: 14px;
+    border: 3px solid rgba(255, 234, 0, 0.25);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 20px 60px rgba(0,0,0,0.5);
+    background:
+        repeating-linear-gradient(
+            0deg,
+            rgba(255, 255, 255, 0.05),
+            rgba(255, 255, 255, 0.05) 47px,
+            rgba(9, 11, 20, 0.04) 47px,
+            rgba(9, 11, 20, 0.04) 48px
+        ),
+        repeating-linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.04),
+            rgba(255, 255, 255, 0.04) 47px,
+            rgba(9, 11, 20, 0.03) 47px,
+            rgba(9, 11, 20, 0.03) 48px
+        ),
+        var(--arena-floor);
+    transform-origin: top left;
+    overflow: hidden;
+}
+
+/* Obstacles placed in the editor */
+.map-editor-canvas .obstacle {
+    cursor: move;
+    position: absolute;
+    outline: 2px solid transparent;
+    transition: outline-color 0.1s;
+}
+
+.map-editor-canvas .obstacle:hover {
+    outline: 2px solid rgba(255, 234, 0, 0.6);
+    z-index: 5;
+}
+
+.map-editor-canvas .obstacle.perimeter {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.map-editor-canvas .obstacle.perimeter:hover {
+    outline: 2px solid rgba(255, 80, 80, 0.5);
+}
+
+/* Drop highlight */
+.map-editor-canvas.drag-over {
+    border-color: rgba(255, 234, 0, 0.7);
+    box-shadow: 0 0 0 3px rgba(255, 234, 0, 0.18), 0 20px 60px rgba(0,0,0,0.5);
+}
+
+/* Ghost element during drag */
+.map-editor-drag-ghost {
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.7;
+    border-radius: 6px;
+    border: 2px dashed rgba(255, 234, 0, 0.8);
+}
+
+/* Context delete tooltip */
+.map-editor-delete-hint {
+    position: absolute;
+    bottom: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(220, 50, 50, 0.9);
+    color: #fff;
+    font-size: 0.62rem;
+    padding: 1px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+    font-family: monospace;
+    z-index: 10;
+}
+
+/* Save toast notification */
+.map-editor-toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(40, 167, 69, 0.95);
+    color: #fff;
+    padding: 0.6rem 1.4rem;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+.map-editor-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Scale canvas to fit screen on small displays */
+@media (max-width: 1400px) {
+    .map-editor-canvas-wrap {
+        padding: 1rem;
+    }
+    .map-editor-canvas {
+        transform: scale(0.65);
+        transform-origin: top left;
+        margin-bottom: calc(-720px * 0.35);
+        margin-right: calc(-1280px * 0.35);
+    }
+}
+
+@media (max-width: 900px) {
+    .map-editor-canvas {
+        transform: scale(0.42);
+        margin-bottom: calc(-720px * 0.58);
+        margin-right: calc(-1280px * 0.58);
+    }
+    .map-editor-palette {
+        width: 110px;
+    }
+}

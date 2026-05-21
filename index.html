@@ -84,9 +84,71 @@
                                         <button class="btn btn-outline-warning btn-lg" id="addHackademyBtn" type="button">
                                             Nuova Hackademy
                                         </button>
+                                        <button class="btn btn-outline-info btn-lg" id="openMapEditorBtn" type="button">
+                                            🗺️ Editor Mappa
+                                        </button>
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Map Editor Overlay -->
+                            <div class="overlay d-none" id="mapEditorOverlay">
+                                <div class="map-editor-card">
+                                    <div class="map-editor-header">
+                                        <h3 class="map-editor-title">🗺️ Editor Mappa</h3>
+                                        <div class="map-editor-actions">
+                                            <button class="btn btn-sm btn-outline-warning" id="mapEditorResetBtn" type="button">↺ Ripristina Default</button>
+                                            <button class="btn btn-sm btn-success" id="mapEditorSaveBtn" type="button">✔ Salva Mappa</button>
+                                            <button class="btn btn-sm btn-outline-light" id="mapEditorCloseBtn" type="button">✕ Chiudi</button>
+                                        </div>
+                                    </div>
+                                    <p class="map-editor-hint">Trascina gli oggetti sulla mappa • Click destro per eliminare • Le pareti perimetrali non possono essere rimosse</p>
+                                    <div class="map-editor-body">
+                                        <div class="map-editor-palette">
+                                            <p class="palette-title">Oggetti</p>
+                                            <div class="palette-item" data-type="desk" data-w="134" data-h="66" draggable="true" title="Banco (134×66)">
+                                                <div class="palette-preview desk"></div>
+                                                <span>Banco</span>
+                                            </div>
+                                            <div class="palette-item" data-type="chair" data-w="42" data-h="34" draggable="true" title="Sedia (42×34)">
+                                                <div class="palette-preview chair"></div>
+                                                <span>Sedia</span>
+                                            </div>
+                                            <div class="palette-item" data-type="computer" data-w="56" data-h="24" draggable="true" title="Computer (56×24)">
+                                                <div class="palette-preview computer"></div>
+                                                <span>Computer</span>
+                                            </div>
+                                            <div class="palette-item" data-type="board" data-w="244" data-h="22" draggable="true" title="Lavagna (244×22)">
+                                                <div class="palette-preview board"></div>
+                                                <span>Lavagna</span>
+                                            </div>
+                                            <div class="palette-item" data-type="plant" data-w="46" data-h="58" draggable="true" title="Pianta (46×58)">
+                                                <div class="palette-preview plant"></div>
+                                                <span>Pianta</span>
+                                            </div>
+                                            <div class="palette-item" data-type="bin" data-w="40" data-h="48" draggable="true" title="Cestino (40×48)">
+                                                <div class="palette-preview bin"></div>
+                                                <span>Cestino</span>
+                                            </div>
+                                            <div class="palette-item" data-type="wall" data-w="120" data-h="22" draggable="true" title="Muro (120×22)">
+                                                <div class="palette-preview wall"></div>
+                                                <span>Muro</span>
+                                            </div>
+                                            <div class="palette-divider"></div>
+                                            <p class="palette-title">Livello</p>
+                                            <div class="map-editor-level-btns">
+                                                <button class="map-level-btn active" data-level="1" type="button">Lv.1</button>
+                                                <button class="map-level-btn" data-level="2" type="button">Lv.2</button>
+                                                <button class="map-level-btn" data-level="3" type="button">Lv.3</button>
+                                            </div>
+                                        </div>
+                                        <div class="map-editor-canvas-wrap">
+                                            <div class="map-editor-canvas" id="mapEditorCanvas"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
 
                             <div class="overlay d-none" id="teacherModal">
                                 <div class="overlay-card modal-card" style="max-width: 480px; width: 90%;">
