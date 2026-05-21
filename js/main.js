@@ -42,6 +42,7 @@ const intermissionButton = document.getElementById("intermissionButton");
 const levelValue = document.getElementById("levelValue");
 const resumeButton = document.getElementById("resumeButton");
 const savedLevelNum = document.getElementById("savedLevelNum");
+const menuButton = document.getElementById("menuButton");
 
 const GAME = {
     width: 1280,
@@ -336,6 +337,11 @@ function bindEvents() {
         resetGame();
         startGame();
     });
+    if (menuButton) {
+        menuButton.addEventListener("click", () => {
+            resetGame();
+        });
+    }
 
     window.addEventListener("keydown", (event) => {
         const key = normalizeKey(event.key);
@@ -542,15 +548,7 @@ function resumeGame() {
     const savedLevel = localStorage.getItem("aulab_rage_saved_level");
     const parsedLevel = parseInt(savedLevel, 10);
     if (parsedLevel && parsedLevel > 1 && parsedLevel <= 3) {
-        state.selectedHackademyId = "standard";
-        const pills = document.querySelectorAll(".hackademy-pill");
-        pills.forEach(pill => {
-            if (pill.dataset.id === "standard") {
-                pill.classList.add("active");
-            } else {
-                pill.classList.remove("active");
-            }
-        });
+        selectHackademy("standard", false);
 
         buildLevel(parsedLevel, true);
         state.running = true;
@@ -781,11 +779,15 @@ function renderHackademyPills() {
     });
 }
 
-function selectHackademy(id) {
+function selectHackademy(id, rebuild = true) {
     state.selectedHackademyId = id;
     localStorage.setItem("aulab_rage_selected_hackademy", id);
     renderHackademyPills();
     updateStartDescription();
+    if (rebuild) {
+        buildLevel(1, true);
+        updateHud();
+    }
 }
 
 function updateStartDescription() {
@@ -1953,6 +1955,9 @@ function finishGame(isVictory) {
         } else {
             endMessage.textContent = `${teacher.name} ha rimesso tutti a studiare. L'ufficio Aulab e' di nuovo sotto controllo.`;
         }
+        
+        // Reset alla modalità Standard in caso di vittoria del docente per evitare di rimanere bloccati in Sandbox
+        selectHackademy("standard", false);
     } else {
         endMessage.textContent = `Le pietre hanno fermato ${teacher.name}. Riprova e libera l'ufficio dagli studenti svogliati.`;
     }
