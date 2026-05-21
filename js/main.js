@@ -728,6 +728,10 @@ function createPlayer(spawn, resetPlayerLives = false) {
     figure.append(face, torso, armLeft, armRight, legLeft, legRight, hammer);
     element.appendChild(figure);
 
+    const shieldBubble = document.createElement("div");
+    shieldBubble.className = "player-shield-bubble";
+    element.appendChild(shieldBubble);
+
     const player = {
         x: spawn.x,
         y: spawn.y,
@@ -737,6 +741,9 @@ function createPlayer(spawn, resetPlayerLives = false) {
         direction: "right",
         invulnerableUntil: 0,
         attackEndsAt: 0,
+        shieldHits: 0,
+        speedBoostUntil: 0,
+        superHammerUntil: 0,
         element
     };
 
@@ -754,7 +761,11 @@ function repositionPlayer(spawn) {
     state.player.direction = "right";
     state.player.attackEndsAt = 0;
     state.player.invulnerableUntil = 0;
-    state.player.element.classList.remove("attacking", "flash-damage");
+    state.player.shieldHits = 0;
+    state.player.speedBoostUntil = 0;
+    state.player.superHammerUntil = 0;
+    state.player.element.classList.remove("attacking", "flash-damage", "shield-active", "speed-boosted", "super-hammer-active");
+    state.player.element.removeAttribute("data-shield-hits");
     placeEntityInFreeSpot(state.player);
     syncEntity(state.player);
 }
@@ -855,9 +866,25 @@ function gameLoop(timestamp) {
 }
 
 function updatePlayer(delta, timestamp) {
+    let speedMult = 1.0;
+    if (state.player.speedBoostUntil) {
+        if (timestamp < state.player.speedBoostUntil) {
+            speedMult = 2.0;
+            state.player.element.classList.add("speed-boosted");
+        } else {
+            state.player.speedBoostUntil = 0;
+            state.player.element.classList.remove("speed-boosted");
+        }
+    }
+
+    if (state.player.superHammerUntil && timestamp >= state.player.superHammerUntil) {
+        state.player.superHammerUntil = 0;
+        state.player.element.classList.remove("super-hammer-active");
+    }
+
     const movement = getInputVector();
-    const stepX = movement.x * GAME.playerSpeed * delta;
-    const stepY = movement.y * GAME.playerSpeed * delta;
+    const stepX = movement.x * GAME.playerSpeed * speedMult * delta;
+    const stepY = movement.y * GAME.playerSpeed * speedMult * delta;
     const isMoving = movement.x !== 0 || movement.y !== 0;
 
     if (isMoving) {
@@ -1064,7 +1091,20 @@ function updateProjectiles(delta, timestamp) {
         const playerCanBeHit = timestamp >= state.player.invulnerableUntil;
         if (playerCanBeHit && rectsIntersect(projectile, state.player)) {
             projectile.element.remove();
-            damagePlayer();
+            if (state.player.shieldHits > 0) {
+                state.player.shieldHits -= 1;
+                state.player.invulnerableUntil = timestamp + 600;
+                if (state.player.shieldHits <= 0) {
+                    state.player.element.classList.remove("shield-active");
+                    state.player.element.removeAttribute("data-shield-hits");
+                    playShieldBreakSound();
+                } else {
+                    state.player.element.setAttribute("data-shield-hits", state.player.shieldHits.toString());
+                    playShieldSound();
+                }
+            } else {
+                damagePlayer();
+            }
             createHitEffect(projectile.x - 20, projectile.y - 20);
             return;
         }
@@ -1077,7 +1117,7 @@ function updateProjectiles(delta, timestamp) {
 
 function updatePowerUps(delta) {
     if (!state.powerUp && !state.dragonStrike && state.gameTimeMs >= state.nextPowerUpAt && state.students.length > 0) {
-        spawnCoffeePowerUp();
+        spawnPowerUp();
     }
 
     if (
@@ -1089,14 +1129,14 @@ function updatePowerUps(delta) {
     }
 
     if (state.powerUp && rectsIntersect(state.powerUp, state.player)) {
-        collectCoffeePowerUp();
+        collectPowerUp();
     } else if (state.powerUp) {
         const remainingMs = Math.max(0, state.powerUp.expiresAt - state.gameTimeMs);
         const secondsLeft = Math.ceil(remainingMs / 1000);
         state.powerUp.counter.textContent = `${secondsLeft}`;
 
         if (remainingMs <= 0) {
-            expireCoffeePowerUp();
+            expirePowerUp();
         }
     }
 
@@ -1145,6 +1185,20 @@ function attack() {
 }
 
 function getAttackZone() {
+    const now = performance.now();
+    const hasSuperHammer = state.player.superHammerUntil && now < state.player.superHammerUntil;
+
+    if (hasSuperHammer) {
+        const size = 190;
+        return {
+            x: state.player.x + state.player.width / 2 - size / 2,
+            y: state.player.y + state.player.height / 2 - size / 2,
+            width: size,
+            height: size,
+            is360: true
+        };
+    }
+
     const offset = 58;
     const zone = {
         x: state.player.x,
@@ -1172,16 +1226,24 @@ function getAttackZone() {
 
 function createSwingEffect(zone) {
     const effect = document.createElement("div");
-    effect.className = "hammer-swing";
-    effect.style.left = `${zone.x}px`;
-    effect.style.top = `${zone.y + 22}px`;
+    if (zone.is360) {
+        effect.className = "hammer-swing-360";
+        effect.style.left = `${zone.x}px`;
+        effect.style.top = `${zone.y}px`;
+        effect.style.width = `${zone.width}px`;
+        effect.style.height = `${zone.height}px`;
+    } else {
+        effect.className = "hammer-swing";
+        effect.style.left = `${zone.x}px`;
+        effect.style.top = `${zone.y + 22}px`;
 
-    if (state.player.direction === "up" || state.player.direction === "down") {
-        effect.style.transform = "rotate(90deg)";
+        if (state.player.direction === "up" || state.player.direction === "down") {
+            effect.style.transform = "rotate(90deg)";
+        }
     }
 
     gameArea.appendChild(effect);
-    window.setTimeout(() => effect.remove(), 180);
+    window.setTimeout(() => effect.remove(), zone.is360 ? 300 : 180);
 }
 
 function createHitEffect(x, y) {
@@ -1326,24 +1388,30 @@ function advanceToNextLevel() {
     buildLevel(state.currentLevel + 1, false);
 }
 
-function spawnCoffeePowerUp() {
+function spawnPowerUp() {
     const counter = document.createElement("span");
     const icon = document.createElement("span");
+    
+    const types = ["coffee", "shield", "speed", "super_hammer"];
+    const type = types[Math.floor(Math.random() * types.length)];
+    
     const powerUp = {
         x: 0,
         y: 0,
-        width: 28,
-        height: 28,
+        width: 32,
+        height: 32,
+        type,
         expiresAt: state.gameTimeMs + GAME.powerUpLifetime,
         counter,
         element: document.createElement("div")
     };
 
-    powerUp.element.className = "coffee-powerup";
-    icon.className = "coffee-powerup-icon";
-    counter.className = "coffee-powerup-counter";
+    powerUp.element.className = `game-powerup type-${type}`;
+    icon.className = "powerup-icon";
+    counter.className = "powerup-counter";
     counter.textContent = "3";
     powerUp.element.append(counter, icon);
+    
     placePowerUpInFreeSpot(powerUp);
     gameArea.appendChild(powerUp.element);
     syncEntity(powerUp);
@@ -1365,7 +1433,7 @@ function spawnHeartPowerUp() {
 
     heartPowerUp.element.className = "heart-powerup";
     icon.className = "heart-powerup-icon";
-    counter.className = "coffee-powerup-counter";
+    counter.className = "powerup-counter";
     counter.textContent = "3";
     heartPowerUp.element.append(counter, icon);
     placePowerUpInFreeSpot(heartPowerUp);
@@ -1374,20 +1442,41 @@ function spawnHeartPowerUp() {
     state.heartPowerUp = heartPowerUp;
 }
 
-function collectCoffeePowerUp() {
+function collectPowerUp() {
     if (!state.powerUp || state.students.length === 0) {
         return;
     }
 
+    const type = state.powerUp.type;
     const origin = centerOf(state.powerUp);
+    
     state.powerUp.element.remove();
     state.powerUp = null;
-    playPowerUpSound();
-    launchDragonStrike(origin);
+    
+    const now = performance.now();
+
+    if (type === "coffee") {
+        playPowerUpSound();
+        launchDragonStrike(origin);
+    } else if (type === "shield") {
+        playShieldSound();
+        state.player.shieldHits = 2;
+        state.player.element.setAttribute("data-shield-hits", "2");
+        state.player.element.classList.add("shield-active");
+    } else if (type === "speed") {
+        playSpeedSound();
+        state.player.speedBoostUntil = now + 5000;
+        state.player.element.classList.add("speed-boosted");
+    } else if (type === "super_hammer") {
+        playSuperHammerSound();
+        state.player.superHammerUntil = now + 8000;
+        state.player.element.classList.add("super-hammer-active");
+    }
+
     state.nextPowerUpAt = state.gameTimeMs + GAME.powerUpRespawnDelay;
 }
 
-function expireCoffeePowerUp() {
+function expirePowerUp() {
     if (!state.powerUp) {
         return;
     }
@@ -1806,6 +1895,47 @@ function playGameOverSound() {
         peakGain: 0.12,
         stagger: 0.12,
         slideTo: 164.81
+    });
+}
+
+function playShieldSound() {
+    playToneBurst({
+        frequencies: [261.63, 329.63, 523.25],
+        duration: 0.3,
+        type: "sine",
+        peakGain: 0.12,
+        stagger: 0.05
+    });
+}
+
+function playShieldBreakSound() {
+    playToneBurst({
+        frequencies: [440, 220],
+        duration: 0.25,
+        type: "sawtooth",
+        peakGain: 0.15,
+        slideTo: 110
+    });
+}
+
+function playSpeedSound() {
+    playToneBurst({
+        frequencies: [329.63, 440, 587.33, 783.99],
+        duration: 0.35,
+        type: "triangle",
+        peakGain: 0.12,
+        stagger: 0.04
+    });
+}
+
+function playSuperHammerSound() {
+    playToneBurst({
+        frequencies: [196, 293.66, 392, 587.33],
+        duration: 0.5,
+        type: "sawtooth",
+        peakGain: 0.15,
+        stagger: 0.06,
+        slideTo: 98
     });
 }
 
