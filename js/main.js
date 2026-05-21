@@ -1635,6 +1635,21 @@ function hitsObstacle(entity) {
     return state.obstacles.some((obstacle) => rectsIntersect(entity, obstacle));
 }
 
+// Ritorna il delay (ms) tra un power-up e il successivo, scalato per livello:
+// Livello 1 → 10 s, Livello 2 → 6 s, Livello 3 → 4 s
+function getPowerUpRespawnDelay() {
+    if (state.currentLevel >= 3) return 4000;
+    if (state.currentLevel >= 2) return 6000;
+    return GAME.powerUpRespawnDelay; // 10000 ms
+}
+
+// Ritardo cuore scalato: Livello 1 → 10 s, Livello 2 → 7 s, Livello 3 → 5 s
+function getHeartPowerUpRespawnDelay() {
+    if (state.currentLevel >= 3) return 5000;
+    if (state.currentLevel >= 2) return 7000;
+    return GAME.heartPowerUpRespawnDelay; // 10000 ms
+}
+
 function checkEndConditions() {
     if (state.player.lives <= 0) {
         finishGame(false);
@@ -1787,7 +1802,7 @@ function collectPowerUp() {
         state.player.element.classList.add("super-hammer-active");
     }
 
-    state.nextPowerUpAt = state.gameTimeMs + GAME.powerUpRespawnDelay;
+    state.nextPowerUpAt = state.gameTimeMs + getPowerUpRespawnDelay();
 }
 
 function expirePowerUp() {
@@ -1797,7 +1812,7 @@ function expirePowerUp() {
 
     state.powerUp.element.remove();
     state.powerUp = null;
-    state.nextPowerUpAt = state.gameTimeMs + GAME.powerUpRespawnDelay;
+    state.nextPowerUpAt = state.gameTimeMs + getPowerUpRespawnDelay();
 }
 
 function collectHeartPowerUp() {
@@ -1809,7 +1824,7 @@ function collectHeartPowerUp() {
     state.heartPowerUp = null;
     state.player.lives = Math.min(GAME.spawnLives, state.player.lives + 1);
     playHealSound();
-    state.nextHeartPowerUpAt = state.gameTimeMs + GAME.heartPowerUpRespawnDelay;
+    state.nextHeartPowerUpAt = state.gameTimeMs + getHeartPowerUpRespawnDelay();
 }
 
 function expireHeartPowerUp() {
@@ -1819,7 +1834,7 @@ function expireHeartPowerUp() {
 
     state.heartPowerUp.element.remove();
     state.heartPowerUp = null;
-    state.nextHeartPowerUpAt = state.gameTimeMs + GAME.heartPowerUpRespawnDelay;
+    state.nextHeartPowerUpAt = state.gameTimeMs + getHeartPowerUpRespawnDelay();
 }
 
 function launchDragonStrike(origin) {
@@ -2688,6 +2703,10 @@ function toggleMute() {
     audioState.muted = !audioState.muted;
     if (audioState.masterGain) {
         audioState.masterGain.gain.value = audioState.muted ? 0 : 0.82;
+    }
+    // Interrompe immediatamente qualsiasi sintesi vocale TTS in corso
+    if (audioState.muted) {
+        stopStudentSpeech();
     }
     localStorage.setItem("aulab_rage_muted", audioState.muted ? "true" : "false");
     updateMuteButtonVisual();
