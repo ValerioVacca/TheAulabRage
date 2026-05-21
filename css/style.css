@@ -1266,3 +1266,222 @@ kbd {
         padding: 1.2rem;
     }
 }
+
+/* Teacher Selection UI Styling */
+.teacher-card {
+    flex: 0 0 auto;
+    width: 105px;
+    padding: 0.75rem 0.5rem;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    text-align: center;
+    color: #f8f9ff;
+}
+
+.teacher-card:hover {
+    transform: translateY(-3px);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 234, 0, 0.4);
+}
+
+.teacher-card.selected {
+    background: rgba(255, 234, 0, 0.1);
+    border-color: var(--accent);
+    box-shadow: 0 0 14px rgba(255, 234, 0, 0.28);
+}
+
+.teacher-card-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    margin: 0 auto 0.5rem;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    background-size: cover;
+    background-position: center;
+    background-color: rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+
+.teacher-card.selected .teacher-card-avatar {
+    border-color: var(--accent);
+    box-shadow: 0 0 8px rgba(255, 234, 0, 0.5);
+}
+
+.teacher-card-name {
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.teacher-card-tool {
+    font-size: 0.65rem;
+    color: rgba(248, 249, 255, 0.6);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Custom Modal adjustments */
+.modal-card {
+    border: 2px solid rgba(255, 234, 0, 0.3) !important;
+}
+
+/* Custom Tool Styles for the Player Hammer element */
+/* 1. Righello (Ruler) */
+.player-hammer.tool-ruler::before {
+    left: 8px;
+    top: -8px;
+    width: 7px;
+    height: 42px;
+    border-radius: 1px;
+    background: linear-gradient(90deg, #e5a93b, #fcae26);
+    border: 1px solid rgba(139, 90, 0, 0.4);
+    background-image: repeating-linear-gradient(180deg, transparent, transparent 4px, rgba(0,0,0,0.5) 4px, rgba(0,0,0,0.5) 5px);
+    box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.2);
+}
+.player-hammer.tool-ruler .player-hammer-head {
+    display: none;
+}
+
+/* 2. Libro di programmazione (Book) */
+.player-hammer.tool-book::before {
+    height: 14px;
+    top: 15px;
+    background: linear-gradient(180deg, #613e1f, #8b5a2b);
+}
+.player-hammer.tool-book .player-hammer-head {
+    left: -10px;
+    top: -3px;
+    width: 24px;
+    height: 20px;
+    border-radius: 3px;
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8); /* Blue book cover */
+    border: 1px solid #1e3a8a;
+    box-shadow: 
+        inset -4px 0 0 #f8fafc, /* white page edges edge */
+        0 4px 8px rgba(0, 0, 0, 0.35);
+}
+.player-hammer.tool-book .player-hammer-head::before {
+    /* Bookmark ribbon */
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 19px;
+    width: 3px;
+    height: 8px;
+    background: #ef4444;
+    border-radius: 0 0 1px 1px;
+}
+
+/* 3. Computer / Laptop */
+.player-hammer.tool-laptop::before {
+    height: 12px;
+    top: 16px;
+    background: linear-gradient(180deg, #613e1f, #8b5a2b);
+}
+.player-hammer.tool-laptop .player-hammer-head {
+    left: -14px;
+    top: -5px;
+    width: 32px;
+    height: 24px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #94a3b8, #475569); /* gray chassis */
+    border: 1px solid #334155;
+    box-shadow: 
+        inset 0 1px 0 rgba(255, 255, 255, 0.4),
+        0 4px 8px rgba(0, 0, 0, 0.4);
+}
+.player-hammer.tool-laptop .player-hammer-head::before {
+    /* Glowing laptop screen */
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 3px;
+    width: 24px;
+    height: 12px;
+    background: #06b6d4; /* cyan screen glow */
+    border-radius: 1px;
+    box-shadow: 0 0 6px rgba(6, 182, 212, 0.8);
+}
+
+/* Hackademy Selection UI Styling */
+.hackademy-pill {
+    display: inline-block;
+    padding: 0.5rem 1.1rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    color: #f8f9ff;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 600;
+    transition: all 0.2s ease-in-out;
+}
+
+.hackademy-pill:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 234, 0, 0.4);
+}
+
+.hackademy-pill.selected {
+    background: rgba(255, 234, 0, 0.1);
+    border-color: var(--accent);
+    box-shadow: 0 0 10px rgba(255, 234, 0, 0.25);
+    color: var(--accent);
+}
+
+/* Student Variety Classes */
+
+/* Fast student: Neon Cyan Shirt, no stone in hand, cyan glow aura */
+.student.type-fast {
+    --student-shirt-top: #00f0ff !important;
+    --student-shirt-bottom: #00a8cc !important;
+}
+.student.type-fast .student-figure {
+    filter: drop-shadow(0 0 4px rgba(0, 240, 255, 0.5)) drop-shadow(0 7px 7px rgba(5, 8, 20, 0.24));
+}
+.student.type-fast .student-hand-stone {
+    display: none !important;
+}
+
+/* Shooter student: Red Shirt, glowing red stone always visible, red glow aura */
+.student.type-shooter {
+    --student-shirt-top: #ff4136 !important;
+    --student-shirt-bottom: #85144b !important;
+}
+.student.type-shooter .student-figure {
+    filter: drop-shadow(0 0 4px rgba(255, 65, 54, 0.5)) drop-shadow(0 7px 7px rgba(5, 8, 20, 0.24));
+}
+.student.type-shooter .student-hand-stone {
+    opacity: 0.75;
+    background: radial-gradient(circle at 35% 35%, #ff851b, #ff4136 70%);
+    box-shadow: 0 0 8px #ff4136;
+    transform: scale(0.65);
+}
+.student.type-shooter.throwing .student-hand-stone {
+    opacity: 1;
+    animation: stone-ready 220ms ease-out forwards;
+}
+
+/* Dodger student: Gold Shirt, gold glow aura, ghosting dash effect */
+.student.type-dodger {
+    --student-shirt-top: #ffdc00 !important;
+    --student-shirt-bottom: #b58900 !important;
+}
+.student.type-dodger .student-figure {
+    filter: drop-shadow(0 0 4px rgba(255, 220, 0, 0.5)) drop-shadow(0 7px 7px rgba(5, 8, 20, 0.24));
+}
+.student.type-dodger.dashing {
+    opacity: 0.55;
+    transition: opacity 0.1s ease;
+}
+.student.type-dodger.dashing .student-figure {
+    filter: drop-shadow(0 0 12px #ffdc00) drop-shadow(0 7px 7px rgba(5, 8, 20, 0.24));
+}

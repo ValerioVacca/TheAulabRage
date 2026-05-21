@@ -11,6 +11,29 @@ const endEyebrow = document.getElementById("endEyebrow");
 const endTitle = document.getElementById("endTitle");
 const endMessage = document.getElementById("endMessage");
 
+// Nuovi elementi DOM per la gestione del Docente
+const addTeacherBtn = document.getElementById("addTeacherBtn");
+const teacherModal = document.getElementById("teacherModal");
+const addTeacherForm = document.getElementById("addTeacherForm");
+const teacherNameInput = document.getElementById("teacherName");
+const teacherImageFile = document.getElementById("teacherImageFile");
+const teacherImageUrl = document.getElementById("teacherImageUrl");
+const imagePreview = document.getElementById("imagePreview");
+const teacherToolInput = document.getElementById("teacherTool");
+const teacherToolStyleSelect = document.getElementById("teacherToolStyle");
+const closeTeacherModal = document.getElementById("closeTeacherModal");
+const teacherCardsContainer = document.getElementById("teacherCards");
+const startDescription = document.getElementById("startDescription");
+
+// Nuovi elementi DOM per la gestione dell'Hackademy
+const addHackademyBtn = document.getElementById("addHackademyBtn");
+const hackademyModal = document.getElementById("hackademyModal");
+const addHackademyForm = document.getElementById("addHackademyForm");
+const hackademyNameInput = document.getElementById("hackademyName");
+const hackademyStudentsCountInput = document.getElementById("hackademyStudentsCount");
+const closeHackademyModal = document.getElementById("closeHackademyModal");
+const hackademyPillsContainer = document.getElementById("hackademyPills");
+
 const GAME = {
     width: 1280,
     height: 720,
@@ -30,6 +53,24 @@ const GAME = {
     heartPowerUpRespawnDelay: 10000
 };
 
+const defaultTeachers = [
+    {
+        id: "valerio",
+        name: "Valerio",
+        image: "./assets/player-face.png",
+        tool: "martello di gomma",
+        toolStyle: "hammer"
+    }
+];
+
+const defaultHackademies = [
+    {
+        id: "standard",
+        name: "Standard",
+        studentsCount: 5
+    }
+];
+
 const state = {
     running: false,
     gameOver: false,
@@ -48,7 +89,11 @@ const state = {
     nextPowerUpAt: 0,
     nextHeartPowerUpAt: 0,
     gameTimeMs: 0,
-    player: null
+    player: null,
+    teachers: [],
+    selectedTeacherId: "valerio",
+    hackademies: [],
+    selectedHackademyId: "standard"
 };
 
 const audioState = {
@@ -193,6 +238,30 @@ const studentMessages = [
     "quando c'era lui"
 ];
 
+const typeMessages = {
+    fast: [
+        "TikTok > studio!",
+        "vado a 100 all'ora!",
+        "non mi prendi!",
+        "vado di fretta!",
+        "sono altrove..."
+    ],
+    shooter: [
+        "prendi questo!",
+        "pioggia di pietre!",
+        "non mi fermo!",
+        "ti colpisco!",
+        "tieni!"
+    ],
+    dodger: [
+        "schivato!",
+        "liscio!",
+        "copio e scappo!",
+        "quasi preso!",
+        "ti piacerebbe!"
+    ]
+};
+
 const musicLeadPattern = [
     261.63, 329.63, 392.0, 329.63,
     293.66, 349.23, 440.0, 349.23
@@ -204,6 +273,8 @@ const musicBassPattern = [
 ];
 
 function init() {
+    loadTeachers();
+    loadHackademies();
     bindEvents();
     resetGame();
     updateGameScale();
@@ -239,6 +310,104 @@ function bindEvents() {
     });
 
     window.addEventListener("resize", updateGameScale);
+
+    // Event listener per la creazione del docente
+    addTeacherBtn.addEventListener("click", () => {
+        teacherModal.classList.remove("d-none");
+        addTeacherForm.reset();
+        imagePreview.src = "";
+        imagePreview.classList.add("d-none");
+    });
+
+    closeTeacherModal.addEventListener("click", () => {
+        teacherModal.classList.add("d-none");
+    });
+
+    // Anteprima e gestione del file caricato (Base64)
+    teacherImageFile.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                imagePreview.src = event.target.result;
+                imagePreview.classList.remove("d-none");
+                teacherImageUrl.value = ""; // Pulisce il campo URL se c'è un file caricato
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Anteprima e gestione dell'URL inserito
+    teacherImageUrl.addEventListener("input", (e) => {
+        const url = e.target.value.trim();
+        if (url) {
+            imagePreview.src = url;
+            imagePreview.classList.remove("d-none");
+            teacherImageFile.value = ""; // Pulisce il file se c'è un URL inserito
+        } else if (!teacherImageFile.files[0]) {
+            imagePreview.src = "";
+            imagePreview.classList.add("d-none");
+        }
+    });
+
+    // Invio del form di aggiunta docente
+    addTeacherForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const name = teacherNameInput.value.trim();
+        const tool = teacherToolInput.value.trim();
+        const toolStyle = teacherToolStyleSelect.value;
+        
+        let image = imagePreview.src;
+        if (!image || imagePreview.classList.contains("d-none")) {
+            image = "./assets/player-face.png";
+        }
+        
+        if (!name || !tool) return;
+        
+        const newTeacher = {
+            id: `custom_${Date.now()}`,
+            name,
+            image,
+            tool,
+            toolStyle
+        };
+        
+        state.teachers.push(newTeacher);
+        saveTeachers();
+        selectTeacher(newTeacher.id);
+        
+        teacherModal.classList.add("d-none");
+    });
+
+    // Event listener per la creazione dell'hackademy
+    addHackademyBtn.addEventListener("click", () => {
+        hackademyModal.classList.remove("d-none");
+        addHackademyForm.reset();
+    });
+
+    closeHackademyModal.addEventListener("click", () => {
+        hackademyModal.classList.add("d-none");
+    });
+
+    addHackademyForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const name = hackademyNameInput.value.trim();
+        const count = parseInt(hackademyStudentsCountInput.value, 10);
+        
+        if (!name || isNaN(count) || count < 1 || count > 15) return;
+        
+        const newHackademy = {
+            id: `custom_hackademy_${Date.now()}`,
+            name,
+            studentsCount: count
+        };
+        
+        state.hackademies.push(newHackademy);
+        saveHackademies();
+        selectHackademy(newHackademy.id);
+        
+        hackademyModal.classList.add("d-none");
+    });
 }
 
 function normalizeKey(key) {
@@ -312,6 +481,7 @@ function clearEntities() {
     state.powerUp = null;
     state.heartPowerUp = null;
     state.dragonStrike = null;
+    state.player = null; // Risolve il bug del riavvio ricreando l'elemento del player nel DOM
 }
 
 function clearLevelActors(keepPlayer = true) {
@@ -344,6 +514,150 @@ function clearLevelActors(keepPlayer = true) {
     state.dragonStrike = null;
 }
 
+// Funzioni ausiliarie per la gestione dei docenti
+function loadTeachers() {
+    const stored = localStorage.getItem("aulab_rage_teachers");
+    if (stored) {
+        try {
+            const parsed = JSON.parse(stored);
+            state.teachers = [...defaultTeachers, ...parsed];
+        } catch (e) {
+            state.teachers = [...defaultTeachers];
+        }
+    } else {
+        state.teachers = [...defaultTeachers];
+    }
+    
+    const storedSelect = localStorage.getItem("aulab_rage_selected_teacher");
+    if (storedSelect && state.teachers.some(t => t.id === storedSelect)) {
+        state.selectedTeacherId = storedSelect;
+    } else {
+        state.selectedTeacherId = "valerio";
+    }
+    
+    renderTeacherCards();
+    updateStartDescription();
+}
+
+function saveTeachers() {
+    const custom = state.teachers.filter(t => t.id !== "valerio");
+    localStorage.setItem("aulab_rage_teachers", JSON.stringify(custom));
+}
+
+function renderTeacherCards() {
+    if (!teacherCardsContainer) return;
+    teacherCardsContainer.innerHTML = "";
+    state.teachers.forEach(teacher => {
+        const card = document.createElement("div");
+        card.className = `teacher-card ${teacher.id === state.selectedTeacherId ? 'selected' : ''}`;
+        card.dataset.id = teacher.id;
+        
+        const avatar = document.createElement("div");
+        avatar.className = "teacher-card-avatar";
+        avatar.style.backgroundImage = `url(${teacher.image})`;
+        
+        const name = document.createElement("div");
+        name.className = "teacher-card-name";
+        name.textContent = teacher.name;
+        
+        const tool = document.createElement("div");
+        tool.className = "teacher-card-tool";
+        tool.textContent = teacher.tool;
+        
+        card.append(avatar, name, tool);
+        
+        card.addEventListener("click", () => {
+            selectTeacher(teacher.id);
+        });
+        
+        teacherCardsContainer.appendChild(card);
+    });
+}
+
+function selectTeacher(id) {
+    state.selectedTeacherId = id;
+    localStorage.setItem("aulab_rage_selected_teacher", id);
+    renderTeacherCards();
+    updateStartDescription();
+}
+
+// Funzioni ausiliarie per la gestione delle Hackademy
+function loadHackademies() {
+    const stored = localStorage.getItem("aulab_rage_hackademies");
+    if (stored) {
+        try {
+            const parsed = JSON.parse(stored);
+            state.hackademies = [...defaultHackademies, ...parsed];
+        } catch (e) {
+            state.hackademies = [...defaultHackademies];
+        }
+    } else {
+        state.hackademies = [...defaultHackademies];
+    }
+    
+    const storedSelect = localStorage.getItem("aulab_rage_selected_hackademy");
+    if (storedSelect && state.hackademies.some(h => h.id === storedSelect)) {
+        state.selectedHackademyId = storedSelect;
+    } else {
+        state.selectedHackademyId = "standard";
+    }
+    
+    renderHackademyPills();
+    updateStartDescription();
+}
+
+function saveHackademies() {
+    const custom = state.hackademies.filter(h => h.id !== "standard");
+    localStorage.setItem("aulab_rage_hackademies", JSON.stringify(custom));
+}
+
+function renderHackademyPills() {
+    if (!hackademyPillsContainer) return;
+    hackademyPillsContainer.innerHTML = "";
+    state.hackademies.forEach(hackademy => {
+        const pill = document.createElement("div");
+        pill.className = `hackademy-pill ${hackademy.id === state.selectedHackademyId ? 'selected' : ''}`;
+        pill.dataset.id = hackademy.id;
+        
+        let label = hackademy.name;
+        if (hackademy.id !== "standard") {
+            label += ` (${hackademy.studentsCount} st.)`;
+        }
+        pill.textContent = label;
+        
+        pill.addEventListener("click", () => {
+            selectHackademy(hackademy.id);
+        });
+        
+        hackademyPillsContainer.appendChild(pill);
+    });
+}
+
+function selectHackademy(id) {
+    state.selectedHackademyId = id;
+    localStorage.setItem("aulab_rage_selected_hackademy", id);
+    renderHackademyPills();
+    updateStartDescription();
+}
+
+function updateStartDescription() {
+    const teacher = getSelectedTeacher();
+    if (startDescription) {
+        let targetText = "l'ufficio Aulab";
+        if (state.selectedHackademyId !== "standard") {
+            const hackademy = state.hackademies.find(h => h.id === state.selectedHackademyId);
+            if (hackademy) {
+                targetText = `la classe ${hackademy.name}`;
+            }
+        }
+        startDescription.innerHTML = `${teacher.name} deve liberare ${targetText} inseguendo gli studenti che non studiano, schivando le pietre e colpendoli con il suo ${teacher.tool}... hem, sì... volevo dire "${teacher.tool}".`;
+    }
+}
+
+function getSelectedTeacher() {
+    return state.teachers.find(t => t.id === state.selectedTeacherId) || state.teachers[0];
+}
+
 function getCurrentLevelConfig() {
     return levelConfigs.find((level) => level.id === state.currentLevel) || levelConfigs[0];
 }
@@ -363,7 +677,20 @@ function buildLevel(levelNumber, resetPlayerLives = false) {
         }
     }
 
-    state.students = level.studentSpawns.map((spawn, index) => createStudent(spawn, index));
+    if (state.selectedHackademyId !== "standard") {
+        const hackademy = state.hackademies.find(h => h.id === state.selectedHackademyId);
+        const count = hackademy ? hackademy.studentsCount : 5;
+        const studentSpawns = [];
+        for (let i = 0; i < count; i++) {
+            studentSpawns.push({
+                x: 100 + Math.random() * 1000,
+                y: 100 + Math.random() * 500
+            });
+        }
+        state.students = studentSpawns.map((spawn, index) => createStudent(spawn, index));
+    } else {
+        state.students = level.studentSpawns.map((spawn, index) => createStudent(spawn, index));
+    }
 }
 
 function createPlayer(spawn, resetPlayerLives = false) {
@@ -380,12 +707,21 @@ function createPlayer(spawn, resetPlayerLives = false) {
 
     figure.className = "player-figure";
     face.className = "player-face";
+    
+    // Imposta l'avatar personalizzato del docente selezionato
+    const selectedTeacher = getSelectedTeacher();
+    face.style.backgroundImage = `url(${selectedTeacher.image})`;
+    face.style.backgroundSize = "cover";
+    face.style.backgroundPosition = "center";
+
     torso.className = "player-body";
     armLeft.className = "player-arm arm-left";
     armRight.className = "player-arm arm-right";
     legLeft.className = "player-leg leg-left";
     legRight.className = "player-leg leg-right";
-    hammer.className = "player-hammer";
+    
+    // Applica lo stile grafico dell'arma associata al docente
+    hammer.className = `player-hammer tool-${selectedTeacher.toolStyle}`;
     hammerHead.className = "player-hammer-head";
 
     hammer.appendChild(hammerHead);
@@ -446,6 +782,9 @@ function createStudent(spawn, index) {
     figure.append(head, body, armLeft, armRight, legLeft, legRight, stone);
     element.appendChild(figure);
 
+    const types = ["fast", "shooter", "dodger"];
+    const type = types[index % types.length];
+
     const student = {
         id: `student-${index}`,
         x: spawn.x,
@@ -455,13 +794,17 @@ function createStudent(spawn, index) {
         projectilesPerShot: getCurrentLevelConfig().projectilesPerShot,
         direction: "left",
         fleeTimer: Math.random() * 60,
-        shotTimer: 70 + Math.random() * 140,
+        shotTimer: type === "shooter" ? (15 + Math.random() * 25) : (70 + Math.random() * 140),
         talkTimer: randomBetween(GAME.studentTalkMin, GAME.studentTalkMax),
         wanderTimer: 0,
         wanderVector: { x: 0, y: 0 },
         isThrowing: false,
         throwReleaseAt: 0,
         speechTimeoutId: null,
+        studentType: type,
+        dodgeCooldown: 0,
+        dashTimer: 0,
+        dashVector: null,
         element
     };
 
@@ -474,7 +817,7 @@ function createStudent(spawn, index) {
     element.style.setProperty("--student-hair-bottom", palette.hairBottom);
 
     placeEntityInFreeSpot(student);
-    student.element.className = "entity student";
+    student.element.className = `entity student type-${type}`;
     gameArea.appendChild(student.element);
     updateStudentVisual(student, false);
     syncEntity(student);
@@ -565,18 +908,49 @@ function updateStudents(delta) {
         const now = performance.now();
         let vector;
 
-        // Quando Donato si avvicina, lo studente prova a scappare; altrimenti vaga nell'ufficio.
-        if (fleeMode) {
-            vector = normalizeVector(dx, dy);
-            student.element.classList.add("coward");
-        } else {
-            student.element.classList.remove("coward");
-            vector = getStudentWanderVector(student);
+        if (student.dodgeCooldown > 0) {
+            student.dodgeCooldown -= delta;
         }
 
-        student.direction = getDirectionFromVector(vector);
-        updateStudentVisual(student, vector.x !== 0 || vector.y !== 0);
-        moveWithCollisions(student, vector.x * GAME.studentSpeed * delta, vector.y * GAME.studentSpeed * delta);
+        if (student.dashTimer > 0) {
+            student.dashTimer -= delta;
+            vector = student.dashVector;
+            student.element.classList.add("dashing");
+            
+            const speed = 3.5 * GAME.studentSpeed;
+            moveWithCollisions(student, vector.x * speed * delta, vector.y * speed * delta);
+            student.direction = getDirectionFromVector(vector);
+            updateStudentVisual(student, true);
+        } else {
+            student.element.classList.remove("dashing");
+            
+            if (fleeMode) {
+                vector = normalizeVector(dx, dy);
+                student.element.classList.add("coward");
+                
+                if (student.studentType === "dodger" && distance < 110 && (!student.dodgeCooldown || student.dodgeCooldown <= 0)) {
+                    student.dashTimer = 15;
+                    student.dodgeCooldown = 100;
+                    student.dashVector = normalizeVector(dx + (Math.random() - 0.5) * 0.4, dy + (Math.random() - 0.5) * 0.4);
+                    speakStudent(student);
+                }
+            } else {
+                student.element.classList.remove("coward");
+                vector = getStudentWanderVector(student);
+            }
+
+            student.direction = getDirectionFromVector(vector);
+            updateStudentVisual(student, vector.x !== 0 || vector.y !== 0);
+            
+            let speedMult = 1.0;
+            if (student.studentType === "fast") {
+                speedMult = 1.65;
+            } else if (student.studentType === "shooter") {
+                speedMult = 0.15;
+            }
+            
+            moveWithCollisions(student, vector.x * GAME.studentSpeed * speedMult * delta, vector.y * GAME.studentSpeed * speedMult * delta);
+        }
 
         student.fleeTimer -= delta;
         student.shotTimer -= delta;
@@ -586,10 +960,14 @@ function updateStudents(delta) {
             student.isThrowing = false;
             student.element.classList.remove("throwing");
             throwStone(student);
-            student.shotTimer = 105 + Math.random() * 120;
+            if (student.studentType === "shooter") {
+                student.shotTimer = 35 + Math.random() * 45;
+            } else {
+                student.shotTimer = 105 + Math.random() * 120;
+            }
         }
 
-        if (!student.isThrowing && student.shotTimer <= 0 && hasLineOfSight(student, state.player)) {
+        if (student.studentType !== "fast" && !student.isThrowing && student.shotTimer <= 0 && hasLineOfSight(student, state.player)) {
             beginThrow(student, now);
         }
 
@@ -929,7 +1307,7 @@ function checkEndConditions() {
     }
 
     if (state.students.length === 0) {
-        if (state.currentLevel < levelConfigs.length) {
+        if (state.selectedHackademyId === "standard" && state.currentLevel < levelConfigs.length) {
             advanceToNextLevel();
             return;
         }
@@ -1133,7 +1511,8 @@ function speakStudent(student) {
 
     const bubble = document.createElement("div");
     bubble.className = "speech-bubble";
-    const message = studentMessages[Math.floor(Math.random() * studentMessages.length)];
+    const messages = typeMessages[student.studentType] || studentMessages;
+    const message = messages[Math.floor(Math.random() * messages.length)];
     bubble.textContent = message;
     student.element.appendChild(bubble);
     student.element.classList.add("speaking");
@@ -1158,9 +1537,19 @@ function finishGame(isVictory) {
     endOverlay.classList.remove("d-none");
     endEyebrow.textContent = isVictory ? "Arena ripulita" : "Missione fallita";
     endTitle.textContent = isVictory ? "Vittoria" : "Game Over";
-    endMessage.textContent = isVictory
-        ? "Valerio ha rimesso tutti a studiare. L'ufficio Aulab e' di nuovo sotto controllo."
-        : "Le pietre hanno fermato Valerio. Riprova e libera l'ufficio dagli studenti svogliati.";
+    
+    const teacher = getSelectedTeacher();
+    if (isVictory) {
+        if (state.selectedHackademyId !== "standard") {
+            const hackademy = state.hackademies.find(h => h.id === state.selectedHackademyId);
+            const hackademyName = hackademy ? hackademy.name : "Hackademy";
+            endMessage.textContent = `${teacher.name} ha rimesso tutti a studiare. La classe ${hackademyName} è sotto controllo.`;
+        } else {
+            endMessage.textContent = `${teacher.name} ha rimesso tutti a studiare. L'ufficio Aulab e' di nuovo sotto controllo.`;
+        }
+    } else {
+        endMessage.textContent = `Le pietre hanno fermato ${teacher.name}. Riprova e libera l'ufficio dagli studenti svogliati.`;
+    }
 }
 
 function updateHud() {
