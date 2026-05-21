@@ -39,6 +39,9 @@ const intermissionOverlay = document.getElementById("intermissionOverlay");
 const intermissionTitle = document.getElementById("intermissionTitle");
 const intermissionMessage = document.getElementById("intermissionMessage");
 const intermissionButton = document.getElementById("intermissionButton");
+const levelValue = document.getElementById("levelValue");
+const resumeButton = document.getElementById("resumeButton");
+const savedLevelNum = document.getElementById("savedLevelNum");
 
 const GAME = {
     width: 1280,
@@ -326,6 +329,9 @@ function init() {
 
 function bindEvents() {
     startButton.addEventListener("click", startGame);
+    if (resumeButton) {
+        resumeButton.addEventListener("click", resumeGame);
+    }
     restartButton.addEventListener("click", () => {
         resetGame();
         startGame();
@@ -463,7 +469,11 @@ function bindEvents() {
             if (intermissionOverlay) {
                 intermissionOverlay.classList.add("d-none");
             }
-            buildLevel(state.currentLevel + 1, false);
+            const nextLevel = state.currentLevel + 1;
+            buildLevel(nextLevel, false);
+            if (state.selectedHackademyId === "standard") {
+                localStorage.setItem("aulab_rage_saved_level", nextLevel);
+            }
             state.lastFrame = performance.now();
             state.running = true;
         });
@@ -523,6 +533,47 @@ function resetGame() {
     endOverlay.classList.add("d-none");
     if (intermissionOverlay) {
         intermissionOverlay.classList.add("d-none");
+    }
+    updateResumeButton();
+}
+
+function resumeGame() {
+    unlockAudio();
+    const savedLevel = localStorage.getItem("aulab_rage_saved_level");
+    const parsedLevel = parseInt(savedLevel, 10);
+    if (parsedLevel && parsedLevel > 1 && parsedLevel <= 3) {
+        state.selectedHackademyId = "standard";
+        const pills = document.querySelectorAll(".hackademy-pill");
+        pills.forEach(pill => {
+            if (pill.dataset.id === "standard") {
+                pill.classList.add("active");
+            } else {
+                pill.classList.remove("active");
+            }
+        });
+
+        buildLevel(parsedLevel, true);
+        state.running = true;
+        state.gameOver = false;
+        state.victory = false;
+        state.lastFrame = performance.now();
+        startOverlay.classList.add("d-none");
+        endOverlay.classList.add("d-none");
+        startBackgroundMusic();
+    }
+}
+
+function updateResumeButton() {
+    if (!resumeButton) return;
+    const savedLevel = localStorage.getItem("aulab_rage_saved_level");
+    const parsedLevel = parseInt(savedLevel, 10);
+    if (parsedLevel && parsedLevel > 1 && parsedLevel <= 3) {
+        if (savedLevelNum) {
+            savedLevelNum.textContent = parsedLevel;
+        }
+        resumeButton.classList.remove("d-none");
+    } else {
+        resumeButton.classList.add("d-none");
     }
 }
 
@@ -974,6 +1025,7 @@ function createStudent(spawn, index) {
 
 function startGame() {
     unlockAudio();
+    localStorage.removeItem("aulab_rage_saved_level");
     state.running = true;
     state.gameOver = false;
     state.victory = false;
@@ -1592,6 +1644,10 @@ function checkEndConditions() {
             if (state.currentLevel === 3 && (state.boss || state.summoningActive)) {
                 return;
             }
+            
+            // Salva il livello corrente nel localstorage
+            localStorage.setItem("aulab_rage_saved_level", state.currentLevel);
+
             if (state.currentLevel < levelConfigs.length) {
                 advanceToNextLevel();
                 return;
@@ -1614,18 +1670,31 @@ function advanceToNextLevel() {
     
     if (intermissionTitle && intermissionMessage && intermissionOverlay) {
         if (state.currentLevel === 1) {
-            intermissionTitle.textContent = "Livello 1 Completato!";
-            intermissionMessage.textContent = "Preparati per la Sessione d'Esame...";
+            intermissionTitle.textContent = "Livello 1 Completato! 🎉";
+            intermissionMessage.textContent = "Gli studenti del primo anno sono stati convinti a studiare. Preparati per il Livello 2...";
+            if (intermissionButton) {
+                intermissionButton.textContent = "Entra nel Livello 2";
+            }
         } else if (state.currentLevel === 2) {
-            intermissionTitle.textContent = "Livello 2 Completato!";
-            intermissionMessage.textContent = "Attento! Gli studenti si stanno radunando attorno al fuoco per evocare qualcosa di spaventoso...";
+            intermissionTitle.textContent = "Livello 2 Completato! 🔥";
+            intermissionMessage.textContent = "Attento! Gli studenti si stanno radunando attorno al fuoco per evocare qualcosa di spaventoso nel Livello 3...";
+            if (intermissionButton) {
+                intermissionButton.textContent = "Affronta il Livello 3 (Boss Battle)";
+            }
         } else {
             intermissionTitle.textContent = `Livello ${state.currentLevel} Completato!`;
             intermissionMessage.textContent = "Preparati per la prossima sfida!";
+            if (intermissionButton) {
+                intermissionButton.textContent = `Procedi al Livello ${state.currentLevel + 1}`;
+            }
         }
         intermissionOverlay.classList.remove("d-none");
     } else {
-        buildLevel(state.currentLevel + 1, false);
+        const nextLevel = state.currentLevel + 1;
+        buildLevel(nextLevel, false);
+        if (state.selectedHackademyId === "standard") {
+            localStorage.setItem("aulab_rage_saved_level", nextLevel);
+        }
         state.lastFrame = performance.now();
         state.running = true;
     }
@@ -1868,6 +1937,8 @@ function finishGame(isVictory) {
     stopStudentSpeech();
     if (!isVictory) {
         playGameOverSound();
+    } else {
+        localStorage.removeItem("aulab_rage_saved_level");
     }
     endOverlay.classList.remove("d-none");
     endEyebrow.textContent = isVictory ? "Arena ripulita" : "Missione fallita";
@@ -1888,8 +1959,13 @@ function finishGame(isVictory) {
 }
 
 function updateHud() {
-    renderLives(state.player.lives);
+    if (state.player) {
+        renderLives(state.player.lives);
+    }
     studentsValue.textContent = state.students.length;
+    if (levelValue) {
+        levelValue.textContent = state.selectedHackademyId === "standard" ? state.currentLevel : "Sandbox";
+    }
 }
 
 function renderLives(currentLives) {
