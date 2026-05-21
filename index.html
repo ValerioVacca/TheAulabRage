@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valerio The Banner</title>
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr"
+        crossorigin="anonymous"
+    >
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+    <main class="app-shell">
+        <section class="game-panel">
+            <div class="game-frame" id="gameFrame">
+                <div class="game-viewport" id="gameViewport">
+                    <div class="game-stage" id="gameStage">
+                        <div class="game-area" id="gameArea" aria-label="Arena di gioco top-down ambientata in Aulab">
+                            <div class="hud-overlay" id="hud">
+                                <div class="hud-lives">
+                                    <span class="hud-label">Vite</span>
+                                    <span class="lives-track" id="livesValue" aria-label="Vite di Valerio"></span>
+                                </div>
+                                <div class="hud-chip">Studenti: <span id="studentsValue">0</span></div>
+                            </div>
+
+                            <div class="overlay start-overlay" id="startOverlay">
+                                <div class="overlay-card">
+                                    <h1 class="mb-3">The Aulab Rage</h1>
+                                    <p class="mb-3">
+                                        Valerio deve liberare l'ufficio Aulab inseguendo gli studenti che non studiano,
+                                        schivando le pietre e colpendoli con il suo martello... hem, sì... volevo dire "martello di gomma".
+                                    </p>
+                                    <p class="mb-3">
+                                        Ogni tanto compare un caffe': se lo raccogli, si attiva Charizard che vola
+                                        nell'arena e brucia uno studente.
+                                    </p>
+                                    <p class="controls-inline mb-4">
+                                        <span><strong>Movimento</strong> <kbd>W A S D</kbd> / <kbd>↑ ↓ ← →</kbd></span>
+                                        <span><strong>Colpo</strong> <kbd>Space</kbd></span>
+                                    </p>
+                                    <button class="btn btn-warning btn-lg" id="startButton" type="button">
+                                        Inizia partita
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="overlay end-overlay d-none" id="endOverlay">
+                                <div class="overlay-card">
+                                    <p class="eyebrow mb-2" id="endEyebrow">Partita conclusa</p>
+                                    <h2 class="mb-3" id="endTitle">Risultato</h2>
+                                    <p class="mb-4" id="endMessage"></p>
+                                    <button class="btn btn-light btn-lg" id="restartButton" type="button">
+                                        Rigioca
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="./js/main.js"></script>
+</body>
+</html>
