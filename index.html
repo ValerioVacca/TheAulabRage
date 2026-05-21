@@ -25,6 +25,22 @@
                                     <span class="lives-track" id="livesValue" aria-label="Vite di Valerio"></span>
                                 </div>
                                 <div class="hud-chip">Studenti: <span id="studentsValue">0</span></div>
+                                <button class="hud-btn mute-btn ms-auto" id="muteBtn" type="button" aria-label="Attiva/Disattiva Audio"></button>
+                            </div>
+
+                            <!-- Summoning Banner & Boss Health HUD -->
+                            <div class="summoning-banner d-none" id="summoningBanner">
+                                <div class="summoning-text">Evocazione in corso... <span id="summoningTimer">5</span>s</div>
+                                <div class="summoning-bar">
+                                    <div class="summoning-bar-fill" id="summoningBarFill"></div>
+                                </div>
+                            </div>
+
+                            <div class="boss-health-container d-none" id="bossHealthContainer">
+                                <div class="boss-name" id="bossName">Il Grande Svogliato</div>
+                                <div class="boss-health-bar-bg">
+                                    <div class="boss-health-bar-fill" id="bossHealthBar"></div>
+                                </div>
                             </div>
 
                             <div class="overlay start-overlay" id="startOverlay">
@@ -136,6 +152,17 @@
                                     <p class="mb-4" id="endMessage"></p>
                                     <button class="btn btn-light btn-lg" id="restartButton" type="button">
                                         Rigioca
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="overlay d-none" id="intermissionOverlay">
+                                <div class="overlay-card">
+                                    <p class="eyebrow mb-2">Livello Completato!</p>
+                                    <h2 class="mb-3 text-warning" id="intermissionTitle">Livello Completato</h2>
+                                    <p class="mb-4 text-light" id="intermissionMessage">Preparati per la Sessione d'Esame...</p>
+                                    <button class="btn btn-warning btn-lg" id="intermissionButton" type="button">
+                                        Procedi
                                     </button>
                                 </div>
                             </div>

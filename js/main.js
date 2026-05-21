@@ -34,6 +34,12 @@ const hackademyStudentsCountInput = document.getElementById("hackademyStudentsCo
 const closeHackademyModal = document.getElementById("closeHackademyModal");
 const hackademyPillsContainer = document.getElementById("hackademyPills");
 
+const muteBtn = document.getElementById("muteBtn");
+const intermissionOverlay = document.getElementById("intermissionOverlay");
+const intermissionTitle = document.getElementById("intermissionTitle");
+const intermissionMessage = document.getElementById("intermissionMessage");
+const intermissionButton = document.getElementById("intermissionButton");
+
 const GAME = {
     width: 1280,
     height: 720,
@@ -93,7 +99,13 @@ const state = {
     teachers: [],
     selectedTeacherId: "valerio",
     hackademies: [],
-    selectedHackademyId: "standard"
+    selectedHackademyId: "standard",
+    boss: null,
+    campfireElement: null,
+    summoningActive: false,
+    summoningTimer: 0,
+    lastRumbleAt: 0,
+    currentScale: 1
 };
 
 const audioState = {
@@ -105,7 +117,8 @@ const audioState = {
     nextMusicTime: 0,
     musicEnabled: false,
     ambientPulseLfo: null,
-    speechEnabled: "speechSynthesis" in window
+    speechEnabled: "speechSynthesis" in window,
+    muted: false
 };
 
 const levelConfigs = [
@@ -185,6 +198,31 @@ const levelConfigs = [
             { x: 664, y: 560, width: 182, height: 24, type: "wall" },
             { x: 916, y: 566, width: 146, height: 72, type: "desk" },
             { x: 966, y: 650, width: 42, height: 34, type: "chair" }
+        ]
+    },
+    {
+        id: 3,
+        projectilesPerShot: 3,
+        playerSpawn: { x: 80, y: 320 },
+        studentSpawns: [
+            { x: 520, y: 340 },
+            { x: 680, y: 340 },
+            { x: 600, y: 240 },
+            { x: 600, y: 420 }
+        ],
+        obstacles: [
+            { x: 0, y: 0, width: 1280, height: 24, type: "wall" },
+            { x: 0, y: 696, width: 1280, height: 24, type: "wall" },
+            { x: 0, y: 0, width: 24, height: 720, type: "wall" },
+            { x: 1256, y: 0, width: 24, height: 720, type: "wall" },
+            { x: 100, y: 80, width: 134, height: 66, type: "desk" },
+            { x: 1046, y: 80, width: 134, height: 66, type: "desk" },
+            { x: 100, y: 560, width: 134, height: 66, type: "desk" },
+            { x: 1046, y: 560, width: 134, height: 66, type: "desk" },
+            { x: 260, y: 80, width: 46, height: 58, type: "plant" },
+            { x: 970, y: 80, width: 46, height: 58, type: "plant" },
+            { x: 146, y: 154, width: 42, height: 34, type: "chair" },
+            { x: 1092, y: 154, width: 42, height: 34, type: "chair" }
         ]
     }
 ];
@@ -273,11 +311,16 @@ const musicBassPattern = [
 ];
 
 function init() {
+    // Load muted state
+    const storedMuted = localStorage.getItem("aulab_rage_muted");
+    audioState.muted = storedMuted === "true";
+
     loadTeachers();
     loadHackademies();
     bindEvents();
     resetGame();
     updateGameScale();
+    updateMuteButtonVisual();
     requestAnimationFrame(gameLoop);
 }
 
@@ -408,6 +451,23 @@ function bindEvents() {
         
         hackademyModal.classList.add("d-none");
     });
+
+    // Mute button listener
+    if (muteBtn) {
+        muteBtn.addEventListener("click", toggleMute);
+    }
+
+    // Intermission proceed button listener
+    if (intermissionButton) {
+        intermissionButton.addEventListener("click", () => {
+            if (intermissionOverlay) {
+                intermissionOverlay.classList.add("d-none");
+            }
+            buildLevel(state.currentLevel + 1, false);
+            state.lastFrame = performance.now();
+            state.running = true;
+        });
+    }
 }
 
 function normalizeKey(key) {
@@ -461,6 +521,9 @@ function resetGame() {
 
     startOverlay.classList.remove("d-none");
     endOverlay.classList.add("d-none");
+    if (intermissionOverlay) {
+        intermissionOverlay.classList.add("d-none");
+    }
 }
 
 function clearEntities() {
@@ -470,6 +533,20 @@ function clearEntities() {
             student.speechTimeoutId = null;
         }
     });
+
+    if (state.boss) {
+        state.boss.element.remove();
+        state.boss = null;
+    }
+    if (state.campfireElement) {
+        state.campfireElement.remove();
+        state.campfireElement = null;
+    }
+    state.summoningActive = false;
+    const bossHealthContainer = document.getElementById("bossHealthContainer");
+    if (bossHealthContainer) bossHealthContainer.classList.add("d-none");
+    const summoningBanner = document.getElementById("summoningBanner");
+    if (summoningBanner) summoningBanner.classList.add("d-none");
 
     [state.player, ...state.students, ...state.projectiles, ...state.effects, state.powerUp, state.heartPowerUp, state.dragonStrike]
         .filter(Boolean)
@@ -482,6 +559,9 @@ function clearEntities() {
     state.heartPowerUp = null;
     state.dragonStrike = null;
     state.player = null; // Risolve il bug del riavvio ricreando l'elemento del player nel DOM
+    if (intermissionOverlay) {
+        intermissionOverlay.classList.add("d-none");
+    }
 }
 
 function clearLevelActors(keepPlayer = true) {
@@ -491,6 +571,20 @@ function clearLevelActors(keepPlayer = true) {
             student.speechTimeoutId = null;
         }
     });
+
+    if (state.boss) {
+        state.boss.element.remove();
+        state.boss = null;
+    }
+    if (state.campfireElement) {
+        state.campfireElement.remove();
+        state.campfireElement = null;
+    }
+    state.summoningActive = false;
+    const bossHealthContainer = document.getElementById("bossHealthContainer");
+    if (bossHealthContainer) bossHealthContainer.classList.add("d-none");
+    const summoningBanner = document.getElementById("summoningBanner");
+    if (summoningBanner) summoningBanner.classList.add("d-none");
 
     const entitiesToRemove = [
         ...(keepPlayer ? [] : [state.player]),
@@ -512,6 +606,9 @@ function clearLevelActors(keepPlayer = true) {
     state.powerUp = null;
     state.heartPowerUp = null;
     state.dragonStrike = null;
+    if (intermissionOverlay) {
+        intermissionOverlay.classList.add("d-none");
+    }
 }
 
 // Funzioni ausiliarie per la gestione dei docenti
@@ -690,7 +787,47 @@ function buildLevel(levelNumber, resetPlayerLives = false) {
         state.students = studentSpawns.map((spawn, index) => createStudent(spawn, index));
     } else {
         state.students = level.studentSpawns.map((spawn, index) => createStudent(spawn, index));
+        
+        if (levelNumber === 3) {
+            spawnCampfire();
+            state.students.forEach((student) => {
+                student.isChanting = true;
+                student.element.classList.add("student-chanting");
+            });
+            state.summoningActive = true;
+            state.summoningTimer = 5000;
+            state.lastRumbleAt = 0;
+            const banner = document.getElementById("summoningBanner");
+            if (banner) {
+                banner.classList.remove("d-none");
+            }
+        }
     }
+}
+
+function spawnCampfire() {
+    const campfire = document.createElement("div");
+    campfire.className = "campfire";
+    campfire.style.left = "600px";
+    campfire.style.top = "320px";
+    
+    const logs = document.createElement("div");
+    logs.className = "campfire-logs";
+    
+    const flame = document.createElement("div");
+    flame.className = "campfire-flame";
+    
+    const portal = document.createElement("div");
+    portal.className = "summoning-portal";
+    
+    campfire.append(logs, flame, portal);
+    gameArea.appendChild(campfire);
+    
+    state.campfireElement = campfire;
+    
+    setTimeout(() => {
+        if (portal) portal.classList.add("active");
+    }, 100);
 }
 
 function createPlayer(spawn, resetPlayerLives = false) {
@@ -854,6 +991,59 @@ function gameLoop(timestamp) {
 
     if (state.running) {
         state.gameTimeMs += Math.min(frameDeltaMs, 50);
+
+        // --- GESTIONE EVOCAZIONE BOSS ---
+        if (state.summoningActive) {
+            state.summoningTimer -= frameDeltaMs;
+
+            // Rombi ed effetto terremoto sullo schermo
+            if (timestamp - state.lastRumbleAt > 700) {
+                state.lastRumbleAt = timestamp;
+                playSummoningRumbleSound();
+                triggerScreenShake(300, 3);
+            }
+
+            const secondsLeft = Math.max(0, Math.ceil(state.summoningTimer / 1000));
+            const timerEl = document.getElementById("summoningTimer");
+            if (timerEl) {
+                timerEl.textContent = secondsLeft.toString();
+            }
+            const barFillEl = document.getElementById("summoningBarFill");
+            if (barFillEl) {
+                const pct = Math.max(0, (state.summoningTimer / 5000) * 100);
+                barFillEl.style.width = `${pct}%`;
+            }
+
+            if (state.summoningTimer <= 0) {
+                state.summoningActive = false;
+                const banner = document.getElementById("summoningBanner");
+                if (banner) {
+                    banner.classList.add("d-none");
+                }
+
+                // Disattiva chanting per tutti gli studenti
+                state.students.forEach((student) => {
+                    student.isChanting = false;
+                    student.element.classList.remove("student-chanting");
+                    const oldBubble = student.element.querySelector(".speech-bubble");
+                    if (oldBubble) oldBubble.remove();
+                    student.element.classList.remove("speaking");
+                    if (student.speechTimeoutId) {
+                        clearTimeout(student.speechTimeoutId);
+                        student.speechTimeoutId = null;
+                    }
+                });
+
+                spawnBoss();
+            }
+        }
+
+        // Aggiorna il Boss se presente
+        if (state.boss) {
+            updateBoss(delta, timestamp);
+        }
+        // ---------------------------------
+
         updatePlayer(delta, timestamp);
         updateStudents(delta, timestamp);
         updateProjectiles(delta, timestamp);
@@ -926,13 +1116,28 @@ function getInputVector() {
     return normalizeVector(x, y);
 }
 
-function updateStudents(delta) {
+function updateStudents(delta, timestamp) {
     state.students.forEach((student) => {
+        if (student.isChanting) {
+            // Guarda verso il falò al centro (640, 360)
+            const dx = 640 - centerOf(student).x;
+            const dy = 360 - centerOf(student).y;
+            student.direction = getDirectionFromVector({ x: dx, y: dy });
+            updateStudentVisual(student, false);
+            
+            student.talkTimer -= delta * 16.67;
+            if (student.talkTimer <= 0) {
+                student.talkTimer = randomBetween(1500, 3000);
+                speakChant(student);
+            }
+            return;
+        }
+
         const dx = centerOf(student).x - centerOf(state.player).x;
         const dy = centerOf(student).y - centerOf(state.player).y;
         const distance = Math.hypot(dx, dy);
         const fleeMode = distance < 220;
-        const now = performance.now();
+        const now = timestamp || performance.now();
         let vector;
 
         if (student.dodgeCooldown > 0) {
@@ -1170,9 +1375,22 @@ function attack() {
     const attackZone = getAttackZone();
     createSwingEffect(attackZone);
 
+    // Gestione colpi al Boss
+    if (state.boss && rectsIntersect(attackZone, state.boss)) {
+        createHitEffect(state.boss.x + state.boss.width / 2 - 18, state.boss.y + state.boss.height / 2 - 18);
+        damageBoss();
+    }
+
     const survivors = [];
     state.students.forEach((student) => {
         if (rectsIntersect(attackZone, student)) {
+            if (student.isChanting) {
+                // Studente immune durante l'evocazione
+                playShieldSound();
+                createHitEffect(student.x - 18, student.y - 18);
+                survivors.push(student);
+                return;
+            }
             createHitEffect(student.x - 18, student.y - 18);
             student.element.remove();
             return;
@@ -1284,6 +1502,7 @@ function damagePlayer() {
     state.player.lives -= 1;
     state.player.invulnerableUntil = performance.now() + 1000;
     playPlayerHitSound();
+    triggerScreenShake(300, 6);
 }
 
 function moveWithCollisions(entity, stepX, stepY) {
@@ -1369,9 +1588,14 @@ function checkEndConditions() {
     }
 
     if (state.students.length === 0) {
-        if (state.selectedHackademyId === "standard" && state.currentLevel < levelConfigs.length) {
-            advanceToNextLevel();
-            return;
+        if (state.selectedHackademyId === "standard") {
+            if (state.currentLevel === 3 && (state.boss || state.summoningActive)) {
+                return;
+            }
+            if (state.currentLevel < levelConfigs.length) {
+                advanceToNextLevel();
+                return;
+            }
         }
 
         finishGame(true);
@@ -1385,7 +1609,26 @@ function advanceToNextLevel() {
     state.gameTimeMs = 0;
     state.nextPowerUpAt = GAME.firstPowerUpDelay;
     state.nextHeartPowerUpAt = GAME.firstHeartPowerUpDelay;
-    buildLevel(state.currentLevel + 1, false);
+    
+    state.running = false;
+    
+    if (intermissionTitle && intermissionMessage && intermissionOverlay) {
+        if (state.currentLevel === 1) {
+            intermissionTitle.textContent = "Livello 1 Completato!";
+            intermissionMessage.textContent = "Preparati per la Sessione d'Esame...";
+        } else if (state.currentLevel === 2) {
+            intermissionTitle.textContent = "Livello 2 Completato!";
+            intermissionMessage.textContent = "Attento! Gli studenti si stanno radunando attorno al fuoco per evocare qualcosa di spaventoso...";
+        } else {
+            intermissionTitle.textContent = `Livello ${state.currentLevel} Completato!`;
+            intermissionMessage.textContent = "Preparati per la prossima sfida!";
+        }
+        intermissionOverlay.classList.remove("d-none");
+    } else {
+        buildLevel(state.currentLevel + 1, false);
+        state.lastFrame = performance.now();
+        state.running = true;
+    }
 }
 
 function spawnPowerUp() {
@@ -1568,6 +1811,7 @@ function burnStudent(target) {
         oldBubble.remove();
     }
     createFlameEffect(target.x - 8, target.y - 10);
+    triggerScreenShake(400, 4);
 
     window.setTimeout(() => {
         target.element.remove();
@@ -1576,7 +1820,9 @@ function burnStudent(target) {
 }
 
 function pickDragonTargetId() {
-    const target = state.students[Math.floor(Math.random() * state.students.length)];
+    const activeStudents = state.students.filter(s => !s.isChanting);
+    if (activeStudents.length === 0) return "";
+    const target = activeStudents[Math.floor(Math.random() * activeStudents.length)];
     return target ? target.id : "";
 }
 
@@ -1668,6 +1914,7 @@ function updateGameScale() {
         1
     );
     const safeScale = Math.max(scale, 0.1);
+    state.currentScale = safeScale;
 
     gameStage.style.width = `${GAME.width * safeScale}px`;
     gameStage.style.height = `${GAME.height * safeScale}px`;
@@ -1766,7 +2013,7 @@ function unlockAudio() {
         audioState.masterGain = audioState.context.createGain();
         audioState.musicGain = audioState.context.createGain();
         audioState.sfxGain = audioState.context.createGain();
-        audioState.masterGain.gain.value = 0.82;
+        audioState.masterGain.gain.value = audioState.muted ? 0 : 0.82;
         audioState.musicGain.gain.value = 0.18;
         audioState.sfxGain.gain.value = 0.24;
         audioState.musicGain.connect(audioState.masterGain);
@@ -1974,7 +2221,7 @@ function playToneBurst(options) {
 }
 
 function speakStudentLine(message) {
-    if (!audioState.speechEnabled || !state.running) {
+    if (!audioState.speechEnabled || !state.running || audioState.muted) {
         return;
     }
 
@@ -1998,6 +2245,394 @@ function speakStudentLine(message) {
 function stopStudentSpeech() {
     if (audioState.speechEnabled && window.speechSynthesis) {
         window.speechSynthesis.cancel();
+    }
+}
+
+// --- FUNZIONALITÀ BOSS E RITO DI EVOCAZIONE (LIVELLO 3) ---
+
+const chantMessages = [
+    "Sorgi, o Grande Svogliato!",
+    "Evoca il potere dello svacco!",
+    "Niente studio oggi!",
+    "Grande Svogliato, ascoltaci!",
+    "Vieni a liberarci!",
+    "La procrastinazione trionferà!"
+];
+
+function speakChant(student) {
+    if (!student) return;
+
+    const previousBubble = student.element.querySelector(".speech-bubble");
+    if (previousBubble) {
+        previousBubble.remove();
+    }
+
+    if (student.speechTimeoutId) {
+        window.clearTimeout(student.speechTimeoutId);
+    }
+
+    const bubble = document.createElement("div");
+    bubble.className = "speech-bubble";
+    const message = chantMessages[Math.floor(Math.random() * chantMessages.length)];
+    bubble.textContent = message;
+    student.element.appendChild(bubble);
+    student.element.classList.add("speaking");
+
+    student.speechTimeoutId = window.setTimeout(() => {
+        bubble.remove();
+        student.element.classList.remove("speaking");
+        student.speechTimeoutId = null;
+    }, 1200);
+}
+
+function triggerScreenShake(durationMs, intensity) {
+    const startTime = performance.now();
+    function shake() {
+        const elapsed = performance.now() - startTime;
+        if (elapsed < durationMs && state.running) {
+            const dx = (Math.random() - 0.5) * intensity;
+            const dy = (Math.random() - 0.5) * intensity;
+            gameArea.style.transform = `scale(${state.currentScale}) translate(${dx}px, ${dy}px)`;
+            requestAnimationFrame(shake);
+        } else {
+            gameArea.style.transform = `scale(${state.currentScale})`;
+        }
+    }
+    shake();
+}
+
+function playSummoningRumbleSound() {
+    playToneBurst({
+        frequencies: [60, 50, 45],
+        duration: 0.6,
+        type: "sawtooth",
+        peakGain: 0.18,
+        slideTo: 30,
+        stagger: 0.1
+    });
+}
+
+function playBossShotSound(isGiant) {
+    if (isGiant) {
+        playToneBurst({
+            frequencies: [150, 100, 80],
+            duration: 0.5,
+            type: "sawtooth",
+            peakGain: 0.15,
+            slideTo: 50
+        });
+    } else {
+        playToneBurst({
+            frequencies: [220, 260],
+            duration: 0.2,
+            type: "triangle",
+            peakGain: 0.1,
+            slideTo: 150
+        });
+    }
+}
+
+function playBossHitSound() {
+    playToneBurst({
+        frequencies: [350, 250, 150],
+        duration: 0.15,
+        type: "sawtooth",
+        peakGain: 0.15,
+        slideTo: 80
+    });
+}
+
+function playBossDeathSound() {
+    playToneBurst({
+        frequencies: [300, 150, 80],
+        duration: 1.5,
+        type: "sawtooth",
+        peakGain: 0.2,
+        slideTo: 30,
+        stagger: 0.2
+    });
+}
+
+function spawnBoss() {
+    const element = document.createElement("div");
+    element.className = "entity boss";
+    
+    const wrapper = document.createElement("div");
+    wrapper.className = "boss-wrapper";
+    wrapper.style.width = "100%";
+    wrapper.style.height = "100%";
+    
+    const figure = document.createElement("div");
+    figure.className = "boss-figure";
+    
+    const crown = document.createElement("div");
+    crown.className = "boss-crown";
+    
+    const body = document.createElement("div");
+    body.className = "boss-body";
+    
+    const ears = document.createElement("div");
+    ears.className = "boss-ears";
+    
+    const eyes = document.createElement("div");
+    eyes.className = "boss-eyes";
+    const eyeL = document.createElement("div");
+    eyeL.className = "boss-eye";
+    const eyeR = document.createElement("div");
+    eyeR.className = "boss-eye";
+    eyes.append(eyeL, eyeR);
+    
+    figure.append(crown, body, ears, eyes);
+    wrapper.appendChild(figure);
+    element.appendChild(wrapper);
+    
+    gameArea.appendChild(element);
+    
+    state.boss = {
+        x: 590,
+        y: 300,
+        width: 100,
+        height: 120,
+        lives: 15,
+        maxLives: 15,
+        speed: 1.1,
+        direction: "right",
+        lastShotAt: 0,
+        lastSummonAt: 0,
+        shootCooldown: 2200,
+        summonCooldown: 8000,
+        element
+    };
+    
+    syncEntity(state.boss);
+    const healthContainer = document.getElementById("bossHealthContainer");
+    if (healthContainer) {
+        healthContainer.classList.remove("d-none");
+    }
+    updateBossHealthBar();
+    
+    triggerScreenShake(800, 8);
+    playBossShotSound(true);
+}
+
+function updateBoss(delta, timestamp) {
+    if (!state.boss) return;
+    
+    // Inseguimento player
+    const bossCenter = centerOf(state.boss);
+    const playerCenter = centerOf(state.player);
+    const dx = playerCenter.x - bossCenter.x;
+    const dy = playerCenter.y - bossCenter.y;
+    const vector = normalizeVector(dx, dy);
+    
+    const stepX = vector.x * state.boss.speed * delta;
+    const stepY = vector.y * state.boss.speed * delta;
+    
+    moveWithCollisions(state.boss, stepX, stepY);
+    
+    // Orientamento visivo
+    const wrapper = state.boss.element.querySelector(".boss-wrapper");
+    if (wrapper) {
+        if (vector.x < 0) {
+            wrapper.style.transform = "scaleX(-1)";
+        } else {
+            wrapper.style.transform = "";
+        }
+    }
+    
+    // Attacchi periodici
+    if (!state.boss.lastShotAt) {
+        state.boss.lastShotAt = timestamp;
+    }
+    if (timestamp - state.boss.lastShotAt > state.boss.shootCooldown) {
+        bossShoot(timestamp);
+    }
+    
+    // Evocazioni minion periodiche
+    if (!state.boss.lastSummonAt) {
+        state.boss.lastSummonAt = timestamp;
+    }
+    if (timestamp - state.boss.lastSummonAt > state.boss.summonCooldown) {
+        bossSummonStudent(timestamp);
+    }
+}
+
+function bossShoot(timestamp) {
+    if (!state.boss) return;
+    state.boss.lastShotAt = timestamp;
+    
+    const isGiant = Math.random() < 0.35;
+    playBossShotSound(isGiant);
+    
+    const source = centerOf(state.boss);
+    const target = centerOf(state.player);
+    const vector = normalizeVector(target.x - source.x, target.y - source.y);
+    
+    if (isGiant) {
+        const projectile = {
+            x: source.x - 24,
+            y: source.y - 24,
+            width: 48,
+            height: 48,
+            velocityX: vector.x * GAME.projectileSpeed * 1.3,
+            velocityY: vector.y * GAME.projectileSpeed * 1.3,
+            ownerId: "boss",
+            isGiant: true,
+            element: document.createElement("div")
+        };
+        projectile.element.className = "projectile boss-projectile giant-fireball";
+        gameArea.appendChild(projectile.element);
+        syncEntity(projectile);
+        state.projectiles.push(projectile);
+    } else {
+        const baseAngle = Math.atan2(vector.y, vector.x);
+        const angles = [baseAngle - 0.25, baseAngle, baseAngle + 0.25];
+        
+        angles.forEach((angle) => {
+            const vx = Math.cos(angle) * GAME.projectileSpeed * 1.1;
+            const vy = Math.sin(angle) * GAME.projectileSpeed * 1.1;
+            
+            const projectile = {
+                x: source.x - 12,
+                y: source.y - 12,
+                width: 24,
+                height: 24,
+                velocityX: vx,
+                velocityY: vy,
+                ownerId: "boss",
+                element: document.createElement("div")
+            };
+            projectile.element.className = "projectile boss-projectile";
+            gameArea.appendChild(projectile.element);
+            syncEntity(projectile);
+            state.projectiles.push(projectile);
+        });
+    }
+}
+
+function bossSummonStudent(timestamp) {
+    if (!state.boss) return;
+    state.boss.lastSummonAt = timestamp;
+    
+    if (state.students.length >= 6) return;
+    
+    const range = 180;
+    const angle = Math.random() * Math.PI * 2;
+    const targetX = clamp(state.boss.x + state.boss.width / 2 + Math.cos(angle) * range - 26, 40, GAME.width - 92);
+    const targetY = clamp(state.boss.y + state.boss.height / 2 + Math.sin(angle) * range - 30, 40, GAME.height - 110);
+    
+    const index = Math.floor(Math.random() * 100);
+    const student = createStudent({ x: targetX, y: targetY }, index);
+    state.students.push(student);
+    
+    const effectEl = document.createElement("div");
+    effectEl.className = "boss-summon-effect";
+    effectEl.style.left = `${student.x - 4}px`;
+    effectEl.style.top = `${student.y - 4}px`;
+    gameArea.appendChild(effectEl);
+    setTimeout(() => effectEl.remove(), 600);
+    
+    playToneBurst({
+        frequencies: [200, 400, 800],
+        duration: 0.3,
+        type: "sine",
+        peakGain: 0.1,
+        stagger: 0.04
+    });
+}
+
+function damageBoss() {
+    if (!state.boss || state.boss.lives <= 0) return;
+    
+    state.boss.lives -= 1;
+    playBossHitSound();
+    triggerScreenShake(200, 4);
+    
+    state.boss.element.classList.add("flash-damage");
+    setTimeout(() => {
+        if (state.boss && state.boss.element) {
+            state.boss.element.classList.remove("flash-damage");
+        }
+    }, 150);
+    
+    updateBossHealthBar();
+    
+    if (state.boss.lives <= 0) {
+        killBoss();
+    }
+}
+
+function updateBossHealthBar() {
+    if (!state.boss) return;
+    const bar = document.getElementById("bossHealthBar");
+    if (bar) {
+        const pct = Math.max(0, (state.boss.lives / state.boss.maxLives) * 100);
+        bar.style.width = `${pct}%`;
+    }
+}
+
+function killBoss() {
+    if (!state.boss) return;
+    
+    playBossDeathSound();
+    triggerScreenShake(1200, 9);
+    
+    state.boss.element.classList.add("boss-defeated");
+    
+    const deadBoss = state.boss;
+    state.boss = null;
+    
+    setTimeout(() => {
+        if (deadBoss.element) {
+            deadBoss.element.remove();
+        }
+        
+        if (state.campfireElement) {
+            state.campfireElement.remove();
+            state.campfireElement = null;
+        }
+        
+        clearLevelActors(true);
+        
+        const healthContainer = document.getElementById("bossHealthContainer");
+        if (healthContainer) {
+            healthContainer.classList.add("d-none");
+        }
+        
+        checkEndConditions();
+    }, 1500);
+}
+
+function toggleMute() {
+    audioState.muted = !audioState.muted;
+    if (audioState.masterGain) {
+        audioState.masterGain.gain.value = audioState.muted ? 0 : 0.82;
+    }
+    localStorage.setItem("aulab_rage_muted", audioState.muted ? "true" : "false");
+    updateMuteButtonVisual();
+}
+
+function updateMuteButtonVisual() {
+    const muteBtn = document.getElementById("muteBtn");
+    if (!muteBtn) return;
+    
+    if (audioState.muted) {
+        muteBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-volume-x" viewBox="0 0 24 24">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <line x1="23" y1="9" x2="17" y2="15"></line>
+              <line x1="17" y1="9" x2="23" y2="15"></line>
+            </svg>
+        `;
+        muteBtn.classList.add("muted");
+    } else {
+        muteBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-volume-2" viewBox="0 0 24 24">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+        `;
+        muteBtn.classList.remove("muted");
     }
 }
 

@@ -1768,3 +1768,370 @@ kbd {
     }
 }
 
+/* Campfire and Portal visual styles */
+.campfire {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    z-index: 5;
+    pointer-events: none;
+}
+.campfire-logs {
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50px;
+    height: 15px;
+    background: #5c4033;
+    border-radius: 4px;
+    box-shadow: inset 0 -4px 8px rgba(0,0,0,0.5);
+}
+.campfire-flame {
+    position: absolute;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 50px;
+    background: radial-gradient(circle at bottom, #ff8c00 20%, #ff4500 70%, transparent 100%);
+    border-radius: 50% 50% 20% 20%;
+    animation: flame-burn 0.8s ease-in-out infinite alternate;
+    filter: drop-shadow(0 -4px 8px #ff4500);
+}
+@keyframes flame-burn {
+    0% {
+        transform: translateX(-50%) scaleY(0.9) skewX(-2deg);
+        filter: drop-shadow(0 -2px 6px #ff4500) brightness(1);
+    }
+    100% {
+        transform: translateX(-50%) scaleY(1.1) skewX(2deg);
+        filter: drop-shadow(0 -6px 12px #ff8c00) brightness(1.2);
+    }
+}
+.summoning-portal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    width: 140px;
+    height: 140px;
+    border: 3px dashed #9932cc;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(153, 50, 204, 0.1) 40%, rgba(153, 50, 204, 0.4) 100%);
+    box-shadow: 0 0 20px rgba(153, 50, 204, 0.6), inset 0 0 20px rgba(153, 50, 204, 0.4);
+    opacity: 0;
+    transition: transform 5s linear, opacity 2s ease;
+    z-index: 1;
+}
+.summoning-portal.active {
+    transform: translate(-50%, -50%) scale(1.3) rotate(360deg);
+    opacity: 1;
+}
+
+/* Boss "Il Grande Svogliato" visual styles */
+.entity.boss {
+    width: 100px;
+    height: 120px;
+    position: absolute;
+    z-index: 6;
+    transition: transform 0.1s linear;
+}
+.boss-figure {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 15px rgba(153, 50, 204, 0.8));
+    animation: boss-float 2s ease-in-out infinite alternate;
+}
+@keyframes boss-float {
+    0% { transform: translateY(0px); }
+    100% { transform: translateY(-10px); }
+}
+.boss-body {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    top: 20px;
+    background: #1a0f2e;
+    border: 3px solid #9932cc;
+    border-radius: 50% 50% 40% 40%;
+    box-shadow: inset 0 0 20px rgba(153, 50, 204, 0.6);
+}
+.boss-ears {
+    position: absolute;
+    top: 5px;
+    left: 0;
+    right: 0;
+    height: 30px;
+    pointer-events: none;
+}
+.boss-ears::before,
+.boss-ears::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 20px solid transparent;
+    border-right: 20px solid transparent;
+    border-bottom: 30px solid #1a0f2e;
+    filter: drop-shadow(0 -3px 3px #9932cc);
+}
+.boss-ears::before {
+    left: 10px;
+    transform: rotate(-15deg);
+}
+.boss-ears::after {
+    right: 10px;
+    transform: rotate(15deg);
+}
+.boss-eyes {
+    position: absolute;
+    top: 40px;
+    left: 20px;
+    right: 20px;
+    height: 20px;
+    display: flex;
+    justify-content: space-between;
+}
+.boss-eye {
+    width: 22px;
+    height: 22px;
+    background: #ff007f;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #ff007f, inset 0 0 5px #000;
+    animation: boss-blink 4s infinite;
+}
+@keyframes boss-blink {
+    0%, 90%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.1); }
+}
+.boss-crown {
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 25px;
+    background: gold;
+    clip-path: polygon(0% 100%, 0% 20%, 25% 60%, 50% 0%, 75% 60%, 100% 20%, 100% 100%);
+    box-shadow: 0 4px 10px rgba(255, 215, 0, 0.6);
+}
+.entity.boss.boss-defeated {
+    pointer-events: none;
+    animation: boss-death-spin 1.5s ease-out forwards;
+}
+@keyframes boss-death-spin {
+    0% {
+        transform: rotate(0deg) scale(1);
+        opacity: 1;
+        filter: brightness(1) drop-shadow(0 0 15px rgba(153, 50, 204, 0.8));
+    }
+    50% {
+        transform: rotate(720deg) scale(0.5);
+        opacity: 0.5;
+        filter: brightness(2) drop-shadow(0 0 30px #ff007f);
+    }
+    100% {
+        transform: rotate(1440deg) scale(0);
+        opacity: 0;
+        filter: brightness(5) drop-shadow(0 0 50px #ff007f);
+    }
+}
+
+/* Boss projectiles styling */
+.projectile.boss-projectile {
+    background: radial-gradient(circle, #ff007f 30%, #9932cc 70%, transparent 100%);
+    box-shadow: 0 0 10px #ff007f;
+    border-radius: 50%;
+    border: none;
+}
+.projectile.boss-projectile.giant-fireball {
+    background: radial-gradient(circle, #ff4500 20%, #ff007f 60%, rgba(153, 50, 204, 0.4) 90%, transparent 100%);
+    box-shadow: 0 0 20px #ff4500, 0 0 40px #ff007f;
+    animation: fireball-spin 0.6s linear infinite;
+}
+@keyframes fireball-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Boss summoning portal effect for minions */
+.boss-summon-effect {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border: 2px solid #ff007f;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 0, 127, 0.2) 20%, transparent 100%);
+    box-shadow: 0 0 12px #ff007f;
+    animation: portal-pop 0.6s ease-out forwards;
+    pointer-events: none;
+    z-index: 4;
+}
+@keyframes portal-pop {
+    0% { transform: scale(0); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 0; }
+}
+
+/* Chanting students styling */
+.student.student-chanting .student-figure {
+    animation: chant-bob 0.6s ease-in-out infinite alternate;
+    filter: drop-shadow(0 0 10px #9932cc);
+}
+@keyframes chant-bob {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-8px); }
+}
+
+/* HUD styles for Summoning & Boss health */
+.summoning-banner {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 400px;
+    background: rgba(153, 50, 204, 0.85);
+    border: 2px solid #ba55d3;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    box-shadow: 0 0 15px rgba(153, 50, 204, 0.5);
+    z-index: 10;
+    backdrop-filter: blur(4px);
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+}
+.summoning-banner.d-none {
+    display: none !important;
+}
+.summoning-text {
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+.summoning-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.summoning-bar-fill {
+    width: 100%;
+    height: 100%;
+    background: #ff007f;
+    box-shadow: 0 0 8px #ff007f;
+    transition: width 0.1s linear;
+}
+
+.boss-health-container {
+    position: absolute;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 320px;
+    background: rgba(11, 13, 26, 0.9);
+    border: 1px solid rgba(255, 69, 0, 0.4);
+    border-radius: 8px;
+    padding: 8px 12px;
+    box-shadow: 0 8px 24px rgba(255, 69, 0, 0.15);
+    z-index: 10;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    backdrop-filter: blur(8px);
+}
+.boss-health-container.d-none {
+    display: none !important;
+}
+.boss-name {
+    color: #ff6347;
+    font-weight: 800;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-align: center;
+    margin-bottom: 4px;
+    text-shadow: 0 0 8px rgba(255, 99, 71, 0.5);
+}
+.boss-health-bar-bg {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.boss-health-bar-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #ff4500, #ff8c00);
+    box-shadow: 0 0 8px #ff4500;
+    transition: width 0.2s ease-out;
+}
+
+/* HUD Mute Button Styling */
+.hud-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.65rem;
+    border-radius: 50%;
+    background: rgba(11, 13, 26, 0.82);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+    cursor: pointer;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.hud-btn:hover {
+    background: rgba(26, 31, 53, 0.9);
+    border-color: var(--accent);
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255, 234, 0, 0.4);
+}
+
+.hud-btn:active {
+    transform: scale(0.95);
+}
+
+.hud-btn.muted {
+    border-color: #ff4d6d;
+    color: #ff4d6d;
+}
+
+.hud-btn.muted:hover {
+    border-color: #ff4d6d;
+    box-shadow: 0 0 15px rgba(255, 77, 109, 0.4);
+}
+
+/* Intermission Overlay Styling */
+#intermissionOverlay {
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 12;
+}
+
+#intermissionOverlay .overlay-card {
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 30px rgba(255, 234, 0, 0.2);
+    background: rgba(7, 9, 19, 0.95);
+    animation: intermission-glow 3s infinite alternate;
+}
+
+@keyframes intermission-glow {
+    0% {
+        box-shadow: 0 0 20px rgba(255, 234, 0, 0.15);
+    }
+    100% {
+        box-shadow: 0 0 35px rgba(255, 234, 0, 0.35);
+    }
+}
+
