@@ -1487,6 +1487,40 @@ kbd {
     border: 2px solid rgba(255, 234, 0, 0.3) !important;
 }
 
+.mode-card {
+    max-width: 680px;
+    width: 92%;
+    padding-bottom: calc(1.6rem + env(safe-area-inset-bottom, 0px));
+}
+
+.mode-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem;
+}
+
+.mode-actions .btn,
+.story-card .btn-success {
+    min-height: 60px;
+    touch-action: manipulation;
+}
+
+@media (max-width: 767.98px) {
+    .mode-card {
+        width: 95%;
+    }
+
+    .mode-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .mode-actions .btn {
+        width: 100%;
+        min-height: 64px;
+        font-size: 1rem;
+    }
+}
+
 /* Custom Tool Styles for the Player Hammer element */
 /* 1. Righello (Ruler) */
 .player-hammer.tool-ruler::before {
@@ -3492,6 +3526,7 @@ kbd {
     max-width: 680px;
     width: 92%;
     height: 75vh;
+    max-height: calc(100dvh - 1rem);
     background: rgba(8, 10, 18, 0.98);
     border: 2px solid #00ff66;
     box-shadow: 0 0 25px rgba(0, 255, 102, 0.25), inset 0 0 15px rgba(0, 255, 102, 0.08);
@@ -3563,6 +3598,11 @@ kbd {
 
 .story-footer {
     flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
+    padding-top: 0.9rem;
+    padding-bottom: calc(0.2rem + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(180deg, rgba(8, 10, 18, 0) 0%, rgba(8, 10, 18, 0.92) 28%, rgba(8, 10, 18, 0.98) 100%);
 }
 
 .story-card .btn-success {
@@ -3584,14 +3624,18 @@ kbd {
 
 @media (max-width: 767.98px) {
     .story-card {
-        height: 85vh;
-        max-height: 85vh;
+        height: min(82dvh, 720px);
+        max-height: calc(100dvh - 1rem);
         width: 95%;
         padding: 1.2rem !important;
     }
     .story-body {
         font-size: 0.85rem;
         line-height: 1.45;
+    }
+    .story-card .btn-success {
+        min-height: 64px;
+        font-size: 1rem;
     }
     .story-header {
         font-size: 0.95rem;

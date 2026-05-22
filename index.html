@@ -71,14 +71,30 @@
                             </div>
                             <div class="story-footer mt-3">
                                 <button class="btn btn-success btn-lg w-100" id="closeStoryButton" type="button">
-                                    Accetta la Missione 🔨
+                                    Scegli la Modalita' di Gioco
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Overlay Scelta Modalita' -->
+                    <div class="overlay d-none" id="modeOverlay">
+                        <div class="overlay-card modal-card mode-card">
+                            <p class="eyebrow mb-2">Configurazione Partita</p>
+                            <h2 class="mb-3">A quale modalita' vuoi giocare?</h2>
+                            <div class="mode-actions">
+                                <button class="btn btn-outline-light btn-lg" id="politicallyCorrectModeBtn" type="button">
+                                    Politically Correct
+                                </button>
+                                <button class="btn btn-warning btn-lg" id="explicitContentModeBtn" type="button">
+                                    Explicit Content
                                 </button>
                             </div>
                         </div>
                     </div>
 
                     <!-- Overlay di Inizio Partita -->
-                    <div class="overlay start-overlay" id="startOverlay">
+                    <div class="overlay start-overlay d-none" id="startOverlay">
                         <div class="overlay-card">
                             <h1 class="mb-3">The Aulab Rage</h1>
                             <p class="mb-3" id="startDescription">

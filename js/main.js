@@ -16,6 +16,9 @@ const storyOverlay = document.getElementById("storyOverlay");
 const closeStoryButton = document.getElementById("closeStoryButton");
 const storyContent = document.getElementById("storyContent");
 const storyButton = document.getElementById("storyButton");
+const modeOverlay = document.getElementById("modeOverlay");
+const politicallyCorrectModeBtn = document.getElementById("politicallyCorrectModeBtn");
+const explicitContentModeBtn = document.getElementById("explicitContentModeBtn");
 
 // Nuovi elementi DOM per la gestione del Docente
 const addTeacherBtn = document.getElementById("addTeacherBtn");
@@ -149,11 +152,14 @@ const state = {
     summoningActive: false,
     summoningTimer: 0,
     lastRumbleAt: 0,
+    studentSpeechQueue: [],
+    activeStudentSpeech: null,
     currentScale: 1,
     rageActive: false,
     pendingDodge: null,
     rageMeter: 0,
     rageActiveUntil: 0,
+    contentMode: null,
     lastRageParticleSpawnAt: 0
 };
 
@@ -329,59 +335,179 @@ const studentStyles = [
     }
 ];
 
-const studentMessages = [
-    "non studio!",
-    "che schifo Aulab",
-    "quando c'era lui",
-    "Faccio tutto con l'AI"
-];
-
-const teacherHitMessages = [
-    "Meno ChatGPT!",
-    "Torna a studiare",
-    "Fallo fare all'AI adesso!"
-];
-
-const typeMessages = {
-    fast: [
-        "TikTok > studio!",
-        "vado a 100 all'ora!",
-        "non mi prendi!",
-        "vado di fretta!",
-        "sono altrove...",
-        "Faccio tutto con l'AI"
-    ],
-    shooter: [
-        "prendi questo!",
-        "pioggia di pietre!",
-        "non mi fermo!",
-        "ti colpisco!",
-        "tieni!",
-        "Faccio tutto con l'AI"
-    ],
-    dodger: [
-        "schivato!",
-        "liscio!",
-        "copio e scappo!",
-        "quasi preso!",
-        "ti piacerebbe!",
-        "Faccio tutto con l'AI"
-    ],
-    cheater: [
-        "fammi copiare!",
-        "passami il codice!",
-        "quasi finito di copiare...",
-        "copiato tutto!",
-        "cheat activated!",
-        "Faccio tutto con l'AI"
-    ],
-    zombie: [
-        "Uhhhh... codice...",
-        "Deploy... alle 3 di notte...",
-        "Caffè... finito...",
-        "Bug... infiniti...",
-        "Stack overflow..."
-    ]
+const speechProfiles = {
+    "politically-correct": {
+        studentMessages: [
+            "non studio!",
+            "che schifo Aulab",
+            "quando c'era lui",
+            "Faccio tutto con l'AI"
+        ],
+        teacherHitMessages: [
+            "Meno ChatGPT!",
+            "Torna a studiare",
+            "Fallo fare all'AI adesso!"
+        ],
+        typeMessages: {
+            fast: [
+                "TikTok > studio!",
+                "vado a 100 all'ora!",
+                "non mi prendi!",
+                "vado di fretta!",
+                "sono altrove...",
+                "Faccio tutto con l'AI"
+            ],
+            shooter: [
+                "prendi questo!",
+                "pioggia di pietre!",
+                "non mi fermo!",
+                "ti colpisco!",
+                "tieni!",
+                "Faccio tutto con l'AI"
+            ],
+            dodger: [
+                "schivato!",
+                "liscio!",
+                "copio e scappo!",
+                "quasi preso!",
+                "ti piacerebbe!",
+                "Faccio tutto con l'AI"
+            ],
+            cheater: [
+                "fammi copiare!",
+                "passami il codice!",
+                "quasi finito di copiare...",
+                "copiato tutto!",
+                "cheat activated!",
+                "Faccio tutto con l'AI"
+            ],
+            zombie: [
+                "Uhhhh... codice...",
+                "Deploy... alle 3 di notte...",
+                "Caffè... finito...",
+                "Bug... infiniti...",
+                "Stack overflow..."
+            ]
+        },
+        chantMessages: [
+            "Sorgi, o Grande Svogliato!",
+            "Evoca il potere dello svacco!",
+            "Niente studio oggi!",
+            "Grande Svogliato, ascoltaci!",
+            "Vieni a liberarci!",
+            "La procrastinazione trionferà!"
+        ],
+        bossMessages: [
+            "SKIBIDIBOPPI"
+        ],
+        teacherContextMessages: {
+            serverPower: [
+                "Server power! Zombie offline!"
+            ],
+            studiaLaunched: [
+                "STUDIA lanciato! Inseguira' il boss!"
+            ],
+            studiaQueued: [
+                "Altro STUDIA pronto! Partira' subito dopo!"
+            ],
+            studiaReady: [
+                "STUDIA pronto! Partira' appena arriva il boss!"
+            ]
+        },
+        tts: {
+            student: { rate: 1.02, pitch: 1.18, volume: 0.85 },
+            teacher: { rate: 1.15, pitch: 0.5, volume: 0.95 },
+            boss: { rate: 1.0, pitch: 0.3, volume: 1.0 }
+        }
+    },
+    "explicit-content": {
+        studentMessages: [
+            "col cazzo che studio!",
+            "che merda Aulab!",
+            "oggi non faccio un cazzo!",
+            "sto progetto del cazzo lo fa l'AI!"
+        ],
+        teacherHitMessages: [
+            "testa di cazzo, torna a studiare!",
+            "meno ChatGPT, stronzetto!",
+            "falla fare all'AI adesso, merda!"
+        ],
+        typeMessages: {
+            fast: [
+                "non mi prendi manco per il cazzo!",
+                "sono troppo veloce, stronzo!",
+                "corro come un bastardo!",
+                "suca, non mi becchi!",
+                "sono gia' dall'altra parte, coglione!",
+                "vado a cannone, pezzo di merda!"
+            ],
+            shooter: [
+                "prendi sto sasso, bastardo!",
+                "ti sfondo la faccia, prof!",
+                "pioggia di pietre, coglione!",
+                "tieni questa, pezzo di merda!",
+                "mo' ti apro il cranio!",
+                "beccati sta sassata del cazzo!"
+            ],
+            dodger: [
+                "schivato, fesso di merda!",
+                "liscio come il culo tuo!",
+                "copio e scappo, stronzo!",
+                "quasi preso un cazzo!",
+                "ti piacerebbe, coglione!",
+                "suca, non mi tocchi!"
+            ],
+            cheater: [
+                "fammi copiare, testa di minchia!",
+                "passami quel codice del cazzo!",
+                "sto copiando tutto, stronzo!",
+                "copiato tutto, sucate!",
+                "cheat attivato, merde!",
+                "ctrl c ctrl v e andate affanculo!"
+            ],
+            zombie: [
+                "uhhhh... codice di merda...",
+                "deploy del cazzo... alle tre...",
+                "caffe' finito... porca troia...",
+                "bug infiniti... che inculata...",
+                "stack overflow... e fanculo..."
+            ]
+        },
+        chantMessages: [
+            "sorgi, bestione del cazzo!",
+            "evocalo, porca troia!",
+            "niente studio, solo casino!",
+            "grande svogliato, spaccagli il culo!",
+            "vieni a salvarci da sto prof di merda!",
+            "la procrastinazione vince, stronzi!"
+        ],
+        bossMessages: [
+            "SKIBIDIBOPPI, teste di cazzo!",
+            "non studio un cazzo!",
+            "vi mando tutti affanculo!",
+            "sono il boss dei fancazzisti, merde!",
+            "fallite tutti, stronzi!"
+        ],
+        teacherContextMessages: {
+            serverPower: [
+                "server del cazzo, zombie asfaltato!"
+            ],
+            studiaLaunched: [
+                "STUDIA lanciato! Mo' ti entra nel cranio, stronzo!"
+            ],
+            studiaQueued: [
+                "altro STUDIA pronto! mo' sono cazzi tuoi!"
+            ],
+            studiaReady: [
+                "STUDIA pronto! appena arriva quel cesso lo sfondo!"
+            ]
+        },
+        tts: {
+            student: { rate: 1.12, pitch: 1.3, volume: 0.95 },
+            teacher: { rate: 1.28, pitch: 0.42, volume: 1.0 },
+            boss: { rate: 0.88, pitch: 0.24, volume: 1.0 }
+        }
+    }
 };
 
 const musicLeadPattern = [
@@ -474,6 +600,12 @@ function skipStory() {
     
     if (storyOverlay) {
         storyOverlay.classList.add("d-none");
+    }
+
+    if (state.contentMode) {
+        showStartSelection();
+    } else {
+        showModeSelection();
     }
 }
 
@@ -640,6 +772,16 @@ function bindEvents() {
     if (menuButton) {
         menuButton.addEventListener("click", () => {
             resetGame();
+        });
+    }
+    if (politicallyCorrectModeBtn) {
+        politicallyCorrectModeBtn.addEventListener("click", () => {
+            selectContentMode("politically-correct");
+        });
+    }
+    if (explicitContentModeBtn) {
+        explicitContentModeBtn.addEventListener("click", () => {
+            selectContentMode("explicit-content");
         });
     }
     if (finalWipMenuButton) {
@@ -920,7 +1062,12 @@ function resetGame() {
     buildLevel(state.currentLevel, true);
     updateHud();
 
-    startOverlay.classList.remove("d-none");
+    if (state.contentMode) {
+        showStartSelection();
+    } else {
+        hideStartSelection();
+        closeModeOverlay();
+    }
     endOverlay.classList.add("d-none");
     closeFinalWipModal();
     if (intermissionOverlay) {
@@ -1241,6 +1388,32 @@ function getCurrentLevelConfig() {
     return levelConfigs.find((level) => level.id === state.currentLevel) || levelConfigs[0];
 }
 
+function overlapsBlockingActor(entity, actors = []) {
+    const entityRect = expandRect(getCollisionRect(entity), 4);
+    return actors.some((actor) => actor && rectsIntersect(entityRect, expandRect(getCollisionRect(actor), 4)));
+}
+
+function placeActorInSafeSpot(entity, actors = []) {
+    const safeSpot = findNearestFreeSpot(entity, entity.x, entity.y, (testEntity) => !overlapsBlockingActor(testEntity, actors));
+    entity.x = safeSpot.x;
+    entity.y = safeSpot.y;
+    syncEntity(entity);
+}
+
+function buildStudentsFromSpawns(studentSpawns) {
+    const builtStudents = [];
+
+    studentSpawns.forEach((spawn, index) => {
+        const student = createStudent(spawn, index);
+        placeActorInSafeSpot(student, [state.player, ...builtStudents]);
+        student.lastSafeX = student.x;
+        student.lastSafeY = student.y;
+        builtStudents.push(student);
+    });
+
+    return builtStudents;
+}
+
 function buildLevel(levelNumber, resetPlayerLives = false) {
     clearLevelActors(true);
     state.currentLevel = levelNumber;
@@ -1279,9 +1452,9 @@ function buildLevel(levelNumber, resetPlayerLives = false) {
                 y: 100 + Math.random() * 500
             });
         }
-        state.students = studentSpawns.map((spawn, index) => createStudent(spawn, index));
+        state.students = buildStudentsFromSpawns(studentSpawns);
     } else {
-        state.students = level.studentSpawns.map((spawn, index) => createStudent(spawn, index));
+        state.students = buildStudentsFromSpawns(level.studentSpawns);
         
         if (levelNumber === 3) {
             spawnCampfire();
@@ -1501,16 +1674,202 @@ function createStudent(spawn, index) {
 }
 
 function startGame() {
+    if (!state.contentMode) {
+        showModeSelection();
+        return;
+    }
+
     unlockAudio();
     localStorage.removeItem("aulab_rage_saved_level");
     state.running = true;
     state.gameOver = false;
     state.victory = false;
     state.lastFrame = performance.now();
-    startOverlay.classList.add("d-none");
+    hideStartSelection();
+    closeModeOverlay();
     endOverlay.classList.add("d-none");
     closeFinalWipModal();
     startBackgroundMusic();
+}
+
+function selectContentMode(mode) {
+    state.contentMode = mode;
+    document.body.dataset.contentMode = mode;
+    closeModeOverlay();
+    showStartSelection();
+}
+
+function showModeSelection() {
+    if (modeOverlay) {
+        modeOverlay.classList.remove("d-none");
+    }
+    hideStartSelection();
+}
+
+function closeModeOverlay() {
+    if (!modeOverlay) {
+        return;
+    }
+
+    modeOverlay.classList.add("d-none");
+}
+
+function showStartSelection() {
+    closeModeOverlay();
+    if (startOverlay) {
+        startOverlay.classList.remove("d-none");
+    }
+}
+
+function getActiveSpeechProfile() {
+    return speechProfiles[state.contentMode] || speechProfiles["politically-correct"];
+}
+
+function pickRandomLine(lines, fallback = "") {
+    if (!Array.isArray(lines) || lines.length === 0) {
+        return fallback;
+    }
+
+    return lines[Math.floor(Math.random() * lines.length)] || fallback;
+}
+
+function getStudentLinePool(studentType) {
+    const profile = getActiveSpeechProfile();
+    return profile.typeMessages[studentType] || profile.studentMessages;
+}
+
+function hasQueuedOrActiveStudentSpeech(student) {
+    if (!student) {
+        return false;
+    }
+
+    if (state.activeStudentSpeech && state.activeStudentSpeech.student === student) {
+        return true;
+    }
+
+    return state.studentSpeechQueue.some((entry) => entry.student === student);
+}
+
+function estimateStudentSpeechDurationMs(message, role = "student", minimumMs = 1500) {
+    const tts = getSpeechTtsProfile(role);
+    const safeRate = Math.max(tts.rate || 1, 0.6);
+    const estimated = Math.round((message.length * 52) / safeRate);
+    return Math.max(minimumMs, estimated);
+}
+
+function removeStudentSpeechBubble(student) {
+    if (!student || !student.element) {
+        return;
+    }
+
+    const bubble = student.element.querySelector(".speech-bubble");
+    if (bubble) {
+        bubble.remove();
+    }
+
+    student.element.classList.remove("speaking");
+}
+
+function finishActiveStudentSpeech() {
+    const activeSpeech = state.activeStudentSpeech;
+    if (!activeSpeech) {
+        return;
+    }
+
+    const { student } = activeSpeech;
+    if (student && student.speechTimeoutId) {
+        window.clearTimeout(student.speechTimeoutId);
+        student.speechTimeoutId = null;
+    }
+
+    removeStudentSpeechBubble(student);
+    state.activeStudentSpeech = null;
+    processStudentSpeechQueue();
+}
+
+function processStudentSpeechQueue() {
+    if (state.activeStudentSpeech || !state.running) {
+        return;
+    }
+
+    while (state.studentSpeechQueue.length > 0) {
+        const nextSpeech = state.studentSpeechQueue.shift();
+        const { student, message, bubbleClass, durationMs, onStart } = nextSpeech;
+
+        if (!student || !student.element || student.element.classList.contains("burning") || !state.students.includes(student)) {
+            continue;
+        }
+
+        removeStudentSpeechBubble(student);
+
+        const bubble = document.createElement("div");
+        bubble.className = bubbleClass;
+        bubble.textContent = message;
+        student.element.appendChild(bubble);
+        student.element.classList.add("speaking");
+
+        if (typeof onStart === "function") {
+            onStart();
+        }
+
+        speakStudentLine(message);
+        state.activeStudentSpeech = nextSpeech;
+        student.speechTimeoutId = window.setTimeout(() => {
+            finishActiveStudentSpeech();
+        }, durationMs);
+        return;
+    }
+}
+
+function queueStudentSpeech(student, message, options = {}) {
+    if (!student || !student.element || student.element.classList.contains("burning") || hasQueuedOrActiveStudentSpeech(student)) {
+        return false;
+    }
+
+    const bubbleClass = options.bubbleClass || "speech-bubble";
+    const minimumMs = options.minimumMs || 1500;
+    const role = options.role || "student";
+    const durationMs = estimateStudentSpeechDurationMs(message, role, minimumMs);
+
+    state.studentSpeechQueue.push({
+        student,
+        message,
+        bubbleClass,
+        durationMs,
+        onStart: options.onStart || null
+    });
+
+    processStudentSpeechQueue();
+    return true;
+}
+
+function getTeacherHitLine() {
+    return pickRandomLine(getActiveSpeechProfile().teacherHitMessages, "Torna a studiare!");
+}
+
+function getTeacherContextLine(key, fallback = "") {
+    return pickRandomLine(getActiveSpeechProfile().teacherContextMessages[key], fallback);
+}
+
+function getChantLine() {
+    return pickRandomLine(getActiveSpeechProfile().chantMessages, "Evocalo!");
+}
+
+function getBossSpeechLine() {
+    return pickRandomLine(getActiveSpeechProfile().bossMessages, "SKIBIDIBOPPI");
+}
+
+function getSpeechTtsProfile(role) {
+    const profile = getActiveSpeechProfile();
+    return profile.tts[role] || { rate: 1, pitch: 1, volume: 1 };
+}
+
+function hideStartSelection() {
+    if (!startOverlay) {
+        return;
+    }
+
+    startOverlay.classList.add("d-none");
 }
 
 function gameLoop(timestamp) {
@@ -1550,6 +1909,8 @@ function gameLoop(timestamp) {
                 if (banner) {
                     banner.classList.add("d-none");
                 }
+
+                stopStudentSpeech();
 
                 // Disattiva chanting per tutti gli studenti
                 state.students.forEach((student) => {
@@ -2337,8 +2698,7 @@ function attack() {
     state.students = survivors;
 
     if (studentHit) {
-        const randomMsg = teacherHitMessages[Math.floor(Math.random() * teacherHitMessages.length)];
-        speakTeacher(randomMsg);
+        speakTeacher(getTeacherHitLine());
     }
 
     // Gestione colpi alle sedie scorrevoli e ai cestini
@@ -2420,7 +2780,7 @@ function pushZombieAndCheckServer(zombie, pushVector) {
         playPowerUpSound(); // Suono di successo
         zombie.element.remove();
         state.students = state.students.filter(s => s !== zombie);
-        speakTeacher("Server power! Zombie offline!");
+        speakTeacher(getTeacherContextLine("serverPower", "Server power! Zombie offline!"));
         increaseRage(30); // Bonus rage per lo stordimento strategico
     } else {
         moveWithCollisions(zombie, pushVector.x * pushDistance, pushVector.y * pushDistance);
@@ -2716,13 +3076,28 @@ function isFreePositionForEntity(entity, x, y) {
     return isEntityInsideArena(testEntity) && !hitsObstacle(testEntity);
 }
 
-function findNearestFreeSpot(entity, originX = entity.x, originY = entity.y) {
+function findNearestFreeSpot(entity, originX = entity.x, originY = entity.y, extraValidator = null) {
     const clampedOriginX = clamp(originX, 24, GAME.width - entity.width - 24);
     const clampedOriginY = clamp(originY, 24, GAME.height - entity.height - 24);
     const maxRadius = 220;
     const step = 12;
+    const isValid = (testEntity, x, y) => {
+        if (!isFreePositionForEntity(testEntity, x, y)) {
+            return false;
+        }
 
-    if (isFreePositionForEntity(entity, clampedOriginX, clampedOriginY)) {
+        if (typeof extraValidator === "function" && !extraValidator({
+            ...testEntity,
+            x: clamp(x, 24, GAME.width - testEntity.width - 24),
+            y: clamp(y, 24, GAME.height - testEntity.height - 24)
+        })) {
+            return false;
+        }
+
+        return true;
+    };
+
+    if (isValid(entity, clampedOriginX, clampedOriginY)) {
         return { x: clampedOriginX, y: clampedOriginY };
     }
 
@@ -2732,7 +3107,7 @@ function findNearestFreeSpot(entity, originX = entity.x, originY = entity.y) {
             const testX = clampedOriginX + Math.cos(radians) * radius;
             const testY = clampedOriginY + Math.sin(radians) * radius;
 
-            if (isFreePositionForEntity(entity, testX, testY)) {
+            if (isValid(entity, testX, testY)) {
                 return {
                     x: clamp(testX, 24, GAME.width - entity.width - 24),
                     y: clamp(testY, 24, GAME.height - entity.height - 24)
@@ -2802,26 +3177,40 @@ function placePowerUpInFreeSpot(entity) {
     const minY = safeMargin;
     const maxX = GAME.width - entity.width - safeMargin;
     const maxY = GAME.height - entity.height - safeMargin;
+    const isSafePickupSpot = (testEntity) => {
+        const overlapsActor =
+            (state.player && rectsIntersect(testEntity, state.player)) ||
+            state.students.some((student) => rectsIntersect(testEntity, student));
+        const overlapsOtherPowerUp =
+            (state.powerUp && rectsIntersect(testEntity, state.powerUp)) ||
+            (state.heartPowerUp && rectsIntersect(testEntity, state.heartPowerUp));
+        const overlapsBossOrCampfire = isPickupBlockedByBossOrCampfire(testEntity);
+
+        return !hitsObstacle(testEntity) && !overlapsActor && !overlapsOtherPowerUp && !overlapsBossOrCampfire;
+    };
 
     for (let attempts = 0; attempts < 80; attempts += 1) {
         entity.x = Math.random() * (maxX - minX) + minX;
         entity.y = Math.random() * (maxY - minY) + minY;
 
-        const overlapsActor =
-            rectsIntersect(entity, state.player) ||
-            state.students.some((student) => rectsIntersect(entity, student));
-        const overlapsOtherPowerUp =
-            (state.powerUp && rectsIntersect(entity, state.powerUp)) ||
-            (state.heartPowerUp && rectsIntersect(entity, state.heartPowerUp));
-        const overlapsBossOrCampfire = isPickupBlockedByBossOrCampfire(entity);
-
-        if (!hitsObstacle(entity) && !overlapsActor && !overlapsOtherPowerUp && !overlapsBossOrCampfire) {
+        if (isSafePickupSpot(entity)) {
             return;
         }
     }
 
-    entity.x = minX;
-    entity.y = minY;
+    for (let y = minY; y <= maxY; y += 18) {
+        for (let x = minX; x <= maxX; x += 18) {
+            entity.x = x;
+            entity.y = y;
+            if (isSafePickupSpot(entity)) {
+                return;
+            }
+        }
+    }
+
+    const fallbackSpot = findNearestFreeSpot(entity, minX, minY, isSafePickupSpot);
+    entity.x = fallbackSpot.x;
+    entity.y = fallbackSpot.y;
 }
 
 function getCampfireRect() {
@@ -2859,8 +3248,11 @@ function canCollectPickup(pickup) {
     const playerPickupRect = expandRect(getCollisionRect(state.player), 24);
     const playerBodyRect = expandRect(state.player, 4);
     const pickupRect = expandRect(pickup, 14);
+    const playerCenter = centerOf(state.player);
+    const pickupCenter = centerOf(pickup);
+    const nearEnough = Math.hypot(playerCenter.x - pickupCenter.x, playerCenter.y - pickupCenter.y) <= 58;
 
-    return rectsIntersect(playerPickupRect, pickupRect) || rectsIntersect(playerBodyRect, pickupRect);
+    return nearEnough || rectsIntersect(playerPickupRect, pickupRect) || rectsIntersect(playerBodyRect, pickupRect);
 }
 
 function getCollisionRect(entity) {
@@ -3117,11 +3509,11 @@ function collectPowerUp() {
     } else if (type === "studia") {
         state.pendingStudiaShots += 1;
         if (tryLaunchStudiaStrike()) {
-            speakTeacher("STUDIA lanciato! Inseguirà il boss!");
+            speakTeacher(getTeacherContextLine("studiaLaunched", "STUDIA lanciato! Inseguira' il boss!"));
         } else if (state.boss) {
-            speakTeacher("Altro STUDIA pronto! Partira' subito dopo!");
+            speakTeacher(getTeacherContextLine("studiaQueued", "Altro STUDIA pronto! Partira' subito dopo!"));
         } else {
-            speakTeacher("STUDIA pronto! Partira' appena arriva il boss!");
+            speakTeacher(getTeacherContextLine("studiaReady", "STUDIA pronto! Partira' appena arriva il boss!"));
         }
     }
 
@@ -3209,9 +3601,15 @@ function updateDragonStrike(delta) {
 }
 
 function burnStudent(target) {
+    let resumeQueuedSpeech = false;
     if (target.speechTimeoutId) {
         window.clearTimeout(target.speechTimeoutId);
         target.speechTimeoutId = null;
+    }
+    state.studentSpeechQueue = state.studentSpeechQueue.filter((entry) => entry.student !== target);
+    if (state.activeStudentSpeech && state.activeStudentSpeech.student === target) {
+        state.activeStudentSpeech = null;
+        resumeQueuedSpeech = true;
     }
     target.element.classList.add("burning");
     target.element.classList.remove("speaking");
@@ -3226,6 +3624,10 @@ function burnStudent(target) {
         target.element.remove();
         state.students = state.students.filter((student) => student !== target);
     }, 320);
+
+    if (resumeQueuedSpeech) {
+        processStudentSpeechQueue();
+    }
 }
 
 function pickDragonTargetId() {
@@ -3339,62 +3741,27 @@ function speakStudent(student) {
     if (!student || student.element.classList.contains("burning")) {
         return;
     }
-
-    const previousBubble = student.element.querySelector(".speech-bubble");
-    if (previousBubble) {
-        previousBubble.remove();
-    }
-
-    if (student.speechTimeoutId) {
-        window.clearTimeout(student.speechTimeoutId);
-    }
-
-    const bubble = document.createElement("div");
-    bubble.className = "speech-bubble";
-    const messages = typeMessages[student.studentType] || studentMessages;
-    const message = messages[Math.floor(Math.random() * messages.length)];
-    bubble.textContent = message;
-    student.element.appendChild(bubble);
-    student.element.classList.add("speaking");
-    speakStudentLine(message);
-
-    student.speechTimeoutId = window.setTimeout(() => {
-        bubble.remove();
-        student.element.classList.remove("speaking");
-        student.speechTimeoutId = null;
-    }, 1700);
+    const message = pickRandomLine(getStudentLinePool(student.studentType), "non studio!");
+    queueStudentSpeech(student, message, {
+        bubbleClass: "speech-bubble",
+        minimumMs: 1700,
+        role: "student"
+    });
 }
 
 function speakZombie(student) {
     if (!student || student.element.classList.contains("burning")) {
         return;
     }
-
-    const previousBubble = student.element.querySelector(".speech-bubble");
-    if (previousBubble) {
-        previousBubble.remove();
-    }
-
-    if (student.speechTimeoutId) {
-        window.clearTimeout(student.speechTimeoutId);
-    }
-
-    const bubble = document.createElement("div");
-    bubble.className = "speech-bubble zombie-bubble";
-    const messages = typeMessages.zombie || ["Uhhhh..."];
-    const message = messages[Math.floor(Math.random() * messages.length)];
-    bubble.textContent = message;
-    student.element.appendChild(bubble);
-    student.element.classList.add("speaking");
-
-    // Suono zombie più grave e lento
-    playZombieGroan();
-
-    student.speechTimeoutId = window.setTimeout(() => {
-        bubble.remove();
-        student.element.classList.remove("speaking");
-        student.speechTimeoutId = null;
-    }, 2500); // Più lungo per l'effetto zombie
+    const message = pickRandomLine(getStudentLinePool("zombie"), "Uhhhh...");
+    queueStudentSpeech(student, message, {
+        bubbleClass: "speech-bubble zombie-bubble",
+        minimumMs: 2500,
+        role: "student",
+        onStart: () => {
+            playZombieGroan();
+        }
+    });
 }
 
 function finishGame(isVictory) {
@@ -3931,15 +4298,33 @@ function speakStudentLine(message) {
         synth.cancel();
     }
 
+    const tts = getSpeechTtsProfile("student");
     const utterance = new SpeechSynthesisUtterance(message);
     utterance.lang = "it-IT";
-    utterance.rate = 1.02;
-    utterance.pitch = 1.18;
-    utterance.volume = 0.85;
+    utterance.rate = tts.rate;
+    utterance.pitch = tts.pitch;
+    utterance.volume = tts.volume;
     synth.speak(utterance);
 }
 
 function stopStudentSpeech() {
+    state.studentSpeechQueue = [];
+
+    if (state.activeStudentSpeech && state.activeStudentSpeech.student?.speechTimeoutId) {
+        window.clearTimeout(state.activeStudentSpeech.student.speechTimeoutId);
+        state.activeStudentSpeech.student.speechTimeoutId = null;
+    }
+
+    state.activeStudentSpeech = null;
+
+    state.students.forEach((student) => {
+        if (student.speechTimeoutId) {
+            window.clearTimeout(student.speechTimeoutId);
+            student.speechTimeoutId = null;
+        }
+        removeStudentSpeechBubble(student);
+    });
+
     if (audioState.speechEnabled && window.speechSynthesis) {
         window.speechSynthesis.cancel();
     }
@@ -3981,49 +4366,25 @@ function speakTeacher(message) {
         synth.cancel();
     }
 
+    const tts = getSpeechTtsProfile("teacher");
     const utterance = new SpeechSynthesisUtterance(message);
     utterance.lang = "it-IT";
-    utterance.rate = 1.15;
-    utterance.pitch = 0.5;
-    utterance.volume = 0.95;
+    utterance.rate = tts.rate;
+    utterance.pitch = tts.pitch;
+    utterance.volume = tts.volume;
     synth.speak(utterance);
 }
 
 // --- FUNZIONALITÀ BOSS E RITO DI EVOCAZIONE (LIVELLO 3) ---
 
-const chantMessages = [
-    "Sorgi, o Grande Svogliato!",
-    "Evoca il potere dello svacco!",
-    "Niente studio oggi!",
-    "Grande Svogliato, ascoltaci!",
-    "Vieni a liberarci!",
-    "La procrastinazione trionferà!"
-];
-
 function speakChant(student) {
     if (!student) return;
-
-    const previousBubble = student.element.querySelector(".speech-bubble");
-    if (previousBubble) {
-        previousBubble.remove();
-    }
-
-    if (student.speechTimeoutId) {
-        window.clearTimeout(student.speechTimeoutId);
-    }
-
-    const bubble = document.createElement("div");
-    bubble.className = "speech-bubble";
-    const message = chantMessages[Math.floor(Math.random() * chantMessages.length)];
-    bubble.textContent = message;
-    student.element.appendChild(bubble);
-    student.element.classList.add("speaking");
-
-    student.speechTimeoutId = window.setTimeout(() => {
-        bubble.remove();
-        student.element.classList.remove("speaking");
-        student.speechTimeoutId = null;
-    }, 1200);
+    const message = getChantLine();
+    queueStudentSpeech(student, message, {
+        bubbleClass: "speech-bubble",
+        minimumMs: 1200,
+        role: "student"
+    });
 }
 
 function triggerScreenShake(durationMs, intensity) {
@@ -4248,6 +4609,8 @@ function triggerBossIntro() {
 function speakBossSkibidiboppi(bypassRunning = false) {
     if (!bypassRunning && (!state.boss || state.boss.lives <= 0 || !state.running)) return;
 
+    const message = getBossSpeechLine();
+
     // Gestione fumetto visivo a video
     if (state.boss && state.boss.element) {
         const previousBubble = state.boss.element.querySelector(".speech-bubble");
@@ -4260,7 +4623,7 @@ function speakBossSkibidiboppi(bypassRunning = false) {
 
         const bubble = document.createElement("div");
         bubble.className = "speech-bubble boss-bubble";
-        bubble.textContent = "SKIBIDIBOPPI";
+        bubble.textContent = message;
         state.boss.element.appendChild(bubble);
         state.boss.element.classList.add("speaking");
 
@@ -4286,11 +4649,12 @@ function speakBossSkibidiboppi(bypassRunning = false) {
         synth.cancel();
     }
 
-    const utterance = new SpeechSynthesisUtterance("SKIBIDIBOPPI");
+    const tts = getSpeechTtsProfile("boss");
+    const utterance = new SpeechSynthesisUtterance(message);
     utterance.lang = "it-IT";
-    utterance.rate = 1.0;
-    utterance.pitch = 0.3; 
-    utterance.volume = 1.0;
+    utterance.rate = tts.rate;
+    utterance.pitch = tts.pitch; 
+    utterance.volume = tts.volume;
     synth.speak(utterance);
 }
 
