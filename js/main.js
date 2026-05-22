@@ -173,6 +173,7 @@ const audioState = {
     musicEnabled: false,
     ambientPulseLfo: null,
     speechEnabled: "speechSynthesis" in window,
+    speechPrimed: false,
     muted: false
 };
 
@@ -521,6 +522,8 @@ const musicBassPattern = [
 ];
 
 function showStoryOverlay() {
+    unlockAudio();
+    primeSpeechSynthesis();
     if (storyOverlay) {
         storyOverlay.classList.remove("d-none");
     }
@@ -580,6 +583,8 @@ function showStoryText() {
 }
 
 function skipStory() {
+    unlockAudio();
+    primeSpeechSynthesis();
     typingActive = false;
     storyTimeouts.forEach(t => clearTimeout(t));
     storyTimeouts = [];
@@ -1078,6 +1083,7 @@ function resetGame() {
 
 function resumeGame() {
     unlockAudio();
+    primeSpeechSynthesis();
     const savedLevel = localStorage.getItem("aulab_rage_saved_level");
     const parsedLevel = parseInt(savedLevel, 10);
     if (parsedLevel && parsedLevel > 1 && parsedLevel <= 3) {
@@ -1680,6 +1686,7 @@ function startGame() {
     }
 
     unlockAudio();
+    primeSpeechSynthesis();
     localStorage.removeItem("aulab_rage_saved_level");
     state.running = true;
     state.gameOver = false;
@@ -1693,6 +1700,8 @@ function startGame() {
 }
 
 function selectContentMode(mode) {
+    unlockAudio();
+    primeSpeechSynthesis();
     state.contentMode = mode;
     document.body.dataset.contentMode = mode;
     closeModeOverlay();
@@ -3980,6 +3989,43 @@ function unlockAudio() {
 
     if (audioState.context.state === "suspended") {
         audioState.context.resume();
+    }
+}
+
+function primeSpeechSynthesis() {
+    if (!audioState.speechEnabled) {
+        return;
+    }
+
+    const synth = window.speechSynthesis;
+    if (!synth) {
+        return;
+    }
+
+    try {
+        if (typeof synth.getVoices === "function") {
+            synth.getVoices();
+        }
+
+        if (audioState.speechPrimed) {
+            return;
+        }
+
+        const utterance = new SpeechSynthesisUtterance(".");
+        utterance.lang = "it-IT";
+        utterance.volume = 0;
+        utterance.rate = 1;
+        utterance.pitch = 1;
+        synth.speak(utterance);
+        audioState.speechPrimed = true;
+
+        window.setTimeout(() => {
+            if (!state.running && (synth.speaking || synth.pending)) {
+                synth.cancel();
+            }
+        }, 40);
+    } catch (_error) {
+        audioState.speechPrimed = false;
     }
 }
 
