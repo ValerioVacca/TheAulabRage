@@ -2452,16 +2452,17 @@ function spawnHeartPowerUp() {
 }
 
 function collectPowerUp() {
-    if (!state.powerUp || state.students.length === 0) {
+    if (!state.powerUp) {
         return;
     }
 
     const type = state.powerUp.type;
     const origin = centerOf(state.powerUp);
-    
+
+    // Always remove the power-up element and clear state
     state.powerUp.element.remove();
     state.powerUp = null;
-    
+
     const now = performance.now();
 
     if (type === "coffee") {
