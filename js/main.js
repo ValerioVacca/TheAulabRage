@@ -50,6 +50,10 @@ const resumeButton = document.getElementById("resumeButton");
 const savedLevelNum = document.getElementById("savedLevelNum");
 const menuButton = document.getElementById("menuButton");
 
+// Elementi DOM per la stamina
+const hudStamina = document.getElementById("hudStamina");
+const staminaBarFill = document.getElementById("staminaBarFill");
+
 const GAME = {
     width: 1280,
     height: 720,
@@ -66,7 +70,15 @@ const GAME = {
     powerUpRespawnDelay: 10000,
     firstHeartPowerUpDelay: 7000,
     heartPowerUpLifetime: 3000,
-    heartPowerUpRespawnDelay: 10000
+    heartPowerUpRespawnDelay: 10000,
+    // Sistema di stamina e schivata
+    maxStamina: 100,
+    staminaPerDodge: 50,
+    staminaRegenRate: 25,
+    staminaRegenDelay: 800,
+    dodgeDistance: 80,
+    dodgeDuration: 200,
+    dodgeCooldown: 100
 };
 
 const storyParagraphs = [
@@ -130,6 +142,7 @@ const state = {
     lastRumbleAt: 0,
     currentScale: 1,
     rageActive: false,
+    pendingDodge: null,
     rageMeter: 0,
     rageActiveUntil: 0,
     lastRageParticleSpawnAt: 0
@@ -602,6 +615,33 @@ function bindEvents() {
 
         if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(event.key) || ["w", "a", "s", "d"].includes(key)) {
             event.preventDefault();
+        }
+
+        // Gestione schivata con CTRL + direzione
+        if (event.ctrlKey && !event.repeat && state.running) {
+            let dodgeX = 0;
+            let dodgeY = 0;
+
+            if (key === "w" || key === "up") dodgeY = -1;
+            if (key === "s" || key === "down") dodgeY = 1;
+            if (key === "a" || key === "left") dodgeX = -1;
+            if (key === "d" || key === "right") dodgeX = 1;
+
+            if (dodgeX !== 0 || dodgeY !== 0) {
+                // Normalizza il vettore diagonale
+                const length = Math.sqrt(dodgeX * dodgeX + dodgeY * dodgeY);
+                if (length > 0) {
+                    dodgeX /= length;
+                    dodgeY /= length;
+                }
+
+                // Memorizza la richiesta di schivata invece di eseguirla immediatamente
+                state.pendingDodge = {
+                    x: dodgeX,
+                    y: dodgeY
+                };
+                return; // Non aggiungere il tasto al movimento normale
+            }
         }
 
         if (key === "space") {
@@ -1236,6 +1276,15 @@ function createPlayer(spawn, resetPlayerLives = false) {
         shieldHits: 0,
         speedBoostUntil: 0,
         superHammerUntil: 0,
+        // Sistema di stamina e schivata
+        stamina: GAME.maxStamina,
+        lastStaminaUse: 0,
+        isDodging: false,
+        dodgeEndsAt: 0,
+        dodgeStartX: 0,
+        dodgeStartY: 0,
+        dodgeTargetX: 0,
+        dodgeTargetY: 0,
         element
     };
 
@@ -1414,6 +1463,7 @@ function gameLoop(timestamp) {
         // ---------------------------------
 
         updatePlayer(delta, timestamp);
+        updateStamina(delta, timestamp);
         updateRage(delta);
         updateStudents(delta, timestamp);
         updateSlidingChairs(delta);
@@ -1445,17 +1495,29 @@ function updatePlayer(delta, timestamp) {
         state.player.element.classList.remove("super-hammer-active");
     }
 
-    const movement = getInputVector();
-    const stepX = movement.x * GAME.playerSpeed * speedMult * delta;
-    const stepY = movement.y * GAME.playerSpeed * speedMult * delta;
-    const isMoving = movement.x !== 0 || movement.y !== 0;
-
-    if (isMoving) {
-        state.player.direction = getDirectionFromVector(movement);
+    // Gestione schivata pendente
+    if (state.pendingDodge && !state.player.isDodging) {
+        if (performDodge(state.pendingDodge.x, state.pendingDodge.y, timestamp)) {
+            state.pendingDodge = null; // Reset della richiesta
+        } else {
+            state.pendingDodge = null; // Reset anche se fallisce
+        }
     }
 
-    updatePlayerVisual(state.player, isMoving);
-    moveWithCollisions(state.player, stepX, stepY);
+    // Il movimento è gestito separatamente dalla schivata
+    if (!state.player.isDodging) {
+        const movement = getInputVector();
+        const stepX = movement.x * GAME.playerSpeed * speedMult * delta;
+        const stepY = movement.y * GAME.playerSpeed * speedMult * delta;
+        const isMoving = movement.x !== 0 || movement.y !== 0;
+
+        if (isMoving) {
+            state.player.direction = getDirectionFromVector(movement);
+        }
+
+        updatePlayerVisual(state.player, isMoving);
+        moveWithCollisions(state.player, stepX, stepY);
+    }
 
     if (timestamp < state.player.invulnerableUntil) {
         state.player.element.classList.add("flash-damage");
@@ -1467,6 +1529,81 @@ function updatePlayer(delta, timestamp) {
         state.player.attackEndsAt = 0;
         state.player.element.classList.remove("attacking");
     }
+}
+
+// Sistema di stamina e schivata
+function updateStamina(delta, timestamp) {
+    if (!state.player) return;
+
+    // Rigenerazione stamina se non è stata usata di recente
+    if (timestamp - state.player.lastStaminaUse >= GAME.staminaRegenDelay) {
+        state.player.stamina = Math.min(GAME.maxStamina,
+            state.player.stamina + (GAME.staminaRegenRate * delta));
+    }
+
+    // Gestione animazione schivata
+    if (state.player.isDodging) {
+        // Controllo più semplice: se è passato abbastanza tempo, termina la schivata
+        if (timestamp >= state.player.dodgeEndsAt) {
+            // Fine schivata
+            state.player.isDodging = false;
+            state.player.element.classList.remove("dodging");
+            return; // Esci dalla funzione per evitare ulteriori modifiche
+        }
+
+        // Calcola progresso con sicurezza
+        const dodgeStartTime = state.player.dodgeEndsAt - GAME.dodgeDuration;
+        const elapsed = Math.max(0, timestamp - dodgeStartTime);
+        const progress = Math.min(1, elapsed / GAME.dodgeDuration);
+
+        // Interpolazione lineare più semplice per ora
+        const currentX = state.player.dodgeStartX +
+            (state.player.dodgeTargetX - state.player.dodgeStartX) * progress;
+        const currentY = state.player.dodgeStartY +
+            (state.player.dodgeTargetY - state.player.dodgeStartY) * progress;
+
+        // Applica la posizione della schivata
+        state.player.x = Math.max(40, Math.min(GAME.width - 40, currentX));
+        state.player.y = Math.max(40, Math.min(GAME.height - 40, currentY));
+        syncEntity(state.player);
+    }
+}
+
+function canDodge() {
+    if (!state.player || state.player.isDodging) return false;
+    if (state.player.stamina < GAME.staminaPerDodge) return false;
+    return true;
+}
+
+function performDodge(directionX, directionY, timestamp) {
+    if (!canDodge()) return false;
+
+    // Consuma stamina
+    state.player.stamina -= GAME.staminaPerDodge;
+    state.player.lastStaminaUse = timestamp;
+
+    // Calcola posizione target della schivata
+    const dodgeDistance = GAME.dodgeDistance;
+    state.player.dodgeStartX = state.player.x;
+    state.player.dodgeStartY = state.player.y;
+
+    // Calcola target con limiti dell'arena
+    const targetX = state.player.x + (directionX * dodgeDistance);
+    const targetY = state.player.y + (directionY * dodgeDistance);
+
+    // Assicura che la destinazione sia dentro i limiti
+    state.player.dodgeTargetX = Math.max(40, Math.min(GAME.width - 40, targetX));
+    state.player.dodgeTargetY = Math.max(40, Math.min(GAME.height - 40, targetY));
+
+    // Attiva schivata
+    state.player.isDodging = true;
+    state.player.dodgeEndsAt = timestamp + GAME.dodgeDuration;
+    state.player.element.classList.add("dodging");
+
+    // Effetto sonoro della schivata
+    playDodgeSound();
+
+    return true;
 }
 
 function getInputVector() {
@@ -1764,7 +1901,7 @@ function updateProjectiles(delta, timestamp) {
             return;
         }
 
-        const playerCanBeHit = timestamp >= state.player.invulnerableUntil;
+        const playerCanBeHit = timestamp >= state.player.invulnerableUntil && !state.player.isDodging;
         if (playerCanBeHit && rectsIntersect(projectile, state.player)) {
             projectile.element.remove();
             if (state.player.shieldHits > 0) {
@@ -2667,10 +2804,25 @@ function finishGame(isVictory) {
 function updateHud() {
     if (state.player) {
         renderLives(state.player.lives);
+        updateStaminaHud();
     }
     studentsValue.textContent = state.students.length;
     if (levelValue) {
         levelValue.textContent = state.selectedHackademyId === "standard" ? state.currentLevel : "Sandbox";
+    }
+}
+
+function updateStaminaHud() {
+    if (!state.player || !staminaBarFill) return;
+
+    const staminaPct = Math.max(0, Math.min(100, (state.player.stamina / GAME.maxStamina) * 100));
+    staminaBarFill.style.width = `${staminaPct}%`;
+
+    // Aggiorna la classe CSS per lo stato di stamina bassa
+    if (staminaPct < 50) {
+        hudStamina.classList.add("stamina-low");
+    } else {
+        hudStamina.classList.remove("stamina-low");
     }
 }
 
@@ -3208,6 +3360,17 @@ function playBossDeathSound() {
         peakGain: 0.2,
         slideTo: 30,
         stagger: 0.2
+    });
+}
+
+function playDodgeSound() {
+    playToneBurst({
+        frequencies: [600, 800, 1200],
+        duration: 0.12,
+        type: "sine",
+        peakGain: 0.08,
+        slideTo: 400,
+        stagger: 0.02
     });
 }
 
