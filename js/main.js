@@ -78,7 +78,7 @@ const GAME = {
     staminaRegenDelay: 800,
     dodgeDistance: 80,
     dodgeDuration: 200,
-    dodgeCooldown: 100
+    dodgeCooldown: 100,
 };
 
 const storyParagraphs = [
@@ -109,6 +109,13 @@ const defaultHackademies = [
         id: "standard",
         name: "Standard",
         studentsCount: 5
+    },
+    {
+        id: "notte_deploy",
+        name: "La Notte del Deploy",
+        studentsCount: 4,
+        isNightMode: true,
+        studentType: "zombie"
     }
 ];
 
@@ -123,10 +130,12 @@ const state = {
     obstacles: [],
     students: [],
     projectiles: [],
+    teacherProjectiles: [],
     effects: [],
     powerUp: null,
     heartPowerUp: null,
     dragonStrike: null,
+    studiaStrike: null,
     nextPowerUpAt: 0,
     nextHeartPowerUpAt: 0,
     gameTimeMs: 0,
@@ -277,6 +286,55 @@ const levelConfigs = [
     }
 ];
 
+// Configurazioni livelli per "La Notte del Deploy"
+const nightDeployLevelConfigs = [
+    {
+        id: 1,
+        projectilesPerShot: 1,
+        playerSpawn: { x: 72, y: 90 },
+        studentSpawns: [
+            { x: 800, y: 200 },
+            { x: 600, y: 400 },
+            { x: 1000, y: 300 },
+            { x: 400, y: 500 }
+        ],
+        obstacles: [
+            // Pareti perimetrali
+            { x: 0, y: 0, width: 1280, height: 24, type: "wall" },
+            { x: 0, y: 696, width: 1280, height: 24, type: "wall" },
+            { x: 0, y: 0, width: 24, height: 720, type: "wall" },
+            { x: 1256, y: 0, width: 24, height: 720, type: "wall" },
+
+            // Monitor accesi che emettono luce bluastra
+            { x: 200, y: 150, width: 64, height: 36, type: "monitor" },
+            { x: 400, y: 150, width: 64, height: 36, type: "monitor" },
+            { x: 600, y: 150, width: 64, height: 36, type: "monitor" },
+            { x: 800, y: 150, width: 64, height: 36, type: "monitor" },
+            { x: 1000, y: 150, width: 64, height: 36, type: "monitor" },
+
+            // Server aziendali (per stordire zombie)
+            { x: 150, y: 300, width: 80, height: 120, type: "server" },
+            { x: 450, y: 300, width: 80, height: 120, type: "server" },
+            { x: 750, y: 300, width: 80, height: 120, type: "server" },
+            { x: 1050, y: 300, width: 80, height: 120, type: "server" },
+
+            // Scrivanie nell'ombra
+            { x: 300, y: 450, width: 134, height: 66, type: "desk" },
+            { x: 600, y: 450, width: 134, height: 66, type: "desk" },
+            { x: 900, y: 450, width: 134, height: 66, type: "desk" },
+
+            // Sedie sparse
+            { x: 250, y: 520, width: 42, height: 34, type: "chair" },
+            { x: 550, y: 520, width: 42, height: 34, type: "chair" },
+            { x: 850, y: 520, width: 42, height: 34, type: "chair" },
+
+            // Cestini
+            { x: 100, y: 600, width: 40, height: 48, type: "bin" },
+            { x: 1180, y: 600, width: 40, height: 48, type: "bin" }
+        ]
+    }
+];
+
 const studentStyles = [
     {
         shirtTop: "#7f8dff",
@@ -365,6 +423,13 @@ const typeMessages = {
         "copiato tutto!",
         "cheat activated!",
         "Faccio tutto con l'AI"
+    ],
+    zombie: [
+        "Uhhhh... codice...",
+        "Deploy... alle 3 di notte...",
+        "Caffè... finito...",
+        "Bug... infiniti...",
+        "Stack overflow..."
     ]
 };
 
@@ -926,7 +991,7 @@ function clearEntities() {
     const summoningBanner = document.getElementById("summoningBanner");
     if (summoningBanner) summoningBanner.classList.add("d-none");
 
-    [state.player, ...state.students, ...state.projectiles, ...state.effects, state.powerUp, state.heartPowerUp, state.dragonStrike]
+    [state.player, ...state.students, ...state.projectiles, ...state.effects, state.powerUp, state.heartPowerUp, state.dragonStrike, state.studiaStrike]
         .filter(Boolean)
         .forEach((entity) => entity.element.remove());
 
@@ -936,6 +1001,7 @@ function clearEntities() {
     state.powerUp = null;
     state.heartPowerUp = null;
     state.dragonStrike = null;
+    state.studiaStrike = null;
     state.player = null; // Risolve il bug del riavvio ricreando l'elemento del player nel DOM
     if (intermissionOverlay) {
         intermissionOverlay.classList.add("d-none");
@@ -968,10 +1034,12 @@ function clearLevelActors(keepPlayer = true) {
         ...(keepPlayer ? [] : [state.player]),
         ...state.students,
         ...state.projectiles,
+        ...state.teacherProjectiles,
         ...state.effects,
         state.powerUp,
         state.heartPowerUp,
-        state.dragonStrike
+        state.dragonStrike,
+        state.studiaStrike
     ];
 
     entitiesToRemove
@@ -980,10 +1048,12 @@ function clearLevelActors(keepPlayer = true) {
 
     state.students = [];
     state.projectiles = [];
+    state.teacherProjectiles = [];
     state.effects = [];
     state.powerUp = null;
     state.heartPowerUp = null;
     state.dragonStrike = null;
+    state.studiaStrike = null;
     if (intermissionOverlay) {
         intermissionOverlay.classList.add("d-none");
     }
@@ -1138,6 +1208,9 @@ function getSelectedTeacher() {
 }
 
 function getCurrentLevelConfig() {
+    if (state.selectedHackademyId === "notte_deploy") {
+        return nightDeployLevelConfigs.find((level) => level.id === state.currentLevel) || nightDeployLevelConfigs[0];
+    }
     return levelConfigs.find((level) => level.id === state.currentLevel) || levelConfigs[0];
 }
 
@@ -1147,10 +1220,17 @@ function buildLevel(levelNumber, resetPlayerLives = false) {
     const level = getCurrentLevelConfig();
 
     // Toggle emergency red lights overlay for level 3
-    if (levelNumber === 3) {
+    if (levelNumber === 3 && state.selectedHackademyId === "standard") {
         gameArea.classList.add("emergency-mode");
     } else {
         gameArea.classList.remove("emergency-mode");
+    }
+
+    // Toggle night mode for "La Notte del Deploy"
+    if (state.selectedHackademyId === "notte_deploy") {
+        gameArea.classList.add("night-mode");
+    } else {
+        gameArea.classList.remove("night-mode");
     }
 
     // Usa la mappa personalizzata dell'editor se disponibile, altrimenti usa il default
@@ -1196,6 +1276,11 @@ function buildLevel(levelNumber, resetPlayerLives = false) {
             if (banner) {
                 banner.classList.remove("d-none");
             }
+
+            // Mostra notifica dell'arma STUDIA
+            setTimeout(() => {
+                showToast("🎯 NUOVA ARMA DISPONIBILE! Cerca i power-up 'STUDIA' per ottenere l'arma a distanza che insegue il boss!");
+            }, 1000);
         }
     }
 }
@@ -1335,8 +1420,13 @@ function createStudent(spawn, index) {
     figure.append(head, body, armLeft, armRight, legLeft, legRight, stone);
     element.appendChild(figure);
 
-    const types = ["fast", "shooter", "dodger", "cheater"];
-    const type = types[index % types.length];
+    let types = ["fast", "shooter", "dodger", "cheater"];
+    let type = types[index % types.length];
+
+    // In modalità notte, crea solo zombie
+    if (state.selectedHackademyId === "notte_deploy") {
+        type = "zombie";
+    }
 
     if (type === "cheater") {
         const copyUI = document.createElement("div");
@@ -1468,6 +1558,7 @@ function gameLoop(timestamp) {
         updateStudents(delta, timestamp);
         updateSlidingChairs(delta);
         updateProjectiles(delta, timestamp);
+        updateTeacherProjectiles(delta, timestamp);
         updatePowerUps(delta);
         checkEndConditions();
         updateHud();
@@ -1494,6 +1585,7 @@ function updatePlayer(delta, timestamp) {
         state.player.superHammerUntil = 0;
         state.player.element.classList.remove("super-hammer-active");
     }
+
 
     // Gestione schivata pendente
     if (state.pendingDodge && !state.player.isDodging) {
@@ -1745,6 +1837,32 @@ function updateStudents(delta, timestamp) {
                 updateStudentVisual(student, vector.x !== 0 || vector.y !== 0);
                 moveWithCollisions(student, vector.x * GAME.studentSpeed * delta, vector.y * GAME.studentSpeed * delta);
             }
+        } else if (student.studentType === "zombie") {
+            // Zombie AI - lento, immune ai colpi normali, attratto dalle luci
+
+            // Gli zombie si muovono lentamente verso il giocatore
+            if (distance < 400) {
+                // Inseguimento lento del giocatore
+                vector = normalizeVector(-dx, -dy);
+                student.element.classList.add("zombie-hunting");
+            } else {
+                // Vagano lentamente
+                vector = getStudentWanderVector(student);
+                student.element.classList.remove("zombie-hunting");
+            }
+
+            student.direction = getDirectionFromVector(vector);
+            updateStudentVisual(student, vector.x !== 0 || vector.y !== 0);
+
+            // Velocità molto ridotta per i zombie
+            const zombieSpeed = GAME.studentSpeed * 0.3;
+            moveWithCollisions(student, vector.x * zombieSpeed * delta, vector.y * zombieSpeed * delta);
+
+            // I zombie non lanciano pietre normalmente, ma emettono suoni ocasionalmente
+            if (student.talkTimer <= 0) {
+                student.talkTimer = randomBetween(GAME.studentTalkMin * 2, GAME.studentTalkMax * 2);
+                speakZombie(student);
+            }
         } else {
             // Normal student AI (fast, shooter, dodger, or buffed cheater)
             if (student.dashTimer > 0) {
@@ -1928,8 +2046,67 @@ function updateProjectiles(delta, timestamp) {
     state.projectiles = nextProjectiles;
 }
 
+function updateTeacherProjectiles(delta, timestamp) {
+    const nextTeacherProjectiles = [];
+
+    state.teacherProjectiles.forEach((projectile) => {
+        projectile.x += projectile.velocityX * delta;
+        projectile.y += projectile.velocityY * delta;
+        syncEntity(projectile);
+
+        // Rimuovi se esce dall'arena
+        const outsideArena =
+            projectile.x < 0 ||
+            projectile.y < 0 ||
+            projectile.x + projectile.width > GAME.width ||
+            projectile.y + projectile.height > GAME.height;
+
+        // Rimuovi se colpisce un ostacolo
+        const hitsObstacle = state.obstacles.some((obstacle) => rectsIntersect(projectile, obstacle));
+
+        if (outsideArena || hitsObstacle) {
+            projectile.element.remove();
+            return;
+        }
+
+        // Controlla collisione con studenti
+        let hitStudent = false;
+        const survivors = [];
+        state.students.forEach((student) => {
+            if (rectsIntersect(projectile, student)) {
+                // Colpito studente
+                createHitEffect(student.x - 18, student.y - 18);
+                student.element.remove();
+                increaseRage(15);
+                hitStudent = true;
+                return;
+            }
+            survivors.push(student);
+        });
+        state.students = survivors;
+
+        // Controlla collisione con il boss
+        if (state.boss && rectsIntersect(projectile, state.boss)) {
+            createHitEffect(projectile.x - 18, projectile.y - 18);
+            projectile.element.remove();
+            damageBoss();
+            increaseRage(20);
+            return;
+        }
+
+        if (hitStudent) {
+            projectile.element.remove();
+            return;
+        }
+
+        nextTeacherProjectiles.push(projectile);
+    });
+
+    state.teacherProjectiles = nextTeacherProjectiles;
+}
+
 function updatePowerUps(delta) {
-    if (!state.powerUp && !state.dragonStrike && state.gameTimeMs >= state.nextPowerUpAt && state.students.length > 0) {
+    if (!state.powerUp && !state.dragonStrike && !state.studiaStrike && state.gameTimeMs >= state.nextPowerUpAt && state.students.length > 0) {
         spawnPowerUp();
     }
 
@@ -1968,6 +2145,10 @@ function updatePowerUps(delta) {
     if (state.dragonStrike) {
         updateDragonStrike(delta);
     }
+
+    if (state.studiaStrike) {
+        updateStudiaStrike(delta);
+    }
 }
 
 function attack() {
@@ -2001,6 +2182,21 @@ function attack() {
                 survivors.push(student);
                 return;
             }
+
+            if (student.studentType === "zombie") {
+                // Zombie immune al martello normale - rimbalza
+                playShieldSound();
+                createHitEffect(student.x - 18, student.y - 18);
+                // Effetto di respinta del zombie
+                const dx = student.x - state.player.x;
+                const dy = student.y - state.player.y;
+                const pushVector = normalizeVector(dx, dy);
+                pushZombieAndCheckServer(student, pushVector);
+                survivors.push(student);
+                speakZombie(student);
+                return;
+            }
+
             createHitEffect(student.x - 18, student.y - 18);
             student.element.remove();
             increaseRage(20);
@@ -2073,6 +2269,38 @@ function attack() {
         remainingObstacles.push(obstacle);
     });
     state.obstacles = remainingObstacles;
+}
+
+function pushZombieAndCheckServer(zombie, pushVector) {
+    const pushDistance = 50;
+    const newX = zombie.x + pushVector.x * pushDistance;
+    const newY = zombie.y + pushVector.y * pushDistance;
+
+    // Controlla se il nuovo posto ha un server
+    let hitServer = false;
+    state.obstacles.forEach((obstacle) => {
+        if (obstacle.type === "server") {
+            const testZombie = { ...zombie, x: newX, y: newY };
+            if (rectsIntersect(testZombie, obstacle)) {
+                hitServer = true;
+            }
+        }
+    });
+
+    if (hitServer) {
+        // Zombie colpisce un server - viene stordito e rimosso
+        createHitEffect(zombie.x + zombie.width / 2 - 18, zombie.y + zombie.height / 2 - 18);
+        playPowerUpSound(); // Suono di successo
+        zombie.element.remove();
+        state.students = state.students.filter(s => s !== zombie);
+        speakTeacher("Server power! Zombie offline!");
+        increaseRage(30); // Bonus rage per lo stordimento strategico
+    } else {
+        // Movimento normale
+        zombie.x = clamp(newX, 24, GAME.width - zombie.width - 24);
+        zombie.y = clamp(newY, 24, GAME.height - zombie.height - 24);
+        syncEntity(zombie);
+    }
 }
 
 function getAttackZone() {
@@ -2508,7 +2736,13 @@ function spawnPowerUp() {
     const counter = document.createElement("span");
     const icon = document.createElement("span");
     
-    const types = ["coffee", "shield", "speed", "super_hammer"];
+    let types = ["coffee", "shield", "speed", "super_hammer"];
+
+    // Nel livello 3, aggiungi il power-up "studia"
+    if (state.currentLevel === 3) {
+        types = ["coffee", "shield", "speed", "super_hammer", "studia", "studia"]; // Più probabilità per studia nel lvl 3
+    }
+
     const type = types[Math.floor(Math.random() * types.length)];
     
     const powerUp = {
@@ -2619,6 +2853,10 @@ function collectPowerUp() {
         playSuperHammerSound();
         state.player.superHammerUntil = now + 8000;
         state.player.element.classList.add("super-hammer-active");
+    } else if (type === "studia") {
+        playTeacherRangedSound();
+        launchStudiaStrike(origin);
+        speakTeacher("STUDIA lanciato! Inseguirà il boss!");
     }
 
     state.nextPowerUpAt = state.gameTimeMs + getPowerUpRespawnDelay();
@@ -2731,6 +2969,47 @@ function pickDragonTargetId() {
     return target ? target.id : "";
 }
 
+function launchStudiaStrike(origin) {
+    const element = document.createElement("div");
+    element.className = "teacher-projectile"; // Riutilizziamo lo stile esistente
+
+    const strike = {
+        x: origin.x - 30,
+        y: origin.y - 12,
+        width: 60,
+        height: 24,
+        element: element
+    };
+
+    gameArea.appendChild(element);
+    syncEntity(strike);
+    state.studiaStrike = strike;
+}
+
+function updateStudiaStrike(delta) {
+    if (!state.boss || state.boss.lives <= 0) {
+        state.studiaStrike.element.remove();
+        state.studiaStrike = null;
+        return;
+    }
+
+    const strikeCenter = centerOf(state.studiaStrike);
+    const bossCenter = centerOf(state.boss);
+    const vector = normalizeVector(bossCenter.x - strikeCenter.x, bossCenter.y - strikeCenter.y);
+
+    state.studiaStrike.x += vector.x * GAME.dragonSpeed * delta;
+    state.studiaStrike.y += vector.y * GAME.dragonSpeed * delta;
+    syncEntity(state.studiaStrike);
+
+    if (rectsIntersect(expandRect(state.studiaStrike, -10), state.boss)) {
+        createHitEffect(state.boss.x + state.boss.width / 2 - 18, state.boss.y + state.boss.height / 2 - 18);
+        damageBoss();
+        increaseRage(25);
+        state.studiaStrike.element.remove();
+        state.studiaStrike = null;
+    }
+}
+
 function getStudentById(id) {
     return state.students.find((student) => student.id === id) || null;
 }
@@ -2763,6 +3042,38 @@ function speakStudent(student) {
         student.element.classList.remove("speaking");
         student.speechTimeoutId = null;
     }, 1700);
+}
+
+function speakZombie(student) {
+    if (!student || student.element.classList.contains("burning")) {
+        return;
+    }
+
+    const previousBubble = student.element.querySelector(".speech-bubble");
+    if (previousBubble) {
+        previousBubble.remove();
+    }
+
+    if (student.speechTimeoutId) {
+        window.clearTimeout(student.speechTimeoutId);
+    }
+
+    const bubble = document.createElement("div");
+    bubble.className = "speech-bubble zombie-bubble";
+    const messages = typeMessages.zombie || ["Uhhhh..."];
+    const message = messages[Math.floor(Math.random() * messages.length)];
+    bubble.textContent = message;
+    student.element.appendChild(bubble);
+    student.element.classList.add("speaking");
+
+    // Suono zombie più grave e lento
+    playZombieGroan();
+
+    student.speechTimeoutId = window.setTimeout(() => {
+        bubble.remove();
+        student.element.classList.remove("speaking");
+        student.speechTimeoutId = null;
+    }, 2500); // Più lungo per l'effetto zombie
 }
 
 function finishGame(isVictory) {
@@ -2990,6 +3301,13 @@ function scheduleMusicChunk() {
 
     const ctx = audioState.context;
     const lookAhead = 1.6;
+
+    // Modalità notte: battito cardiaco al posto della musica normale
+    if (state.selectedHackademyId === "notte_deploy") {
+        scheduleHeartbeatMusic(ctx, lookAhead);
+        return;
+    }
+
     const stepDuration = state.rageActive ? 0.22 : 0.34;
     const freqMult = state.rageActive ? 1.5 : 1.0;
     let stepIndex = Math.floor(audioState.nextMusicTime / stepDuration) % musicLeadPattern.length;
@@ -3030,6 +3348,70 @@ function scheduleBassNote(time, frequency) {
     osc.stop(time + 0.34);
 }
 
+function scheduleHeartbeatMusic(ctx, lookAhead) {
+    // Calcola la velocità del battito in base alla distanza dal zombie più vicino
+    let closestZombieDistance = Infinity;
+    if (state.player) {
+        state.students.forEach(student => {
+            if (student.studentType === "zombie") {
+                const distance = Math.hypot(
+                    centerOf(student).x - centerOf(state.player).x,
+                    centerOf(student).y - centerOf(state.player).y
+                );
+                closestZombieDistance = Math.min(closestZombieDistance, distance);
+            }
+        });
+    }
+
+    // Velocità battito: da 1.5s (lontano) a 0.4s (vicino)
+    const maxDistance = 300;
+    const minHeartbeatInterval = 0.4;
+    const maxHeartbeatInterval = 1.5;
+    const normalizedDistance = Math.min(closestZombieDistance / maxDistance, 1);
+    const heartbeatInterval = minHeartbeatInterval + (maxHeartbeatInterval - minHeartbeatInterval) * normalizedDistance;
+
+    // Effetto visivo del battito
+    if (closestZombieDistance < 150) {
+        gameArea.classList.add("heartbeat");
+        setTimeout(() => {
+            gameArea.classList.remove("heartbeat");
+        }, 200);
+    }
+
+    while (audioState.nextMusicTime < ctx.currentTime + lookAhead) {
+        scheduleHeartbeat(audioState.nextMusicTime, normalizedDistance);
+        audioState.nextMusicTime += heartbeatInterval;
+    }
+}
+
+function scheduleHeartbeat(time, intensity) {
+    // Primo battito (lub)
+    const osc1 = audioState.context.createOscillator();
+    const gain1 = audioState.context.createGain();
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(60 - intensity * 20, time);
+    gain1.gain.setValueAtTime(0.0001, time);
+    gain1.gain.exponentialRampToValueAtTime(0.15, time + 0.05);
+    gain1.gain.exponentialRampToValueAtTime(0.0001, time + 0.15);
+    osc1.connect(gain1);
+    gain1.connect(audioState.musicGain);
+    osc1.start(time);
+    osc1.stop(time + 0.2);
+
+    // Secondo battito (dub)
+    const osc2 = audioState.context.createOscillator();
+    const gain2 = audioState.context.createGain();
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(45 - intensity * 15, time + 0.15);
+    gain2.gain.setValueAtTime(0.0001, time + 0.15);
+    gain2.gain.exponentialRampToValueAtTime(0.12, time + 0.2);
+    gain2.gain.exponentialRampToValueAtTime(0.0001, time + 0.3);
+    osc2.connect(gain2);
+    gain2.connect(audioState.musicGain);
+    osc2.start(time + 0.15);
+    osc2.stop(time + 0.35);
+}
+
 function playHammerSound() {
     playToneBurst({
         frequencies: [180, 130],
@@ -3056,6 +3438,16 @@ function playHealSound() {
         type: "sine",
         peakGain: 0.1,
         stagger: 0.04
+    });
+}
+
+function playZombieGroan() {
+    playToneBurst({
+        frequencies: [60, 90, 120],
+        duration: 1.2,
+        type: "sawtooth",
+        peakGain: 0.08,
+        stagger: 0.3
     });
 }
 
@@ -3371,6 +3763,17 @@ function playDodgeSound() {
         peakGain: 0.08,
         slideTo: 400,
         stagger: 0.02
+    });
+}
+
+function playTeacherRangedSound() {
+    playToneBurst({
+        frequencies: [400, 800, 1600],
+        duration: 0.2,
+        type: "sawtooth",
+        peakGain: 0.12,
+        slideTo: 200,
+        stagger: 0.03
     });
 }
 

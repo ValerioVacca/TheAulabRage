@@ -748,6 +748,25 @@ kbd {
     animation: player-body-attack 210ms cubic-bezier(0.18, 0.7, 0.2, 1) forwards;
 }
 
+.player.ranged-attacking .player-figure {
+    animation: player-ranged-attack 300ms ease-out forwards;
+}
+
+@keyframes player-ranged-attack {
+    0% {
+        transform: scale(1);
+        filter: drop-shadow(0 8px 10px rgba(5, 8, 20, 0.26));
+    }
+    50% {
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 15px rgba(255, 234, 0, 0.8)) drop-shadow(0 8px 10px rgba(5, 8, 20, 0.26));
+    }
+    100% {
+        transform: scale(1);
+        filter: drop-shadow(0 8px 10px rgba(5, 8, 20, 0.26));
+    }
+}
+
 .projectile {
     z-index: 2;
     width: 14px;
@@ -759,7 +778,7 @@ kbd {
 
 .coffee-powerup {
     position: absolute;
-    z-index: 6;
+    z-index: 0;
     width: 28px;
     height: 28px;
     overflow: visible;
@@ -833,7 +852,7 @@ kbd {
 
 .heart-powerup {
     position: absolute;
-    z-index: 6;
+    z-index: 0;
     width: 30px;
     height: 30px;
     overflow: visible;
@@ -1662,7 +1681,27 @@ kbd {
     border-radius: 2px;
     transform: translateX(-50%) rotate(45deg);
     transform-origin: top center;
-    box-shadow: 0 0 6px #ffd700;
+}
+
+.game-powerup.type-studia .powerup-icon {
+    background: linear-gradient(135deg, #ffea00, #ffc107, #ff9800);
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    box-shadow:
+        inset 0 2px 0 rgba(255, 255, 255, 0.7),
+        0 0 15px rgba(255, 234, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Trebuchet MS", sans-serif;
+    font-size: 8px;
+    font-weight: bold;
+    color: #333;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);
+}
+
+.game-powerup.type-studia .powerup-icon::after {
+    content: "STUDIA";
 }
 
 /* Player Shield Bubble Visual */
@@ -2141,6 +2180,41 @@ kbd {
     background: radial-gradient(circle, #ff4500 20%, #ff007f 60%, rgba(153, 50, 204, 0.4) 90%, transparent 100%);
     box-shadow: 0 0 20px #ff4500, 0 0 40px #ff007f;
     animation: fireball-spin 0.6s linear infinite;
+}
+
+.teacher-projectile {
+    position: absolute;
+    z-index: 4;
+    width: 60px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #ffea00, #ffd700);
+    box-shadow: 0 0 12px rgba(255, 234, 0, 0.9), 0 0 24px rgba(255, 234, 0, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    border-radius: 12px;
+    animation: teacher-projectile-glow 0.4s ease-in-out infinite alternate;
+    font-family: "Trebuchet MS", sans-serif;
+    font-size: 12px;
+    font-weight: bold;
+    color: #333;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.teacher-projectile::after {
+    content: "STUDIA";
+}
+
+@keyframes teacher-projectile-glow {
+    from {
+        box-shadow: 0 0 8px rgba(255, 234, 0, 0.8), 0 0 16px rgba(255, 234, 0, 0.4);
+        transform: scale(1);
+    }
+    to {
+        box-shadow: 0 0 12px rgba(255, 234, 0, 1), 0 0 24px rgba(255, 234, 0, 0.6);
+        transform: scale(1.1);
+    }
 }
 @keyframes fireball-spin {
     0% { transform: rotate(0deg); }
@@ -3664,4 +3738,140 @@ kbd {
     background: linear-gradient(90deg, #ff4a5a, #ffea00);
     box-shadow: 0 0 10px #ff4a5a;
     transition: width 3.5s linear;
+}
+
+/* Night Mode - La Notte del Deploy */
+.night-mode {
+    background: #0a0a0a;
+    position: relative;
+    overflow: hidden;
+}
+
+.night-mode::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 30% 20%, rgba(20, 40, 80, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 70% 80%, rgba(10, 20, 40, 0.4) 0%, transparent 40%),
+                linear-gradient(180deg, rgba(5, 10, 20, 0.9) 0%, rgba(0, 0, 0, 0.95) 100%);
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Player light cone in night mode */
+.night-mode .player {
+    position: relative;
+    z-index: 3;
+}
+
+.night-mode .player::before {
+    content: "";
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 40%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Monitor lights */
+.obstacle.type-monitor {
+    background: #1a1a2e;
+    border: 2px solid #16213e;
+    border-radius: 4px;
+    position: relative;
+    box-shadow:
+        0 0 15px rgba(100, 150, 255, 0.6),
+        inset 0 0 20px rgba(100, 150, 255, 0.3);
+}
+
+.obstacle.type-monitor::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    height: 70%;
+    background: linear-gradient(135deg, #4a90e2, #2e5c8a);
+    border-radius: 2px;
+    box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+.obstacle.type-monitor::after {
+    content: "";
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 120px;
+    background: radial-gradient(circle, rgba(100, 150, 255, 0.2) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Server racks */
+.obstacle.type-server {
+    background: linear-gradient(180deg, #2c3e50, #1a252f);
+    border: 2px solid #34495e;
+    border-radius: 4px;
+    position: relative;
+}
+
+.obstacle.type-server::before {
+    content: "";
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 8px,
+        rgba(52, 152, 219, 0.3) 8px,
+        rgba(52, 152, 219, 0.3) 12px
+    );
+    border-radius: 2px;
+}
+
+/* Zombie students */
+.night-mode .student.type-zombie {
+    filter: brightness(0.7) contrast(1.2) hue-rotate(-30deg);
+    animation: zombie-sway 3s ease-in-out infinite;
+    border: 1px solid rgba(0, 255, 0, 0.3);
+    box-shadow: 0 0 8px rgba(0, 255, 0, 0.2);
+}
+
+.night-mode .student.type-zombie .student-body {
+    background: linear-gradient(135deg, #2d4a2d, #1a301a);
+}
+
+@keyframes zombie-sway {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    25% { transform: translateY(-2px) rotate(-1deg); }
+    75% { transform: translateY(-1px) rotate(1deg); }
+}
+
+/* Heartbeat effect */
+.night-mode.heartbeat {
+    animation: heartbeat-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes heartbeat-pulse {
+    0%, 100% {
+        filter: brightness(1) contrast(1);
+    }
+    50% {
+        filter: brightness(1.1) contrast(1.1) hue-rotate(10deg);
+    }
 }
