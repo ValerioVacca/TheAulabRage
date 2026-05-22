@@ -11,6 +11,12 @@ const endEyebrow = document.getElementById("endEyebrow");
 const endTitle = document.getElementById("endTitle");
 const endMessage = document.getElementById("endMessage");
 
+// Elementi DOM per la Storia
+const storyOverlay = document.getElementById("storyOverlay");
+const closeStoryButton = document.getElementById("closeStoryButton");
+const storyContent = document.getElementById("storyContent");
+const storyButton = document.getElementById("storyButton");
+
 // Nuovi elementi DOM per la gestione del Docente
 const addTeacherBtn = document.getElementById("addTeacherBtn");
 const teacherModal = document.getElementById("teacherModal");
@@ -63,6 +69,19 @@ const GAME = {
     heartPowerUpRespawnDelay: 10000
 };
 
+const storyParagraphs = [
+    "[SISTEMA] Rilevata anomalia Hackademy - Ore 03:00 AM...",
+    "È la notte prima della consegna del progetto finale. L'aria è densa di disperazione, lattine di energy drink vuote e righe di codice scritte a caso.",
+    "La stanchezza ha preso il sopravvento: gli studenti si rifiutano di programmare e lanciano pietre! I più subdoli, gli \"Studenti Copiatori\", si muovono furtivamente con gli occhiali da sole per passare codice buggato ai compagni, scatenando il panico.",
+    "Nel caos dell'aula, attento alle Sedie Scorrevoli: se colpite col martello, schizzeranno come proiettili travolgendo chiunque sul loro percorso!",
+    "E se non bastasse, nelle profondità dell'Aulab si aggira il leggendario BOSS finale: uno Studente Gigante ed estremamente svogliato che urla a ripetizione la sua formula magica: \"SKIBIDIBOPPI!\".",
+    "Solo tu, nei panni del Docente, puoi ripristinare l'ordine col mitico \"Martello di Gomma della Motivazione\". Raccogli il Caffè per scatenare la Rage Mode ed evocare Charizard, ferma i copiatori, e sconfiggi il Grande Svogliato!",
+    "La classe ti aspetta. Non c'è tempo da perdere..."
+];
+
+let storyTimeouts = [];
+let typingActive = false;
+
 const defaultTeachers = [
     {
         id: "valerio",
@@ -109,7 +128,11 @@ const state = {
     summoningActive: false,
     summoningTimer: 0,
     lastRumbleAt: 0,
-    currentScale: 1
+    currentScale: 1,
+    rageActive: false,
+    rageMeter: 0,
+    rageActiveUntil: 0,
+    lastRageParticleSpawnAt: 0
 };
 
 const audioState = {
@@ -301,6 +324,13 @@ const typeMessages = {
         "copio e scappo!",
         "quasi preso!",
         "ti piacerebbe!"
+    ],
+    cheater: [
+        "fammi copiare!",
+        "passami il codice!",
+        "quasi finito di copiare...",
+        "copiato tutto!",
+        "cheat activated!"
     ]
 };
 
@@ -314,6 +344,89 @@ const musicBassPattern = [
     164.81, 164.81, 146.83, 146.83
 ];
 
+function showStoryOverlay() {
+    if (storyOverlay) {
+        storyOverlay.classList.remove("d-none");
+    }
+    showStoryText();
+}
+
+function showStoryText() {
+    if (!storyContent) return;
+    
+    // Clear any previous typewriter timeouts
+    storyTimeouts.forEach(t => clearTimeout(t));
+    storyTimeouts = [];
+    storyContent.innerHTML = "";
+    typingActive = true;
+    
+    let pIndex = 0;
+    
+    function typeParagraph() {
+        if (pIndex >= storyParagraphs.length || !typingActive) {
+            typingActive = false;
+            return;
+        }
+        
+        const pText = storyParagraphs[pIndex];
+        const pElement = document.createElement("p");
+        pElement.className = "story-paragraph";
+        
+        if (pText.startsWith("[SISTEMA]") || pText.startsWith("È la notte")) {
+            pElement.classList.add("text-neon-cyan");
+        }
+        
+        storyContent.appendChild(pElement);
+        
+        let charIndex = 0;
+        
+        function typeChar() {
+            if (!typingActive) return;
+            
+            if (charIndex < pText.length) {
+                pElement.textContent += pText.charAt(charIndex);
+                charIndex++;
+                storyContent.scrollTop = storyContent.scrollHeight;
+                
+                const t = setTimeout(typeChar, 10);
+                storyTimeouts.push(t);
+            } else {
+                pIndex++;
+                const t = setTimeout(typeParagraph, 350);
+                storyTimeouts.push(t);
+            }
+        }
+        
+        typeChar();
+    }
+    
+    typeParagraph();
+}
+
+function skipStory() {
+    typingActive = false;
+    storyTimeouts.forEach(t => clearTimeout(t));
+    storyTimeouts = [];
+    
+    if (storyContent) {
+        storyContent.innerHTML = "";
+        storyParagraphs.forEach(pText => {
+            const pElement = document.createElement("p");
+            pElement.className = "story-paragraph";
+            if (pText.startsWith("[SISTEMA]") || pText.startsWith("È la notte")) {
+                pElement.classList.add("text-neon-cyan");
+            }
+            pElement.textContent = pText;
+            storyContent.appendChild(pElement);
+        });
+        storyContent.scrollTop = storyContent.scrollHeight;
+    }
+    
+    if (storyOverlay) {
+        storyOverlay.classList.add("d-none");
+    }
+}
+
 function init() {
     // Load muted state
     const storedMuted = localStorage.getItem("aulab_rage_muted");
@@ -322,11 +435,130 @@ function init() {
     loadTeachers();
     loadHackademies();
     bindEvents();
+    initTouchControls();
     resetGame();
     updateGameScale();
     updateMuteButtonVisual();
     MapEditor.init();
     requestAnimationFrame(gameLoop);
+    
+    // Start narrative screen typewriter
+    showStoryText();
+}
+
+function initTouchControls() {
+    const joystickContainer = document.getElementById("joystickContainer");
+    const joystickKnob = document.getElementById("joystickKnob");
+    const touchAttackBtn = document.getElementById("touchAttackBtn");
+
+    if (!joystickContainer || !joystickKnob || !touchAttackBtn) return;
+
+    let activeTouchId = null;
+    let baseCenterX = 0;
+    let baseCenterY = 0;
+    const maxRadius = 40; // Max translation in pixels
+
+    function getCenter() {
+        const rect = joystickContainer.getBoundingClientRect();
+        baseCenterX = rect.left + rect.width / 2;
+        baseCenterY = rect.top + rect.height / 2;
+    }
+
+    joystickContainer.addEventListener("touchstart", (e) => {
+        if (activeTouchId !== null) return;
+        getCenter();
+        const touch = e.changedTouches[0];
+        activeTouchId = touch.identifier;
+        handleTouchMove(touch);
+        e.preventDefault();
+    }, { passive: false });
+
+    joystickContainer.addEventListener("touchmove", (e) => {
+        if (activeTouchId === null) return;
+        for (let i = 0; i < e.touches.length; i++) {
+            if (e.touches[i].identifier === activeTouchId) {
+                handleTouchMove(e.touches[i]);
+                e.preventDefault();
+                break;
+            }
+        }
+    }, { passive: false });
+
+    function handleTouchMove(touch) {
+        const dx = touch.clientX - baseCenterX;
+        const dy = touch.clientY - baseCenterY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        let targetX = dx;
+        let targetY = dy;
+        
+        if (distance > maxRadius) {
+            targetX = (dx / distance) * maxRadius;
+            targetY = (dy / distance) * maxRadius;
+        }
+        
+        joystickKnob.style.transform = `translate(${targetX}px, ${targetY}px)`;
+        
+        const normX = targetX / maxRadius;
+        const normY = targetY / maxRadius;
+        const threshold = 0.35;
+        
+        if (normX > threshold) {
+            state.keys.add("right");
+            state.keys.delete("left");
+        } else if (normX < -threshold) {
+            state.keys.add("left");
+            state.keys.delete("right");
+        } else {
+            state.keys.delete("left");
+            state.keys.delete("right");
+        }
+        
+        if (normY > threshold) {
+            state.keys.add("down");
+            state.keys.delete("up");
+        } else if (normY < -threshold) {
+            state.keys.add("up");
+            state.keys.delete("down");
+        } else {
+            state.keys.delete("up");
+            state.keys.delete("down");
+        }
+    }
+
+    function resetJoystick() {
+        activeTouchId = null;
+        joystickKnob.style.transform = "translate(0px, 0px)";
+        state.keys.delete("left");
+        state.keys.delete("right");
+        state.keys.delete("up");
+        state.keys.delete("down");
+    }
+
+    joystickContainer.addEventListener("touchend", (e) => {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === activeTouchId) {
+                resetJoystick();
+                e.preventDefault();
+                break;
+            }
+        }
+    });
+
+    joystickContainer.addEventListener("touchcancel", (e) => {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === activeTouchId) {
+                resetJoystick();
+                e.preventDefault();
+                break;
+            }
+        }
+    });
+
+    touchAttackBtn.addEventListener("touchstart", (e) => {
+        attack();
+        e.preventDefault();
+    }, { passive: false });
 }
 
 function bindEvents() {
@@ -485,6 +717,14 @@ function bindEvents() {
             state.running = true;
         });
     }
+
+    // Story screen listeners
+    if (closeStoryButton) {
+        closeStoryButton.addEventListener("click", skipStory);
+    }
+    if (storyButton) {
+        storyButton.addEventListener("click", showStoryOverlay);
+    }
 }
 
 function normalizeKey(key) {
@@ -522,6 +762,7 @@ function clearObstacles() {
 }
 
 function resetGame() {
+    deactivateRageMode();
     clearEntities();
     stopStudentSpeech();
 
@@ -952,6 +1193,7 @@ function createPlayer(spawn, resetPlayerLives = false) {
 }
 
 function repositionPlayer(spawn) {
+    deactivateRageMode();
     state.player.x = spawn.x;
     state.player.y = spawn.y;
     state.player.direction = "right";
@@ -989,8 +1231,20 @@ function createStudent(spawn, index) {
     figure.append(head, body, armLeft, armRight, legLeft, legRight, stone);
     element.appendChild(figure);
 
-    const types = ["fast", "shooter", "dodger"];
+    const types = ["fast", "shooter", "dodger", "cheater"];
     const type = types[index % types.length];
+
+    if (type === "cheater") {
+        const copyUI = document.createElement("div");
+        copyUI.className = "cheater-copy-ui";
+        copyUI.innerHTML = `
+            <div class="copy-bubble">📥 COPIA</div>
+            <div class="copy-progress-bar">
+                <div class="copy-progress-fill"></div>
+            </div>
+        `;
+        element.appendChild(copyUI);
+    }
 
     const student = {
         id: `student-${index}`,
@@ -1105,7 +1359,9 @@ function gameLoop(timestamp) {
         // ---------------------------------
 
         updatePlayer(delta, timestamp);
+        updateRage(delta);
         updateStudents(delta, timestamp);
+        updateSlidingChairs(delta);
         updateProjectiles(delta, timestamp);
         updatePowerUps(delta);
         checkEndConditions();
@@ -1117,7 +1373,9 @@ function gameLoop(timestamp) {
 
 function updatePlayer(delta, timestamp) {
     let speedMult = 1.0;
-    if (state.player.speedBoostUntil) {
+    if (state.rageActive) {
+        speedMult = 2.0;
+    } else if (state.player.speedBoostUntil) {
         if (timestamp < state.player.speedBoostUntil) {
             speedMult = 2.0;
             state.player.element.classList.add("speed-boosted");
@@ -1204,48 +1462,145 @@ function updateStudents(delta, timestamp) {
             student.dodgeCooldown -= delta;
         }
 
-        if (student.dashTimer > 0) {
-            student.dashTimer -= delta;
-            vector = student.dashVector;
-            student.element.classList.add("dashing");
-            
-            const speed = 3.5 * GAME.studentSpeed;
-            moveWithCollisions(student, vector.x * speed * delta, vector.y * speed * delta);
-            student.direction = getDirectionFromVector(vector);
-            updateStudentVisual(student, true);
-        } else {
-            student.element.classList.remove("dashing");
-            
-            if (fleeMode) {
-                vector = normalizeVector(dx, dy);
-                student.element.classList.add("coward");
-                
-                if (student.studentType === "dodger" && distance < 110 && (!student.dodgeCooldown || student.dodgeCooldown <= 0)) {
-                    student.dashTimer = 15;
-                    student.dodgeCooldown = 100;
-                    student.dashVector = normalizeVector(dx + (Math.random() - 0.5) * 0.4, dy + (Math.random() - 0.5) * 0.4);
-                    speakStudent(student);
-                }
-            } else {
-                student.element.classList.remove("coward");
-                vector = getStudentWanderVector(student);
+        if (student.studentType === "cheater" && !student.codeCopied) {
+            // Check if current copyTarget is still alive and is still a valid target (not chanting)
+            if (student.copyTarget && (!state.students.includes(student.copyTarget) || student.copyTarget.isChanting)) {
+                student.copyTarget = null;
+                student.isCopying = false;
+                student.copyProgress = 0;
+                student.element.classList.remove("copying");
             }
 
-            student.direction = getDirectionFromVector(vector);
-            updateStudentVisual(student, vector.x !== 0 || vector.y !== 0);
-            
-            let speedMult = 1.0;
-            if (student.studentType === "fast") {
-                speedMult = 1.65;
-            } else if (student.studentType === "shooter") {
-                speedMult = 0.15;
+            // Find nearest target if none selected
+            if (!student.copyTarget) {
+                let bestTarget = null;
+                let minDistance = Infinity;
+                state.students.forEach((other) => {
+                    if (other === student || other.studentType === "cheater" || other.isChanting) return;
+                    const dist = Math.hypot(other.x - student.x, other.y - student.y);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        bestTarget = other;
+                    }
+                });
+                student.copyTarget = bestTarget;
             }
-            
-            moveWithCollisions(student, vector.x * GAME.studentSpeed * speedMult * delta, vector.y * GAME.studentSpeed * speedMult * delta);
+
+            if (student.copyTarget) {
+                const targetDx = student.copyTarget.x - student.x;
+                const targetDy = student.copyTarget.y - student.y;
+                const targetDist = Math.hypot(targetDx, targetDy);
+
+                if (targetDist < 65) {
+                    // In copying range! Stop moving and copy.
+                    vector = { x: 0, y: 0 };
+                    student.isCopying = true;
+                    student.element.classList.add("copying");
+                    student.copyProgress = (student.copyProgress || 0) + delta * 16.67;
+
+                    // Update UI progress bar
+                    const fill = student.element.querySelector(".copy-progress-fill");
+                    if (fill) {
+                        fill.style.width = `${Math.min(100, (student.copyProgress / 2000) * 100)}%`;
+                    }
+
+                    if (student.copyProgress >= 2000) {
+                        // Success! Apply "Codice Copiato" to both
+                        student.codeCopied = true;
+                        student.element.classList.add("code-copied");
+                        student.element.classList.remove("copying");
+                        
+                        student.copyTarget.codeCopied = true;
+                        student.copyTarget.element.classList.add("code-copied");
+
+                        playCodeCopiedSound();
+                        
+                        // Spawn success effects on both
+                        createHitEffect(student.x + student.width / 2 - 18, student.y + student.height / 2 - 18);
+                        createHitEffect(student.copyTarget.x + student.copyTarget.width / 2 - 18, student.copyTarget.y + student.copyTarget.height / 2 - 18);
+
+                        student.copyTarget = null;
+                        student.isCopying = false;
+                        student.copyProgress = 0;
+                    }
+                } else {
+                    // Walk towards the target
+                    vector = normalizeVector(targetDx, targetDy);
+                    if (student.isCopying) {
+                        student.isCopying = false;
+                        student.copyProgress = 0;
+                        student.element.classList.remove("copying");
+                    }
+                }
+
+                // Update visual animation
+                student.direction = getDirectionFromVector(vector);
+                updateStudentVisual(student, vector.x !== 0 || vector.y !== 0);
+
+                // Move cheater (base speed: 0.95x studentSpeed, stealthy)
+                const cheaterSpeed = GAME.studentSpeed * 0.95;
+                moveWithCollisions(student, vector.x * cheaterSpeed * delta, vector.y * cheaterSpeed * delta);
+            } else {
+                // No target available: just wander or flee Valerio normally
+                if (fleeMode) {
+                    vector = normalizeVector(dx, dy);
+                    student.element.classList.add("coward");
+                } else {
+                    student.element.classList.remove("coward");
+                    vector = getStudentWanderVector(student);
+                }
+                student.direction = getDirectionFromVector(vector);
+                updateStudentVisual(student, vector.x !== 0 || vector.y !== 0);
+                moveWithCollisions(student, vector.x * GAME.studentSpeed * delta, vector.y * GAME.studentSpeed * delta);
+            }
+        } else {
+            // Normal student AI (fast, shooter, dodger, or buffed cheater)
+            if (student.dashTimer > 0) {
+                student.dashTimer -= delta;
+                vector = student.dashVector;
+                student.element.classList.add("dashing");
+                
+                const speed = 3.5 * GAME.studentSpeed;
+                moveWithCollisions(student, vector.x * speed * delta, vector.y * speed * delta);
+                student.direction = getDirectionFromVector(vector);
+                updateStudentVisual(student, true);
+            } else {
+                student.element.classList.remove("dashing");
+                
+                if (fleeMode) {
+                    vector = normalizeVector(dx, dy);
+                    student.element.classList.add("coward");
+                    
+                    if (student.studentType === "dodger" && distance < 110 && (!student.dodgeCooldown || student.dodgeCooldown <= 0)) {
+                        student.dashTimer = 15;
+                        student.dodgeCooldown = 100;
+                        student.dashVector = normalizeVector(dx + (Math.random() - 0.5) * 0.4, dy + (Math.random() - 0.5) * 0.4);
+                        speakStudent(student);
+                    }
+                } else {
+                    student.element.classList.remove("coward");
+                    vector = getStudentWanderVector(student);
+                }
+
+                student.direction = getDirectionFromVector(vector);
+                updateStudentVisual(student, vector.x !== 0 || vector.y !== 0);
+                
+                let speedMult = 1.0;
+                if (student.studentType === "fast") {
+                    speedMult = 1.65;
+                } else if (student.studentType === "shooter") {
+                    speedMult = 0.15;
+                }
+                if (student.codeCopied) {
+                    speedMult *= 2.0;
+                }
+                
+                moveWithCollisions(student, vector.x * GAME.studentSpeed * speedMult * delta, vector.y * GAME.studentSpeed * speedMult * delta);
+            }
         }
 
         student.fleeTimer -= delta;
-        student.shotTimer -= delta;
+        student.shotTimer -= student.codeCopied ? delta * 2.2 : delta;
         student.talkTimer -= delta * 16.67;
 
         if (student.isThrowing && now >= student.throwReleaseAt) {
@@ -1259,7 +1614,8 @@ function updateStudents(delta, timestamp) {
             }
         }
 
-        if (student.studentType !== "fast" && !student.isThrowing && student.shotTimer <= 0 && hasLineOfSight(student, state.player)) {
+        const canThrow = student.studentType !== "fast" && (student.studentType !== "cheater" || student.codeCopied);
+        if (canThrow && !student.isThrowing && student.shotTimer <= 0 && hasLineOfSight(student, state.player)) {
             beginThrow(student, now);
         }
 
@@ -1439,6 +1795,7 @@ function attack() {
     if (state.boss && rectsIntersect(attackZone, state.boss)) {
         createHitEffect(state.boss.x + state.boss.width / 2 - 18, state.boss.y + state.boss.height / 2 - 18);
         damageBoss();
+        increaseRage(15);
     }
 
     const survivors = [];
@@ -1453,6 +1810,7 @@ function attack() {
             }
             createHitEffect(student.x - 18, student.y - 18);
             student.element.remove();
+            increaseRage(20);
             return;
         }
 
@@ -1460,6 +1818,33 @@ function attack() {
     });
 
     state.students = survivors;
+
+    // Gestione colpi alle sedie scorrevoli
+    state.obstacles.forEach((obstacle) => {
+        if (obstacle.type === "chair" && rectsIntersect(attackZone, obstacle)) {
+            obstacle.sliding = true;
+            obstacle.smokeTimer = 0;
+            
+            // Determina la direzione in base a dove guarda il giocatore
+            const pushSpeed = 16;
+            if (state.player.direction === "up") {
+                obstacle.vx = 0;
+                obstacle.vy = -pushSpeed;
+            } else if (state.player.direction === "down") {
+                obstacle.vx = 0;
+                obstacle.vy = pushSpeed;
+            } else if (state.player.direction === "left") {
+                obstacle.vx = -pushSpeed;
+                obstacle.vy = 0;
+            } else {
+                obstacle.vx = pushSpeed;
+                obstacle.vy = 0;
+            }
+            
+            playChairSlideSound();
+            createHitEffect(obstacle.x + obstacle.width / 2 - 18, obstacle.y + obstacle.height / 2 - 18);
+        }
+    });
 }
 
 function getAttackZone() {
@@ -1556,6 +1941,136 @@ function createFlameEffect(x, y) {
         effect.element.remove();
         state.effects = state.effects.filter((entry) => entry !== effect);
     }, 520);
+}
+
+function createSlideSmokeEffect(x, y) {
+    const effect = {
+        element: document.createElement("div")
+    };
+
+    effect.element.className = "effect slide-smoke-effect";
+    effect.element.style.left = `${x}px`;
+    effect.element.style.top = `${y}px`;
+    gameArea.appendChild(effect.element);
+    state.effects.push(effect);
+
+    window.setTimeout(() => {
+        effect.element.remove();
+        state.effects = state.effects.filter((entry) => entry !== effect);
+    }, 350);
+}
+
+function updateSlidingChairs(delta) {
+    state.obstacles.forEach((chair) => {
+        if (chair.type !== "chair" || !chair.sliding) return;
+
+        const prevX = chair.x;
+        const prevY = chair.y;
+
+        // Apply friction/drag
+        const drag = Math.pow(0.97, delta);
+        chair.vx *= drag;
+        chair.vy *= drag;
+
+        const speed = Math.sqrt(chair.vx * chair.vx + chair.vy * chair.vy);
+        if (speed < 0.2) {
+            chair.vx = 0;
+            chair.vy = 0;
+            chair.sliding = false;
+            return;
+        }
+
+        // Emit smoke trail
+        chair.smokeTimer = (chair.smokeTimer || 0) + delta * 16.67;
+        if (chair.smokeTimer > 50) {
+            chair.smokeTimer = 0;
+            createSlideSmokeEffect(
+                chair.x + chair.width / 2 - 12,
+                chair.y + chair.height / 2 - 12
+            );
+        }
+
+        // Move horizontally and check collisions
+        chair.x += chair.vx * delta;
+        let collideX = false;
+        for (const other of state.obstacles) {
+            if (other === chair) continue;
+            if (rectsIntersect(chair, other)) {
+                collideX = true;
+                if (other.type === "chair") {
+                    other.sliding = true;
+                    other.vx = chair.vx * 0.9;
+                    other.vy = chair.vy * 0.9;
+                    other.x += other.vx * delta;
+                    playChairSlideSound();
+                }
+                break;
+            }
+        }
+        if (collideX) {
+            chair.x = prevX;
+            chair.vx = -chair.vx * 0.85;
+            playChairBounceSound();
+            createHitEffect(chair.x + chair.width / 2 - 18, chair.y + chair.height / 2 - 18);
+        }
+
+        // Move vertically and check collisions
+        chair.y += chair.vy * delta;
+        let collideY = false;
+        for (const other of state.obstacles) {
+            if (other === chair) continue;
+            if (rectsIntersect(chair, other)) {
+                collideY = true;
+                if (other.type === "chair") {
+                    other.sliding = true;
+                    other.vx = chair.vx * 0.9;
+                    other.vy = chair.vy * 0.9;
+                    other.y += other.vy * delta;
+                    playChairSlideSound();
+                }
+                break;
+            }
+        }
+        if (collideY) {
+            chair.y = prevY;
+            chair.vy = -chair.vy * 0.85;
+            playChairBounceSound();
+            createHitEffect(chair.x + chair.width / 2 - 18, chair.y + chair.height / 2 - 18);
+        }
+
+        // Apply position to DOM
+        setRectStyles(chair.element, chair);
+
+        // Check if the sliding chair hits the Boss
+        if (state.boss && rectsIntersect(chair, state.boss)) {
+            createHitEffect(state.boss.x + state.boss.width / 2 - 18, state.boss.y + state.boss.height / 2 - 18);
+            damageBoss();
+            increaseRage(25);
+            
+            chair.x = prevX;
+            chair.y = prevY;
+            chair.vx = -chair.vx * 0.9;
+            chair.vy = -chair.vy * 0.9;
+            playChairBounceSound();
+        }
+
+        // Check if the sliding chair hits students
+        const survivors = [];
+        state.students.forEach((student) => {
+            if (rectsIntersect(chair, student)) {
+                createHitEffect(student.x - 18, student.y - 18);
+                student.element.remove();
+                increaseRage(30);
+                playChairBounceSound();
+                
+                chair.vx *= 0.85;
+                chair.vy *= 0.85;
+                return;
+            }
+            survivors.push(student);
+        });
+        state.students = survivors;
+    });
 }
 
 function damagePlayer() {
@@ -1793,6 +2308,7 @@ function collectPowerUp() {
     if (type === "coffee") {
         playPowerUpSound();
         launchDragonStrike(origin);
+        activateRageMode();
     } else if (type === "shield") {
         playShieldSound();
         state.player.shieldHits = 2;
@@ -2158,12 +2674,13 @@ function scheduleMusicChunk() {
 
     const ctx = audioState.context;
     const lookAhead = 1.6;
-    const stepDuration = 0.34;
+    const stepDuration = state.rageActive ? 0.22 : 0.34;
+    const freqMult = state.rageActive ? 1.5 : 1.0;
     let stepIndex = Math.floor(audioState.nextMusicTime / stepDuration) % musicLeadPattern.length;
 
     while (audioState.nextMusicTime < ctx.currentTime + lookAhead) {
-        scheduleLeadNote(audioState.nextMusicTime, musicLeadPattern[stepIndex]);
-        scheduleBassNote(audioState.nextMusicTime, musicBassPattern[stepIndex]);
+        scheduleLeadNote(audioState.nextMusicTime, musicLeadPattern[stepIndex] * freqMult);
+        scheduleBassNote(audioState.nextMusicTime, musicBassPattern[stepIndex] * freqMult);
         audioState.nextMusicTime += stepDuration;
         stepIndex = (stepIndex + 1) % musicLeadPattern.length;
     }
@@ -2285,6 +2802,37 @@ function playSuperHammerSound() {
         peakGain: 0.15,
         stagger: 0.06,
         slideTo: 98
+    });
+}
+
+function playChairSlideSound() {
+    playToneBurst({
+        frequencies: [220, 110],
+        duration: 0.22,
+        type: "sawtooth",
+        peakGain: 0.08,
+        slideTo: 40
+    });
+}
+
+function playChairBounceSound() {
+    playToneBurst({
+        frequencies: [440, 330],
+        duration: 0.16,
+        type: "triangle",
+        peakGain: 0.15,
+        slideTo: 80
+    });
+}
+
+function playCodeCopiedSound() {
+    playToneBurst({
+        frequencies: [261.63, 329.63, 392.00, 523.25],
+        duration: 0.45,
+        type: "sine",
+        peakGain: 0.16,
+        stagger: 0.07,
+        slideTo: 659.25
     });
 }
 
@@ -2457,34 +3005,39 @@ function playBossDeathSound() {
 
 function spawnBoss() {
     const element = document.createElement("div");
-    element.className = "entity boss";
+    element.className = "entity boss boss-giant-student student";
     
     const wrapper = document.createElement("div");
     wrapper.className = "boss-wrapper";
     wrapper.style.width = "100%";
     wrapper.style.height = "100%";
     
+    // Costruisci la struttura visiva dello studente
     const figure = document.createElement("div");
-    figure.className = "boss-figure";
+    figure.className = "student-figure";
     
-    const crown = document.createElement("div");
-    crown.className = "boss-crown";
+    const head = document.createElement("span");
+    head.className = "student-head";
     
-    const body = document.createElement("div");
-    body.className = "boss-body";
+    const body = document.createElement("span");
+    body.className = "student-body";
     
-    const ears = document.createElement("div");
-    ears.className = "boss-ears";
+    const armLeft = document.createElement("span");
+    armLeft.className = "student-arm arm-left";
     
-    const eyes = document.createElement("div");
-    eyes.className = "boss-eyes";
-    const eyeL = document.createElement("div");
-    eyeL.className = "boss-eye";
-    const eyeR = document.createElement("div");
-    eyeR.className = "boss-eye";
-    eyes.append(eyeL, eyeR);
+    const armRight = document.createElement("span");
+    armRight.className = "student-arm arm-right";
     
-    figure.append(crown, body, ears, eyes);
+    const legLeft = document.createElement("span");
+    legLeft.className = "student-leg leg-left";
+    
+    const legRight = document.createElement("span");
+    legRight.className = "student-leg leg-right";
+    
+    const stone = document.createElement("span");
+    stone.className = "student-hand-stone";
+    
+    figure.append(head, body, armLeft, armRight, legLeft, legRight, stone);
     wrapper.appendChild(figure);
     element.appendChild(wrapper);
     
@@ -2493,7 +3046,7 @@ function spawnBoss() {
     state.boss = {
         x: 590,
         y: 300,
-        width: 100,
+        width: 104,
         height: 120,
         lives: 15,
         maxLives: 15,
@@ -2501,6 +3054,8 @@ function spawnBoss() {
         direction: "right",
         lastShotAt: 0,
         lastSummonAt: 0,
+        lastSpeechAt: 0,
+        speechTimeoutId: null,
         shootCooldown: 2200,
         summonCooldown: 8000,
         element
@@ -2510,11 +3065,62 @@ function spawnBoss() {
     const healthContainer = document.getElementById("bossHealthContainer");
     if (healthContainer) {
         healthContainer.classList.remove("d-none");
+        const bossNameEl = document.getElementById("bossName");
+        if (bossNameEl) {
+            bossNameEl.textContent = "Studente Gigante Svogliato";
+        }
     }
     updateBossHealthBar();
     
     triggerScreenShake(800, 8);
     playBossShotSound(true);
+}
+
+function speakBossSkibidiboppi() {
+    if (!state.boss || state.boss.lives <= 0 || !state.running) return;
+
+    // Gestione fumetto visivo a video
+    const previousBubble = state.boss.element.querySelector(".speech-bubble");
+    if (previousBubble) {
+        previousBubble.remove();
+    }
+    if (state.boss.speechTimeoutId) {
+        window.clearTimeout(state.boss.speechTimeoutId);
+    }
+
+    const bubble = document.createElement("div");
+    bubble.className = "speech-bubble boss-bubble";
+    bubble.textContent = "SKIBIDIBOPPI";
+    state.boss.element.appendChild(bubble);
+    state.boss.element.classList.add("speaking");
+
+    state.boss.speechTimeoutId = window.setTimeout(() => {
+        bubble.remove();
+        if (state.boss && state.boss.element) {
+            state.boss.element.classList.remove("speaking");
+        }
+        if (state.boss) {
+            state.boss.speechTimeoutId = null;
+        }
+    }, 2000);
+
+    // Gestione sintesi vocale (audio grave e lento)
+    if (!audioState.speechEnabled || audioState.muted) return;
+
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+
+    // Cancella sintesi in corso per evitare ritardi accumulati
+    if (synth.speaking || synth.pending) {
+        synth.cancel();
+    }
+
+    const utterance = new SpeechSynthesisUtterance("SKIBIDIBOPPI");
+    utterance.lang = "it-IT";
+    utterance.rate = 0.5;  // tempo lento
+    utterance.pitch = 0.3; // timbro molto grave
+    utterance.volume = 1.0;
+    synth.speak(utterance);
 }
 
 function updateBoss(delta, timestamp) {
@@ -2556,6 +3162,16 @@ function updateBoss(delta, timestamp) {
     }
     if (timestamp - state.boss.lastSummonAt > state.boss.summonCooldown) {
         bossSummonStudent(timestamp);
+    }
+
+    // Ripetizione frase "SKIBIDIBOPPI" a video e audio
+    if (!state.boss.lastSpeechAt) {
+        state.boss.lastSpeechAt = timestamp;
+        speakBossSkibidiboppi();
+    }
+    if (timestamp - state.boss.lastSpeechAt > 3500) {
+        state.boss.lastSpeechAt = timestamp;
+        speakBossSkibidiboppi();
     }
 }
 
@@ -2675,6 +3291,17 @@ function updateBossHealthBar() {
 
 function killBoss() {
     if (!state.boss) return;
+    
+    // Cancella timeout, bolla e sintesi vocale del boss
+    if (state.boss.speechTimeoutId) {
+        window.clearTimeout(state.boss.speechTimeoutId);
+        state.boss.speechTimeoutId = null;
+    }
+    const bubble = state.boss.element.querySelector(".speech-bubble");
+    if (bubble) {
+        bubble.remove();
+    }
+    stopStudentSpeech();
     
     playBossDeathSound();
     triggerScreenShake(1200, 9);
@@ -3046,5 +3673,168 @@ const MapEditor = (() => {
 
     return { init, getObstaclesForLevel };
 })();
+
+// --- FUNZIONALITÀ RAGE MODE (STATO DI FURIA) ---
+function increaseRage(amount) {
+    if (state.rageActive || !state.running || state.gameOver || state.victory) return;
+    state.rageMeter = Math.min(100, state.rageMeter + amount);
+    updateRageBarVisual();
+    if (state.rageMeter >= 100) {
+        activateRageMode();
+    }
+}
+
+function activateRageMode() {
+    if (!state.running || state.gameOver || state.victory) return;
+    
+    playRageStartSound();
+    
+    state.rageActive = true;
+    state.rageActiveUntil = state.gameTimeMs + 5000;
+    state.rageMeter = 100;
+    state.lastRageParticleSpawnAt = 0;
+    
+    if (gameArea) {
+        gameArea.classList.add("rage-active");
+    }
+    
+    if (state.player && state.player.element) {
+        state.player.element.classList.add("rage-active-player");
+    }
+    
+    const hudRage = document.getElementById("hudRage");
+    if (hudRage) {
+        hudRage.classList.add("rage-active-hud");
+    }
+    
+    triggerScreenShake(500, 8);
+}
+
+function deactivateRageMode() {
+    state.rageActive = false;
+    state.rageActiveUntil = 0;
+    state.rageMeter = 0;
+    
+    updateRageBarVisual();
+    
+    if (gameArea) {
+        gameArea.classList.remove("rage-active");
+    }
+    
+    if (state.player && state.player.element) {
+        state.player.element.classList.remove("rage-active-player");
+    }
+    
+    const hudRage = document.getElementById("hudRage");
+    if (hudRage) {
+        hudRage.classList.remove("rage-active-hud");
+    }
+}
+
+function updateRageBarVisual() {
+    const barFill = document.getElementById("rageBarFill");
+    if (barFill) {
+        barFill.style.width = `${state.rageMeter}%`;
+    }
+}
+
+function updateRage(delta) {
+    if (!state.running || state.gameOver || state.victory) return;
+    
+    if (state.rageActive) {
+        const timeLeft = Math.max(0, state.rageActiveUntil - state.gameTimeMs);
+        state.rageMeter = (timeLeft / 5000) * 100;
+        updateRageBarVisual();
+        
+        // Spawn particle trail if player is moving
+        const movement = getInputVector();
+        const isMoving = movement.x !== 0 || movement.y !== 0;
+        if (isMoving && state.gameTimeMs - state.lastRageParticleSpawnAt > 90) {
+            spawnRageParticle(state.player);
+            state.lastRageParticleSpawnAt = state.gameTimeMs;
+        }
+        
+        // Check collision with students to defeat them
+        const playerRect = state.player;
+        state.students.forEach((student) => {
+            if (rectsIntersect(playerRect, student)) {
+                if (!student.isChanting && !student.element.classList.contains("burning")) {
+                    burnStudent(student);
+                    playRageHitSound();
+                }
+            }
+        });
+        
+        if (timeLeft <= 0) {
+            deactivateRageMode();
+        }
+    }
+}
+
+function spawnRageParticle(player) {
+    const px = player.x + player.width / 2 + randomBetween(-12, 12);
+    const py = player.y + player.height - 15 + randomBetween(-6, 6);
+    createFlameEffect(px - 32, py - 35);
+}
+
+function playRageStartSound() {
+    if (!audioState.context || audioState.muted) return;
+    
+    const ctx = audioState.context;
+    const now = ctx.currentTime;
+    
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = "sawtooth";
+    osc1.frequency.setValueAtTime(120, now);
+    osc1.frequency.exponentialRampToValueAtTime(600, now + 0.5);
+    
+    gain1.gain.setValueAtTime(0.0001, now);
+    gain1.gain.linearRampToValueAtTime(0.15, now + 0.1);
+    gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+    
+    osc1.connect(gain1);
+    gain1.connect(audioState.sfxGain);
+    
+    osc1.start(now);
+    osc1.stop(now + 0.5);
+    
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = "square";
+    osc2.frequency.setValueAtTime(80, now);
+    osc2.frequency.linearRampToValueAtTime(450, now + 0.4);
+    
+    gain2.gain.setValueAtTime(0.0001, now);
+    gain2.gain.linearRampToValueAtTime(0.12, now + 0.15);
+    gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+    
+    osc2.connect(gain2);
+    gain2.connect(audioState.sfxGain);
+    
+    osc2.start(now);
+    osc2.stop(now + 0.45);
+}
+
+function playRageHitSound() {
+    if (!audioState.context || audioState.muted) return;
+    const ctx = audioState.context;
+    const now = ctx.currentTime;
+    
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(300, now);
+    osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+    
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
+    
+    osc.connect(gain);
+    gain.connect(audioState.sfxGain);
+    
+    osc.start(now);
+    osc.stop(now + 0.15);
+}
 
 init();

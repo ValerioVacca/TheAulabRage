@@ -1,5 +1,15 @@
 {
+  "name": "the-aulab-rage",
+  "version": "1.0.0",
+  "description": "Valerio The Banner - 2D top-down arcade game",
+  "scripts": {
+    "dev": "http-server -p 5502",
+    "start": "http-server -p 5502"
+  },
   "dependencies": {
     "puppeteer": "^25.0.4"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
   }
 }

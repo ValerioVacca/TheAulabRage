@@ -88,6 +88,7 @@ kbd {
     display: grid;
     place-items: center;
     overflow: hidden;
+    position: relative;
 }
 
 .game-stage {
@@ -943,6 +944,8 @@ kbd {
 
 .overlay-card {
     max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
     padding: 2rem;
     border-radius: 28px;
     background: rgba(11, 13, 26, 0.96);
@@ -1940,6 +1943,182 @@ kbd {
     }
 }
 
+/* Giant Lazy Student Final Boss ("SKIBIDIBOPPI") */
+.entity.boss.boss-giant-student {
+    width: 104px;
+    height: 120px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    --student-shirt-top: #a3b0cc;
+    --student-shirt-bottom: #7a869e;
+    --student-legs-top: #70798c;
+    --student-legs-bottom: #525966;
+    --student-hair-top: #382a20;
+    --student-hair-bottom: #221913;
+}
+
+.entity.boss.boss-giant-student::before,
+.entity.boss.boss-giant-student::after {
+    display: none;
+}
+
+.boss-giant-student .student-figure {
+    position: absolute;
+    left: 18px;
+    top: 4px;
+    width: 68px;
+    height: 104px;
+    transform-origin: 50% 55%;
+    filter: drop-shadow(0 14px 14px rgba(5, 8, 20, 0.4));
+    animation: boss-lazy-bob 1s ease-in-out infinite alternate;
+}
+
+.boss-giant-student .student-head,
+.boss-giant-student .student-body,
+.boss-giant-student .student-arm,
+.boss-giant-student .student-leg {
+    position: absolute;
+    display: block;
+}
+
+.boss-giant-student .student-head {
+    left: 20px;
+    top: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff2d6, #e6c39c 72%);
+    border: 2px solid rgba(74, 57, 41, 0.25);
+}
+
+.boss-giant-student .student-head::before,
+.boss-giant-student .student-head::after {
+    content: "";
+    position: absolute;
+}
+
+.boss-giant-student .student-head::before {
+    left: -2px;
+    right: -2px;
+    top: -2px;
+    height: 14px;
+    border-radius: 16px 16px 8px 8px;
+    background:
+        radial-gradient(circle at 30% 80%, rgba(255, 255, 255, 0.1) 0 12%, transparent 13%),
+        linear-gradient(180deg, var(--student-hair-top), var(--student-hair-bottom));
+}
+
+.boss-giant-student .student-head::after {
+    left: 4px;
+    top: 8px;
+    width: 22px;
+    height: 14px;
+    background:
+        /* sleepy / lazy half-closed horizontal eyes */
+        linear-gradient(90deg, rgba(61, 48, 38, 0.95) 0 5px, transparent 5px) 2px 4px / 5px 2px no-repeat,
+        linear-gradient(90deg, rgba(61, 48, 38, 0.95) 0 5px, transparent 5px) 14px 4px / 5px 2px no-repeat,
+        /* nose */
+        radial-gradient(circle at 11px 9px, rgba(167, 124, 89, 0.8) 0 2px, transparent 3px),
+        /* yawning/sleepy mouth */
+        radial-gradient(circle at 11px 13px, rgba(120, 78, 57, 0.95) 0 2.5px, transparent 3.5px),
+        /* blue drool */
+        radial-gradient(circle at 14px 15px, rgba(135, 206, 250, 0.85) 0 2px, transparent 3px);
+}
+
+.boss-giant-student .student-body {
+    left: 18px;
+    top: 28px;
+    width: 32px;
+    height: 36px;
+    border-radius: 14px 14px 10px 10px;
+    background: linear-gradient(180deg, var(--student-shirt-top), var(--student-shirt-bottom));
+}
+
+.boss-giant-student .student-arm {
+    top: 32px;
+    width: 10px;
+    height: 32px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #f2d8bd, #d8b18c);
+    transform-origin: 50% 2px;
+}
+
+.boss-giant-student .student-arm.arm-left {
+    left: 8px;
+    animation: boss-lazy-arm-left 1.2s ease-in-out infinite alternate;
+}
+
+.boss-giant-student .student-arm.arm-right {
+    right: 8px;
+    animation: boss-lazy-arm-right 1.2s ease-in-out infinite alternate;
+}
+
+.boss-giant-student .student-leg {
+    top: 62px;
+    width: 10px;
+    height: 34px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, var(--student-legs-top), var(--student-legs-bottom));
+    transform-origin: 50% 2px;
+}
+
+.boss-giant-student .student-leg.leg-left {
+    left: 20px;
+    animation: boss-lazy-leg-left 1s ease-in-out infinite alternate;
+}
+
+.boss-giant-student .student-leg.leg-right {
+    right: 20px;
+    animation: boss-lazy-leg-right 1s ease-in-out infinite alternate;
+}
+
+.boss-giant-student .student-hand-stone {
+    display: none;
+}
+
+/* Custom speak bubble for the boss */
+.speech-bubble.boss-bubble {
+    font-size: 0.95rem;
+    max-width: 180px;
+    padding: 0.5rem 0.8rem;
+    border: 2px solid #9932cc;
+    box-shadow: 0 0 10px rgba(153, 50, 204, 0.4), 0 8px 16px rgba(0, 0, 0, 0.25);
+    background: rgba(26, 15, 46, 0.95);
+    color: #e0d0ff;
+    animation: boss-bubble-pop 2.5s ease forwards;
+}
+
+@keyframes boss-bubble-pop {
+    0% { transform: translate(-50%, 10px) scale(0.65); opacity: 0; }
+    8% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+    85% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -10px) scale(0.9); opacity: 0; }
+}
+
+@keyframes boss-lazy-bob {
+    0% { transform: translateY(0px) rotate(-1deg); }
+    100% { transform: translateY(-6px) rotate(1deg); }
+}
+
+@keyframes boss-lazy-arm-left {
+    0% { transform: rotate(-8deg); }
+    100% { transform: rotate(12deg); }
+}
+@keyframes boss-lazy-arm-right {
+    0% { transform: rotate(8deg); }
+    100% { transform: rotate(-12deg); }
+}
+@keyframes boss-lazy-leg-left {
+    0% { transform: rotate(5deg); }
+    100% { transform: rotate(-5deg); }
+}
+@keyframes boss-lazy-leg-right {
+    0% { transform: rotate(-5deg); }
+    100% { transform: rotate(5deg); }
+}
+
+
 /* Boss projectiles styling */
 .projectile.boss-projectile {
     background: radial-gradient(circle, #ff007f 30%, #9932cc 70%, transparent 100%);
@@ -2468,5 +2647,513 @@ kbd {
     }
     .map-editor-palette {
         width: 110px;
+    }
+}
+
+/* Rage Mode Styles */
+.hud-rage {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: rgba(30, 8, 8, 0.85) !important;
+    border: 1.5px solid rgba(255, 40, 40, 0.3);
+    transition: all 0.3s ease;
+}
+
+.rage-bar-container {
+    width: 90px;
+    height: 10px;
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rage-bar-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #ff2a00, #ffea00);
+    box-shadow: 0 0 8px #ff3c00;
+    transition: width 0.1s linear;
+}
+
+.hud-rage.rage-active-hud {
+    border-color: #ff3c00;
+    animation: rage-hud-glow 0.8s infinite alternate ease-in-out;
+}
+
+@keyframes rage-hud-glow {
+    0% {
+        box-shadow: 0 0 5px rgba(255, 40, 0, 0.4), 0 10px 24px rgba(0, 0, 0, 0.16);
+    }
+    100% {
+        box-shadow: 0 0 16px rgba(255, 40, 0, 0.9), 0 10px 24px rgba(0, 0, 0, 0.16);
+    }
+}
+
+.game-area.rage-active {
+    animation: rage-pulse 2s infinite alternate ease-in-out;
+    box-shadow: inset 0 0 60px rgba(255, 0, 0, 0.35), 0 0 30px rgba(255, 0, 0, 0.15);
+}
+
+@keyframes rage-pulse {
+    0% {
+        filter: hue-rotate(0deg) saturate(1.15) contrast(1.1);
+        background-color: rgba(25, 0, 12, 0.15);
+    }
+    100% {
+        filter: hue-rotate(15deg) saturate(1.6) contrast(1.25) drop-shadow(0 0 12px rgba(255, 0, 80, 0.25));
+        background-color: rgba(45, 0, 25, 0.22);
+    }
+}
+
+.rage-active-player .player-figure {
+    filter: drop-shadow(0 0 8px rgba(255, 40, 0, 0.85)) drop-shadow(0 8px 10px rgba(5, 8, 20, 0.26));
+    animation: rage-player-shake 0.1s infinite alternate;
+}
+
+@keyframes rage-player-shake {
+    0% {
+        transform: translate(0px, 0px) rotate(0deg);
+    }
+    100% {
+        transform: translate(1px, 0.5px) rotate(1deg);
+    }
+}
+
+/* Touch Controls and Portrait Warning Styles */
+.touch-controls {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 160px;
+    pointer-events: none;
+    z-index: 90;
+}
+
+.joystick-container {
+    position: absolute;
+    left: 40px;
+    bottom: 40px;
+    width: 110px;
+    height: 110px;
+    pointer-events: auto;
+}
+
+.joystick-base {
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2.5px solid rgba(255, 255, 255, 0.25);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24);
+    touch-action: none;
+}
+
+.joystick-knob {
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.35);
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    touch-action: none;
+    transition: transform 0.05s ease-out;
+}
+
+.touch-btn-attack {
+    position: absolute;
+    right: 40px;
+    bottom: 40px;
+    width: 85px;
+    height: 85px;
+    pointer-events: auto;
+    background: rgba(255, 234, 0, 0.2);
+    border: 2.5px solid rgba(255, 234, 0, 0.5);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2rem;
+    color: #fff;
+    box-shadow: 0 8px 32px rgba(255, 234, 0, 0.15);
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    outline: none;
+    transition: transform 0.1s ease, background-color 0.1s ease;
+}
+
+.touch-btn-attack:active {
+    transform: scale(0.9);
+    background: rgba(255, 234, 0, 0.45);
+}
+
+.portrait-warning {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(160deg, #070913 0%, #0b1020 100%);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #fff;
+    padding: 2rem;
+    box-sizing: border-box;
+}
+
+.warning-content {
+    max-width: 320px;
+}
+
+.warning-icon {
+    font-size: 4.5rem;
+    margin-bottom: 1.5rem;
+    animation: warning-rotate 3s infinite ease-in-out;
+}
+
+.portrait-warning h2 {
+    color: var(--accent);
+    font-size: 1.6rem;
+    margin-bottom: 0.8rem;
+    font-weight: 800;
+}
+
+.portrait-warning p {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.4;
+}
+
+@keyframes warning-rotate {
+    0%, 100% {
+        transform: rotate(0deg);
+    }
+    50% {
+        transform: rotate(-90deg);
+    }
+}
+
+/* Media query to display touch controls on touch-capable screens and narrow displays */
+@media (pointer: coarse) or (max-width: 1024px) {
+    .touch-controls {
+        display: block;
+    }
+}
+
+/* Media query to display rotation warning on portrait mobile viewports */
+@media (orientation: portrait) and (max-width: 900px) {
+    .portrait-warning {
+        display: flex;
+    }
+}
+
+/* Sliding Chair Smoke Trail Particle */
+.slide-smoke-effect {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(220, 220, 225, 0.45);
+    filter: blur(2px);
+    pointer-events: none;
+    animation: smoke-fade 350ms ease-out forwards;
+    z-index: 2;
+}
+
+@keyframes smoke-fade {
+    0% {
+        transform: scale(0.6) translateY(0);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(1.6) translateY(-10px);
+        opacity: 0;
+    }
+}
+
+/* Homework Cheater Student Type (Lo Studente Copiatore) Styles */
+
+/* 1. Sunglasses Visual Overlay */
+.student.type-cheater .student-head::after {
+    left: 1px;
+    top: 4px;
+    width: 13px;
+    height: 6px;
+    background: 
+        /* Bridge */
+        linear-gradient(to right, transparent 5px, #111 5px, #111 8px, transparent 8px),
+        /* Left lens */
+        radial-gradient(ellipse at 3px 2.5px, #000 0 2.5px, transparent 3px),
+        /* Right lens */
+        radial-gradient(ellipse at 10px 2.5px, #000 0 2.5px, transparent 3px) !important;
+    border-radius: 0;
+}
+
+/* 2. Stealth walk animations */
+.student.type-cheater.running .student-figure {
+    animation: cheater-body-sneak 250ms ease-in-out infinite alternate;
+}
+
+.student.type-cheater.running .student-leg.leg-left {
+    animation: cheater-leg-left 250ms ease-in-out infinite alternate;
+}
+
+.student.type-cheater.running .student-leg.leg-right {
+    animation: cheater-leg-right 250ms ease-in-out infinite alternate;
+}
+
+/* Disable arm swing rotations for cheaters to make them look sneaky */
+.student.type-cheater.running .student-arm {
+    animation: none;
+    transform: rotate(6deg);
+}
+
+@keyframes cheater-body-sneak {
+    0% {
+        transform: translateY(2px) scaleY(0.92) skewX(-4deg);
+    }
+    100% {
+        transform: translateY(4px) scaleY(0.86) skewX(-8deg);
+    }
+}
+
+@keyframes cheater-leg-left {
+    0% {
+        transform: rotate(-10deg) translateY(0);
+    }
+    100% {
+        transform: rotate(8deg) translateY(-2px);
+    }
+}
+
+@keyframes cheater-leg-right {
+    0% {
+        transform: rotate(8deg) translateY(-2px);
+    }
+    100% {
+        transform: rotate(-10deg) translateY(0);
+    }
+}
+
+/* 3. Floating Copy UI Overlay */
+.cheater-copy-ui {
+    position: absolute;
+    top: -38px;
+    left: 50%;
+    transform: translateX(-50%) scale(0);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.22s;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+
+.student.copying .cheater-copy-ui {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+}
+
+.copy-bubble {
+    background: rgba(7, 9, 19, 0.9);
+    border: 1px solid #ffea00;
+    color: #ffea00;
+    font-size: 9px;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 4px;
+    white-space: nowrap;
+    text-shadow: 0 0 4px rgba(255, 234, 0, 0.4);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    animation: copy-bubble-pulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes copy-bubble-pulse {
+    0% {
+        transform: scale(0.94);
+    }
+    100% {
+        transform: scale(1.06);
+    }
+}
+
+.copy-progress-bar {
+    width: 36px;
+    height: 5px;
+    background: rgba(0, 0, 0, 0.65);
+    border-radius: 3px;
+    overflow: hidden;
+    border: 0.5px solid rgba(255, 255, 255, 0.2);
+}
+
+.copy-progress-fill {
+    width: 0%;
+    height: 100%;
+    background: #ffea00;
+    box-shadow: 0 0 4px #ffea00;
+    transition: width 0.05s linear;
+}
+
+/* 4. Buffed state ("Codice Copiato") Aura */
+.student.code-copied {
+    position: relative;
+}
+
+.student.code-copied::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 2px dashed rgba(255, 60, 60, 0.85);
+    box-shadow: 0 0 10px rgba(255, 30, 30, 0.5);
+    animation: rotate-aura 2.5s linear infinite, pulse-aura 0.8s ease-in-out infinite alternate;
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes rotate-aura {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulse-aura {
+    0% {
+        transform: scale(0.96);
+        opacity: 0.55;
+    }
+    100% {
+        transform: scale(1.04);
+        opacity: 0.95;
+    }
+}
+
+/* 5. Terminal Story Screen Styling */
+.story-overlay {
+    z-index: 15;
+}
+
+.story-card {
+    max-width: 680px;
+    width: 92%;
+    height: 75vh;
+    background: rgba(8, 10, 18, 0.98);
+    border: 2px solid #00ff66;
+    box-shadow: 0 0 25px rgba(0, 255, 102, 0.25), inset 0 0 15px rgba(0, 255, 102, 0.08);
+    color: #00ff66;
+    text-align: left !important;
+    display: flex;
+    flex-direction: column;
+    padding: 1.8rem !important;
+}
+
+.story-header {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.15rem;
+    font-weight: 700;
+    border-bottom: 2px solid rgba(0, 255, 102, 0.4);
+    padding-bottom: 0.8rem;
+    margin-bottom: 1.2rem;
+    color: #00ff66;
+    text-shadow: 0 0 8px rgba(0, 255, 102, 0.6);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.story-body {
+    flex-grow: 1;
+    overflow-y: auto;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    padding-right: 12px;
+}
+
+/* Custom scrollbar for story content */
+.story-body::-webkit-scrollbar {
+    width: 6px;
+}
+.story-body::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+}
+.story-body::-webkit-scrollbar-thumb {
+    background: #00ff66;
+    border-radius: 3px;
+}
+
+.story-paragraph {
+    margin-bottom: 1.2rem;
+    white-space: pre-wrap;
+    text-shadow: 0 0 2px rgba(0, 255, 102, 0.3);
+}
+
+.story-paragraph.text-neon-cyan {
+    color: #ffea00;
+    text-shadow: 0 0 4px rgba(255, 234, 0, 0.5);
+    font-weight: 700;
+}
+
+.story-paragraph:last-child::after {
+    content: ' █';
+    animation: story-cursor-blink 0.8s steps(2, start) infinite;
+    color: #00ff66;
+    text-shadow: 0 0 4px rgba(0, 255, 102, 0.8);
+}
+
+@keyframes story-cursor-blink {
+    to { visibility: hidden; }
+}
+
+.story-footer {
+    flex-shrink: 0;
+}
+
+.story-card .btn-success {
+    background: #00ff66;
+    border-color: #00ff66;
+    color: #080a12;
+    font-weight: 800;
+    text-shadow: none;
+    box-shadow: 0 0 10px rgba(0, 255, 102, 0.4);
+    transition: all 0.2s ease-in-out;
+}
+
+.story-card .btn-success:hover {
+    background: #00dd55;
+    border-color: #00dd55;
+    box-shadow: 0 0 18px rgba(0, 255, 102, 0.7);
+    transform: scale(1.02);
+}
+
+@media (max-width: 767.98px) {
+    .story-card {
+        height: 85vh;
+        max-height: 85vh;
+        width: 95%;
+        padding: 1.2rem !important;
+    }
+    .story-body {
+        font-size: 0.85rem;
+        line-height: 1.45;
+    }
+    .story-header {
+        font-size: 0.95rem;
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.8rem;
     }
 }

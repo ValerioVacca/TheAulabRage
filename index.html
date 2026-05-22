@@ -26,6 +26,12 @@
                                 </div>
                                 <div class="hud-chip">Livello: <span id="levelValue">1</span></div>
                                 <div class="hud-chip">Studenti: <span id="studentsValue">0</span></div>
+                                <div class="hud-chip hud-rage" id="hudRage">
+                                    <span class="hud-label">Furia</span>
+                                    <div class="rage-bar-container">
+                                        <div class="rage-bar-fill" id="rageBarFill"></div>
+                                    </div>
+                                </div>
                                 <button class="hud-btn mute-btn ms-auto" id="muteBtn" type="button" aria-label="Attiva/Disattiva Audio"></button>
                             </div>
 
@@ -44,199 +50,244 @@
                                 </div>
                             </div>
 
-                            <div class="overlay start-overlay" id="startOverlay">
-                                <div class="overlay-card">
-                                    <h1 class="mb-3">The Aulab Rage</h1>
-                                    <p class="mb-3" id="startDescription">
-                                        Valerio deve liberare l'ufficio Aulab inseguendo gli studenti che non studiano,
-                                        schivando le pietre e colpendoli con il suo martello... hem, sì... volevo dire "martello di gomma".
-                                    </p>
-                                    <p class="mb-3">
-                                        Ogni tanto compare un caffe': se lo raccogli, si attiva Charizard che vola
-                                        nell'arena e brucia uno studente.
-                                    </p>
-                                    <div class="teacher-selector-container mb-3 text-center">
-                                        <p class="small text-warning-emphasis mb-2 font-monospace text-uppercase" style="letter-spacing: 0.1em; font-size: 0.8rem;">Seleziona il tuo Docente:</p>
-                                        <div class="teacher-cards d-flex justify-content-center gap-3 overflow-x-auto py-2 px-1" id="teacherCards">
-                                            <!-- I docenti verranno inseriti dinamicamente via JS -->
-                                        </div>
-                                    </div>
-                                    <div class="hackademy-selector-container mb-4 text-center">
-                                        <p class="small text-warning-emphasis mb-2 font-monospace text-uppercase" style="letter-spacing: 0.1em; font-size: 0.8rem;">Seleziona la tua Hackademy:</p>
-                                        <div class="hackademy-pills d-flex justify-content-center gap-2 flex-wrap mb-2" id="hackademyPills">
-                                            <!-- Le hackademy verranno inserite dinamicamente via JS -->
-                                        </div>
-                                    </div>
-                                    <p class="controls-inline mb-4">
-                                        <span><strong>Movimento</strong> <kbd>W A S D</kbd> / <kbd>↑ ↓ ← →</kbd></span>
-                                        <span><strong>Colpo</strong> <kbd>Space</kbd></span>
-                                    </p>
-                                    <div class="d-flex justify-content-center gap-2 flex-wrap">
-                                        <button class="btn btn-warning btn-lg" id="startButton" type="button">
-                                            Inizia partita
-                                        </button>
-                                        <button class="btn btn-success btn-lg d-none" id="resumeButton" type="button">
-                                            Continua (Livello <span id="savedLevelNum">1</span>)
-                                        </button>
-                                        <button class="btn btn-outline-warning btn-lg" id="addTeacherBtn" type="button">
-                                            Aggiungi Docente
-                                        </button>
-                                        <button class="btn btn-outline-warning btn-lg" id="addHackademyBtn" type="button">
-                                            Nuova Hackademy
-                                        </button>
-                                        <button class="btn btn-outline-info btn-lg" id="openMapEditorBtn" type="button">
-                                            🗺️ Editor Mappa
-                                        </button>
-                                    </div>
+                            <!-- Gli overlay sono stati spostati al di fuori di .game-area per rimanere leggibili in modalita' responsive -->
+                        </div>
+                    </div>
+
+                    <!-- Overlay della Storia -->
+                    <div class="overlay story-overlay" id="storyOverlay">
+                        <div class="overlay-card story-card">
+                            <div class="story-header">
+                                <span class="story-terminal-icon">📟</span> PROGETTO_FINALE_BOOTCAMP.LOG
+                            </div>
+                            <div class="story-body" id="storyContent">
+                                <!-- Testo caricato dinamicamente via JS -->
+                            </div>
+                            <div class="story-footer mt-3">
+                                <button class="btn btn-success btn-lg w-100" id="closeStoryButton" type="button">
+                                    Accetta la Missione 🔨
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Overlay di Inizio Partita -->
+                    <div class="overlay start-overlay" id="startOverlay">
+                        <div class="overlay-card">
+                            <h1 class="mb-3">The Aulab Rage</h1>
+                            <p class="mb-3" id="startDescription">
+                                Valerio deve liberare l'ufficio Aulab inseguendo gli studenti che non studiano,
+                                schivando le pietre e colpendoli con il suo martello... hem, sì... volevo dire "martello di gomma".
+                            </p>
+                            <p class="mb-3">
+                                Ogni tanto compare un caffe': se lo raccogli, si attiva Charizard che vola
+                                nell'arena e brucia uno studente.
+                            </p>
+                            <div class="teacher-selector-container mb-3 text-center">
+                                <p class="small text-warning-emphasis mb-2 font-monospace text-uppercase" style="letter-spacing: 0.1em; font-size: 0.8rem;">Seleziona il tuo Docente:</p>
+                                <div class="teacher-cards d-flex justify-content-center gap-3 overflow-x-auto py-2 px-1" id="teacherCards">
+                                    <!-- I docenti verranno inseriti dinamicamente via JS -->
                                 </div>
                             </div>
+                            <div class="hackademy-selector-container mb-4 text-center">
+                                <p class="small text-warning-emphasis mb-2 font-monospace text-uppercase" style="letter-spacing: 0.1em; font-size: 0.8rem;">Seleziona la tua Hackademy:</p>
+                                <div class="hackademy-pills d-flex justify-content-center gap-2 flex-wrap mb-2" id="hackademyPills">
+                                    <!-- Le hackademy verranno inserite dinamicamente via JS -->
+                                </div>
+                            </div>
+                            <p class="controls-inline mb-4">
+                                <span><strong>Movimento</strong> <kbd>W A S D</kbd> / <kbd>↑ ↓ ← →</kbd></span>
+                                <span><strong>Colpo</strong> <kbd>Space</kbd></span>
+                            </p>
+                            <div class="d-flex justify-content-center gap-2 flex-wrap">
+                                <button class="btn btn-warning btn-lg" id="startButton" type="button">
+                                    Inizia partita
+                                </button>
+                                <button class="btn btn-success btn-lg d-none" id="resumeButton" type="button">
+                                    Continua (Livello <span id="savedLevelNum">1</span>)
+                                </button>
+                                <button class="btn btn-outline-warning btn-lg" id="addTeacherBtn" type="button">
+                                    Aggiungi Docente
+                                </button>
+                                <button class="btn btn-outline-warning btn-lg" id="addHackademyBtn" type="button">
+                                    Nuova Hackademy
+                                </button>
+                                <button class="btn btn-outline-info btn-lg" id="openMapEditorBtn" type="button">
+                                    🗺️ Editor Mappa
+                                </button>
+                                <button class="btn btn-outline-success btn-lg" id="storyButton" type="button">
+                                    📖 La Storia
+                                </button>
+                            </div>
+                        </div>
+                    </div>
 
-                            <!-- Map Editor Overlay -->
-                            <div class="overlay d-none" id="mapEditorOverlay">
-                                <div class="map-editor-card">
-                                    <div class="map-editor-header">
-                                        <h3 class="map-editor-title">🗺️ Editor Mappa</h3>
-                                        <div class="map-editor-actions">
-                                            <button class="btn btn-sm btn-outline-warning" id="mapEditorResetBtn" type="button">↺ Ripristina Default</button>
-                                            <button class="btn btn-sm btn-success" id="mapEditorSaveBtn" type="button">✔ Salva Mappa</button>
-                                            <button class="btn btn-sm btn-outline-light" id="mapEditorCloseBtn" type="button">✕ Chiudi</button>
-                                        </div>
+                    <!-- Overlay Editor Mappa -->
+                    <div class="overlay d-none" id="mapEditorOverlay">
+                        <div class="map-editor-card">
+                            <div class="map-editor-header">
+                                <h3 class="map-editor-title">🗺️ Editor Mappa</h3>
+                                <div class="map-editor-actions">
+                                    <button class="btn btn-sm btn-outline-warning" id="mapEditorResetBtn" type="button">↺ Ripristina Default</button>
+                                    <button class="btn btn-sm btn-success" id="mapEditorSaveBtn" type="button">✔ Salva Mappa</button>
+                                    <button class="btn btn-sm btn-outline-light" id="mapEditorCloseBtn" type="button">✕ Chiudi</button>
+                                </div>
+                            </div>
+                            <p class="map-editor-hint">Trascina gli oggetti sulla mappa • Click destro per eliminare • Le pareti perimetrali non possono essere rimosse</p>
+                            <div class="map-editor-body">
+                                <div class="map-editor-palette">
+                                    <p class="palette-title">Oggetti</p>
+                                    <div class="palette-item" data-type="desk" data-w="134" data-h="66" draggable="true" title="Banco (134×66)">
+                                        <div class="palette-preview desk"></div>
+                                        <span>Banco</span>
                                     </div>
-                                    <p class="map-editor-hint">Trascina gli oggetti sulla mappa • Click destro per eliminare • Le pareti perimetrali non possono essere rimosse</p>
-                                    <div class="map-editor-body">
-                                        <div class="map-editor-palette">
-                                            <p class="palette-title">Oggetti</p>
-                                            <div class="palette-item" data-type="desk" data-w="134" data-h="66" draggable="true" title="Banco (134×66)">
-                                                <div class="palette-preview desk"></div>
-                                                <span>Banco</span>
-                                            </div>
-                                            <div class="palette-item" data-type="chair" data-w="42" data-h="34" draggable="true" title="Sedia (42×34)">
-                                                <div class="palette-preview chair"></div>
-                                                <span>Sedia</span>
-                                            </div>
-                                            <div class="palette-item" data-type="computer" data-w="56" data-h="24" draggable="true" title="Computer (56×24)">
-                                                <div class="palette-preview computer"></div>
-                                                <span>Computer</span>
-                                            </div>
-                                            <div class="palette-item" data-type="board" data-w="244" data-h="22" draggable="true" title="Lavagna (244×22)">
-                                                <div class="palette-preview board"></div>
-                                                <span>Lavagna</span>
-                                            </div>
-                                            <div class="palette-item" data-type="plant" data-w="46" data-h="58" draggable="true" title="Pianta (46×58)">
-                                                <div class="palette-preview plant"></div>
-                                                <span>Pianta</span>
-                                            </div>
-                                            <div class="palette-item" data-type="bin" data-w="40" data-h="48" draggable="true" title="Cestino (40×48)">
-                                                <div class="palette-preview bin"></div>
-                                                <span>Cestino</span>
-                                            </div>
-                                            <div class="palette-item" data-type="wall" data-w="120" data-h="22" draggable="true" title="Muro (120×22)">
-                                                <div class="palette-preview wall"></div>
-                                                <span>Muro</span>
-                                            </div>
-                                            <div class="palette-divider"></div>
-                                            <p class="palette-title">Livello</p>
-                                            <div class="map-editor-level-btns">
-                                                <button class="map-level-btn active" data-level="1" type="button">Lv.1</button>
-                                                <button class="map-level-btn" data-level="2" type="button">Lv.2</button>
-                                                <button class="map-level-btn" data-level="3" type="button">Lv.3</button>
-                                            </div>
-                                        </div>
-                                        <div class="map-editor-canvas-wrap">
-                                            <div class="map-editor-canvas" id="mapEditorCanvas"></div>
-                                        </div>
+                                    <div class="palette-item" data-type="chair" data-w="42" data-h="34" draggable="true" title="Sedia (42×34)">
+                                        <div class="palette-preview chair"></div>
+                                        <span>Sedia</span>
                                     </div>
-                                </div>
-                            </div>
-
-
-                            <div class="overlay d-none" id="teacherModal">
-                                <div class="overlay-card modal-card" style="max-width: 480px; width: 90%;">
-                                    <h3 class="mb-3 text-warning">Aggiungi Nuovo Docente</h3>
-                                    <form id="addTeacherForm">
-                                        <div class="mb-3 text-start">
-                                            <label for="teacherName" class="form-label small text-uppercase font-monospace text-light">Nome Docente</label>
-                                            <input type="text" class="form-control bg-dark text-white border-secondary" id="teacherName" placeholder="Es. Valerio" required>
-                                        </div>
-                                        <div class="mb-3 text-start">
-                                            <label class="form-label small text-uppercase font-monospace text-light">Avatar (Immagine)</label>
-                                            <input type="file" class="form-control bg-dark text-white border-secondary mb-2" id="teacherImageFile" accept="image/*">
-                                            <div class="text-center my-1 text-muted small font-monospace">— oppure inserisci URL —</div>
-                                            <input type="url" class="form-control bg-dark text-white border-secondary" id="teacherImageUrl" placeholder="https://example.com/foto.png">
-                                            <div class="mt-3 d-flex align-items-center justify-content-center gap-3">
-                                                <span class="small text-muted font-monospace">Anteprima:</span>
-                                                <div class="rounded-circle border border-warning overflow-hidden" style="width: 50px; height: 50px; background: rgba(255,255,255,0.1);">
-                                                    <img id="imagePreview" src="" class="d-none" style="width: 100%; height: 100%; object-fit: cover;">
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="mb-3 text-start">
-                                            <label for="teacherTool" class="form-label small text-uppercase font-monospace text-light">Nome dello Strumento (Tool)</label>
-                                            <input type="text" class="form-control bg-dark text-white border-secondary" id="teacherTool" placeholder="Es. Righello in acciaio" required>
-                                        </div>
-                                        <div class="mb-3 text-start">
-                                            <label for="teacherToolStyle" class="form-label small text-uppercase font-monospace text-light">Grafica dello Strumento</label>
-                                            <select class="form-select bg-dark text-white border-secondary" id="teacherToolStyle">
-                                                <option value="hammer">Martello di gomma</option>
-                                                <option value="ruler">Righello</option>
-                                                <option value="book">Libro di programmazione</option>
-                                                <option value="laptop">Computer / Laptop</option>
-                                            </select>
-                                        </div>
-                                        <div class="d-flex justify-content-center gap-2 mt-4">
-                                            <button type="button" class="btn btn-outline-light" id="closeTeacherModal">Annulla</button>
-                                            <button type="submit" class="btn btn-warning text-dark font-weight-bold">Salva Docente</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-
-                            <div class="overlay d-none" id="hackademyModal">
-                                <div class="overlay-card modal-card" style="max-width: 480px; width: 90%;">
-                                    <h3 class="mb-3 text-warning">Aggiungi Nuova Hackademy</h3>
-                                    <form id="addHackademyForm">
-                                        <div class="mb-3 text-start">
-                                            <label for="hackademyName" class="form-label small text-uppercase font-monospace text-light">Nome Classe Hackademy</label>
-                                            <input type="text" class="form-control bg-dark text-white border-secondary" id="hackademyName" placeholder="Es. Hackademy 120" required>
-                                        </div>
-                                        <div class="mb-3 text-start">
-                                            <label for="hackademyStudentsCount" class="form-label small text-uppercase font-monospace text-light">Numero Studenti (1-15)</label>
-                                            <input type="number" class="form-control bg-dark text-white border-secondary" id="hackademyStudentsCount" min="1" max="15" value="5" required>
-                                        </div>
-                                        <div class="d-flex justify-content-center gap-2 mt-4">
-                                            <button type="button" class="btn btn-outline-light" id="closeHackademyModal">Annulla</button>
-                                            <button type="submit" class="btn btn-warning text-dark font-weight-bold">Salva Hackademy</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-
-                            <div class="overlay end-overlay d-none" id="endOverlay">
-                                <div class="overlay-card">
-                                    <p class="eyebrow mb-2" id="endEyebrow">Partita conclusa</p>
-                                    <h2 class="mb-3" id="endTitle">Risultato</h2>
-                                    <p class="mb-4" id="endMessage"></p>
-                                    <div class="d-flex justify-content-center gap-2">
-                                        <button class="btn btn-light btn-lg" id="restartButton" type="button">
-                                            Rigioca
-                                        </button>
-                                        <button class="btn btn-outline-light btn-lg" id="menuButton" type="button">
-                                            Menu Principale
-                                        </button>
+                                    <div class="palette-item" data-type="computer" data-w="56" data-h="24" draggable="true" title="Computer (56×24)">
+                                        <div class="palette-preview computer"></div>
+                                        <span>Computer</span>
+                                    </div>
+                                    <div class="palette-item" data-type="board" data-w="244" data-h="22" draggable="true" title="Lavagna (244×22)">
+                                        <div class="palette-preview board"></div>
+                                        <span>Lavagna</span>
+                                    </div>
+                                    <div class="palette-item" data-type="plant" data-w="46" data-h="58" draggable="true" title="Pianta (46×58)">
+                                        <div class="palette-preview plant"></div>
+                                        <span>Pianta</span>
+                                    </div>
+                                    <div class="palette-item" data-type="bin" data-w="40" data-h="48" draggable="true" title="Cestino (40×48)">
+                                        <div class="palette-preview bin"></div>
+                                        <span>Cestino</span>
+                                    </div>
+                                    <div class="palette-item" data-type="wall" data-w="120" data-h="22" draggable="true" title="Muro (120×22)">
+                                        <div class="palette-preview wall"></div>
+                                        <span>Muro</span>
+                                    </div>
+                                    <div class="palette-divider"></div>
+                                    <p class="palette-title">Livello</p>
+                                    <div class="map-editor-level-btns">
+                                        <button class="map-level-btn active" data-level="1" type="button">Lv.1</button>
+                                        <button class="map-level-btn" data-level="2" type="button">Lv.2</button>
+                                        <button class="map-level-btn" data-level="3" type="button">Lv.3</button>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div class="overlay d-none" id="intermissionOverlay">
-                                <div class="overlay-card">
-                                    <p class="eyebrow mb-2">Livello Completato!</p>
-                                    <h2 class="mb-3 text-warning" id="intermissionTitle">Livello Completato</h2>
-                                    <p class="mb-4 text-light" id="intermissionMessage">Preparati per la Sessione d'Esame...</p>
-                                    <button class="btn btn-warning btn-lg" id="intermissionButton" type="button">
-                                        Procedi
-                                    </button>
+                                <div class="map-editor-canvas-wrap">
+                                    <div class="map-editor-canvas" id="mapEditorCanvas"></div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal Aggiungi Docente -->
+                    <div class="overlay d-none" id="teacherModal">
+                        <div class="overlay-card modal-card" style="max-width: 480px; width: 90%;">
+                            <h3 class="mb-3 text-warning">Aggiungi Nuovo Docente</h3>
+                            <form id="addTeacherForm">
+                                <div class="mb-3 text-start">
+                                    <label for="teacherName" class="form-label small text-uppercase font-monospace text-light">Nome Docente</label>
+                                    <input type="text" class="form-control bg-dark text-white border-secondary" id="teacherName" placeholder="Es. Valerio" required>
+                                </div>
+                                <div class="mb-3 text-start">
+                                    <label class="form-label small text-uppercase font-monospace text-light">Avatar (Immagine)</label>
+                                    <input type="file" class="form-control bg-dark text-white border-secondary mb-2" id="teacherImageFile" accept="image/*">
+                                    <div class="text-center my-1 text-muted small font-monospace">— oppure inserisci URL —</div>
+                                    <input type="url" class="form-control bg-dark text-white border-secondary" id="teacherImageUrl" placeholder="https://example.com/foto.png">
+                                    <div class="mt-3 d-flex align-items-center justify-content-center gap-3">
+                                        <span class="small text-muted font-monospace">Anteprima:</span>
+                                        <div class="rounded-circle border border-warning overflow-hidden" style="width: 50px; height: 50px; background: rgba(255,255,255,0.1);">
+                                            <img id="imagePreview" src="" class="d-none" style="width: 100%; height: 100%; object-fit: cover;">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3 text-start">
+                                    <label for="teacherTool" class="form-label small text-uppercase font-monospace text-light">Nome dello Strumento (Tool)</label>
+                                    <input type="text" class="form-control bg-dark text-white border-secondary" id="teacherTool" placeholder="Es. Righello in acciaio" required>
+                                </div>
+                                <div class="mb-3 text-start">
+                                    <label for="teacherToolStyle" class="form-label small text-uppercase font-monospace text-light">Grafica dello Strumento</label>
+                                    <select class="form-select bg-dark text-white border-secondary" id="teacherToolStyle">
+                                        <option value="hammer">Martello di gomma</option>
+                                        <option value="ruler">Righello</option>
+                                        <option value="book">Libro di programmazione</option>
+                                        <option value="laptop">Computer / Laptop</option>
+                                    </select>
+                                </div>
+                                <div class="d-flex justify-content-center gap-2 mt-4">
+                                    <button type="button" class="btn btn-outline-light" id="closeTeacherModal">Annulla</button>
+                                    <button type="submit" class="btn btn-warning text-dark font-weight-bold">Salva Docente</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Modal Aggiungi Hackademy -->
+                    <div class="overlay d-none" id="hackademyModal">
+                        <div class="overlay-card modal-card" style="max-width: 480px; width: 90%;">
+                            <h3 class="mb-3 text-warning">Aggiungi Nuova Hackademy</h3>
+                            <form id="addHackademyForm">
+                                <div class="mb-3 text-start">
+                                    <label for="hackademyName" class="form-label small text-uppercase font-monospace text-light">Nome Classe Hackademy</label>
+                                    <input type="text" class="form-control bg-dark text-white border-secondary" id="hackademyName" placeholder="Es. Hackademy 120" required>
+                                </div>
+                                <div class="mb-3 text-start">
+                                    <label for="hackademyStudentsCount" class="form-label small text-uppercase font-monospace text-light">Numero Studenti (1-15)</label>
+                                    <input type="number" class="form-control bg-dark text-white border-secondary" id="hackademyStudentsCount" min="1" max="15" value="5" required>
+                                </div>
+                                <div class="d-flex justify-content-center gap-2 mt-4">
+                                    <button type="button" class="btn btn-outline-light" id="closeHackademyModal">Annulla</button>
+                                    <button type="submit" class="btn btn-warning text-dark font-weight-bold">Salva Hackademy</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Overlay Fine Partita -->
+                    <div class="overlay end-overlay d-none" id="endOverlay">
+                        <div class="overlay-card">
+                            <p class="eyebrow mb-2" id="endEyebrow">Partita conclusa</p>
+                            <h2 class="mb-3" id="endTitle">Risultato</h2>
+                            <p class="mb-4" id="endMessage"></p>
+                            <div class="d-flex justify-content-center gap-2">
+                                <button class="btn btn-light btn-lg" id="restartButton" type="button">
+                                    Rigioca
+                                </button>
+                                <button class="btn btn-outline-light btn-lg" id="menuButton" type="button">
+                                    Menu Principale
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Overlay Intermezzo Livello -->
+                    <div class="overlay d-none" id="intermissionOverlay">
+                        <div class="overlay-card">
+                            <p class="eyebrow mb-2">Livello Completato!</p>
+                            <h2 class="mb-3 text-warning" id="intermissionTitle">Livello Completato</h2>
+                            <p class="mb-4 text-light" id="intermissionMessage">Preparati per la Sessione d'Esame...</p>
+                            <button class="btn btn-warning btn-lg" id="intermissionButton" type="button">
+                                Procedi
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Controlli Touch per Dispositivi Mobili (Joystic & Attack Button) -->
+                    <div class="touch-controls" id="touchControls">
+                        <div class="joystick-container" id="joystickContainer">
+                            <div class="joystick-base">
+                                <div class="joystick-knob" id="joystickKnob"></div>
+                            </div>
+                        </div>
+                        <button class="touch-btn-attack" id="touchAttackBtn" type="button" aria-label="Attacca">🔨</button>
+                    </div>
+
+                    <!-- Avviso di Rotazione per Schermi Verticali (Portrait) -->
+                    <div class="portrait-warning" id="portraitWarning">
+                        <div class="warning-content">
+                            <div class="warning-icon">📱🔄</div>
+                            <h2>Ruota il dispositivo</h2>
+                            <p>Per giocare a "The Aulab Rage", inclina il tuo smartphone in orizzontale (Landscape).</p>
                         </div>
                     </div>
                 </div>
