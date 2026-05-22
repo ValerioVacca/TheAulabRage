@@ -30,6 +30,10 @@ const teacherToolStyleSelect = document.getElementById("teacherToolStyle");
 const closeTeacherModal = document.getElementById("closeTeacherModal");
 const teacherCardsContainer = document.getElementById("teacherCards");
 const startDescription = document.getElementById("startDescription");
+const resetCustomDataBtn = document.getElementById("resetCustomDataBtn");
+const resetConfirmModal = document.getElementById("resetConfirmModal");
+const cancelResetCustomDataBtn = document.getElementById("cancelResetCustomDataBtn");
+const confirmResetCustomDataBtn = document.getElementById("confirmResetCustomDataBtn");
 
 // Nuovi elementi DOM per la gestione dell'Hackademy
 const addHackademyBtn = document.getElementById("addHackademyBtn");
@@ -49,6 +53,8 @@ const levelValue = document.getElementById("levelValue");
 const resumeButton = document.getElementById("resumeButton");
 const savedLevelNum = document.getElementById("savedLevelNum");
 const menuButton = document.getElementById("menuButton");
+const finalWipModal = document.getElementById("finalWipModal");
+const finalWipMenuButton = document.getElementById("finalWipMenuButton");
 
 // Elementi DOM per la stamina
 const hudStamina = document.getElementById("hudStamina");
@@ -109,13 +115,6 @@ const defaultHackademies = [
         id: "standard",
         name: "Standard",
         studentsCount: 5
-    },
-    {
-        id: "notte_deploy",
-        name: "La Notte del Deploy",
-        studentsCount: 4,
-        isNightMode: true,
-        studentType: "zombie"
     }
 ];
 
@@ -136,6 +135,7 @@ const state = {
     heartPowerUp: null,
     dragonStrike: null,
     studiaStrike: null,
+    pendingStudiaShots: 0,
     nextPowerUpAt: 0,
     nextHeartPowerUpAt: 0,
     gameTimeMs: 0,
@@ -282,55 +282,6 @@ const levelConfigs = [
 
             { x: 580, y: 580, width: 134, height: 66, type: "desk" },
             { x: 626, y: 646, width: 42, height: 34, type: "chair" }
-        ]
-    }
-];
-
-// Configurazioni livelli per "La Notte del Deploy"
-const nightDeployLevelConfigs = [
-    {
-        id: 1,
-        projectilesPerShot: 1,
-        playerSpawn: { x: 72, y: 90 },
-        studentSpawns: [
-            { x: 800, y: 200 },
-            { x: 600, y: 400 },
-            { x: 1000, y: 300 },
-            { x: 400, y: 500 }
-        ],
-        obstacles: [
-            // Pareti perimetrali
-            { x: 0, y: 0, width: 1280, height: 24, type: "wall" },
-            { x: 0, y: 696, width: 1280, height: 24, type: "wall" },
-            { x: 0, y: 0, width: 24, height: 720, type: "wall" },
-            { x: 1256, y: 0, width: 24, height: 720, type: "wall" },
-
-            // Monitor accesi che emettono luce bluastra
-            { x: 200, y: 150, width: 64, height: 36, type: "monitor" },
-            { x: 400, y: 150, width: 64, height: 36, type: "monitor" },
-            { x: 600, y: 150, width: 64, height: 36, type: "monitor" },
-            { x: 800, y: 150, width: 64, height: 36, type: "monitor" },
-            { x: 1000, y: 150, width: 64, height: 36, type: "monitor" },
-
-            // Server aziendali (per stordire zombie)
-            { x: 150, y: 300, width: 80, height: 120, type: "server" },
-            { x: 450, y: 300, width: 80, height: 120, type: "server" },
-            { x: 750, y: 300, width: 80, height: 120, type: "server" },
-            { x: 1050, y: 300, width: 80, height: 120, type: "server" },
-
-            // Scrivanie nell'ombra
-            { x: 300, y: 450, width: 134, height: 66, type: "desk" },
-            { x: 600, y: 450, width: 134, height: 66, type: "desk" },
-            { x: 900, y: 450, width: 134, height: 66, type: "desk" },
-
-            // Sedie sparse
-            { x: 250, y: 520, width: 42, height: 34, type: "chair" },
-            { x: 550, y: 520, width: 42, height: 34, type: "chair" },
-            { x: 850, y: 520, width: 42, height: 34, type: "chair" },
-
-            // Cestini
-            { x: 100, y: 600, width: 40, height: 48, type: "bin" },
-            { x: 1180, y: 600, width: 40, height: 48, type: "bin" }
         ]
     }
 ];
@@ -549,8 +500,9 @@ function initTouchControls() {
     const joystickContainer = document.getElementById("joystickContainer");
     const joystickKnob = document.getElementById("joystickKnob");
     const touchAttackBtn = document.getElementById("touchAttackBtn");
+    const touchDodgeBtn = document.getElementById("touchDodgeBtn");
 
-    if (!joystickContainer || !joystickKnob || !touchAttackBtn) return;
+    if (!joystickContainer || !joystickKnob || !touchAttackBtn || !touchDodgeBtn) return;
 
     let activeTouchId = null;
     let baseCenterX = 0;
@@ -654,10 +606,26 @@ function initTouchControls() {
         }
     });
 
-    touchAttackBtn.addEventListener("touchstart", (e) => {
+    function bindTouchAction(button, action) {
+        const handler = (event) => {
+            action();
+            event.preventDefault();
+        };
+
+        if ("PointerEvent" in window) {
+            button.addEventListener("pointerdown", handler, { passive: false });
+        } else {
+            button.addEventListener("touchstart", handler, { passive: false });
+        }
+    }
+
+    bindTouchAction(touchAttackBtn, () => {
         attack();
-        e.preventDefault();
-    }, { passive: false });
+    });
+
+    bindTouchAction(touchDodgeBtn, () => {
+        queuePlayerDodge(getPreferredDodgeVector());
+    });
 }
 
 function bindEvents() {
@@ -671,6 +639,12 @@ function bindEvents() {
     });
     if (menuButton) {
         menuButton.addEventListener("click", () => {
+            resetGame();
+        });
+    }
+    if (finalWipMenuButton) {
+        finalWipMenuButton.addEventListener("click", () => {
+            closeFinalWipModal();
             resetGame();
         });
     }
@@ -691,6 +665,13 @@ function bindEvents() {
             if (key === "s" || key === "down") dodgeY = 1;
             if (key === "a" || key === "left") dodgeX = -1;
             if (key === "d" || key === "right") dodgeX = 1;
+
+            // Se premi CTRL mentre ti stai gia muovendo, usa la direzione attuale.
+            if (dodgeX === 0 && dodgeY === 0 && key === "control") {
+                const movement = getInputVector();
+                dodgeX = movement.x;
+                dodgeY = movement.y;
+            }
 
             if (dodgeX !== 0 || dodgeY !== 0) {
                 // Normalizza il vettore diagonale
@@ -823,6 +804,16 @@ function bindEvents() {
         hackademyModal.classList.add("d-none");
     });
 
+    if (resetCustomDataBtn) {
+        resetCustomDataBtn.addEventListener("click", openResetConfirmModal);
+    }
+    if (cancelResetCustomDataBtn) {
+        cancelResetCustomDataBtn.addEventListener("click", closeResetConfirmModal);
+    }
+    if (confirmResetCustomDataBtn) {
+        confirmResetCustomDataBtn.addEventListener("click", resetCustomData);
+    }
+
     // Mute button listener
     if (muteBtn) {
         muteBtn.addEventListener("click", toggleMute);
@@ -931,6 +922,7 @@ function resetGame() {
 
     startOverlay.classList.remove("d-none");
     endOverlay.classList.add("d-none");
+    closeFinalWipModal();
     if (intermissionOverlay) {
         intermissionOverlay.classList.add("d-none");
     }
@@ -951,6 +943,7 @@ function resumeGame() {
         state.lastFrame = performance.now();
         startOverlay.classList.add("d-none");
         endOverlay.classList.add("d-none");
+        closeFinalWipModal();
         startBackgroundMusic();
     }
 }
@@ -1002,6 +995,7 @@ function clearEntities() {
     state.heartPowerUp = null;
     state.dragonStrike = null;
     state.studiaStrike = null;
+    state.pendingStudiaShots = 0;
     state.player = null; // Risolve il bug del riavvio ricreando l'elemento del player nel DOM
     if (intermissionOverlay) {
         intermissionOverlay.classList.add("d-none");
@@ -1054,6 +1048,7 @@ function clearLevelActors(keepPlayer = true) {
     state.heartPowerUp = null;
     state.dragonStrike = null;
     state.studiaStrike = null;
+    state.pendingStudiaShots = 0;
     if (intermissionOverlay) {
         intermissionOverlay.classList.add("d-none");
     }
@@ -1189,6 +1184,41 @@ function selectHackademy(id, rebuild = true) {
     }
 }
 
+function resetCustomData() {
+    localStorage.removeItem("aulab_rage_teachers");
+    localStorage.removeItem("aulab_rage_hackademies");
+    localStorage.removeItem("aulab_rage_saved_level");
+    localStorage.setItem("aulab_rage_selected_teacher", "valerio");
+    localStorage.setItem("aulab_rage_selected_hackademy", "standard");
+
+    state.teachers = [...defaultTeachers];
+    state.hackademies = [...defaultHackademies];
+    state.selectedTeacherId = "valerio";
+    state.selectedHackademyId = "standard";
+
+    renderTeacherCards();
+    renderHackademyPills();
+    updateStartDescription();
+    closeResetConfirmModal();
+    resetGame();
+}
+
+function openResetConfirmModal() {
+    if (!resetConfirmModal) {
+        return;
+    }
+
+    resetConfirmModal.classList.remove("d-none");
+}
+
+function closeResetConfirmModal() {
+    if (!resetConfirmModal) {
+        return;
+    }
+
+    resetConfirmModal.classList.add("d-none");
+}
+
 function updateStartDescription() {
     const teacher = getSelectedTeacher();
     if (startDescription) {
@@ -1199,7 +1229,7 @@ function updateStartDescription() {
                 targetText = `la classe ${hackademy.name}`;
             }
         }
-        startDescription.innerHTML = `${teacher.name} deve liberare ${targetText} inseguendo gli studenti che non studiano, schivando le pietre e colpendoli con il suo ${teacher.tool}... hem, sì... volevo dire "${teacher.tool}".`;
+        startDescription.innerHTML = `I docenti devono liberare ${targetText} inseguendo gli studenti che non studiano, schivando le pietre e colpendoli con la loro arma... hem, sì... volevo dire "arma giocattolo".`;
     }
 }
 
@@ -1208,9 +1238,6 @@ function getSelectedTeacher() {
 }
 
 function getCurrentLevelConfig() {
-    if (state.selectedHackademyId === "notte_deploy") {
-        return nightDeployLevelConfigs.find((level) => level.id === state.currentLevel) || nightDeployLevelConfigs[0];
-    }
     return levelConfigs.find((level) => level.id === state.currentLevel) || levelConfigs[0];
 }
 
@@ -1224,13 +1251,6 @@ function buildLevel(levelNumber, resetPlayerLives = false) {
         gameArea.classList.add("emergency-mode");
     } else {
         gameArea.classList.remove("emergency-mode");
-    }
-
-    // Toggle night mode for "La Notte del Deploy"
-    if (state.selectedHackademyId === "notte_deploy") {
-        gameArea.classList.add("night-mode");
-    } else {
-        gameArea.classList.remove("night-mode");
     }
 
     // Usa la mappa personalizzata dell'editor se disponibile, altrimenti usa il default
@@ -1366,6 +1386,7 @@ function createPlayer(spawn, resetPlayerLives = false) {
         lastStaminaUse: 0,
         isDodging: false,
         dodgeEndsAt: 0,
+        dodgeDurationMs: GAME.dodgeDuration,
         dodgeStartX: 0,
         dodgeStartY: 0,
         dodgeTargetX: 0,
@@ -1391,6 +1412,7 @@ function repositionPlayer(spawn) {
     state.player.shieldHits = 0;
     state.player.speedBoostUntil = 0;
     state.player.superHammerUntil = 0;
+    state.player.dodgeDurationMs = GAME.dodgeDuration;
     state.player.element.classList.remove("attacking", "flash-damage", "shield-active", "speed-boosted", "super-hammer-active");
     state.player.element.removeAttribute("data-shield-hits");
     placeEntityInFreeSpot(state.player);
@@ -1422,11 +1444,6 @@ function createStudent(spawn, index) {
 
     let types = ["fast", "shooter", "dodger", "cheater"];
     let type = types[index % types.length];
-
-    // In modalità notte, crea solo zombie
-    if (state.selectedHackademyId === "notte_deploy") {
-        type = "zombie";
-    }
 
     if (type === "cheater") {
         const copyUI = document.createElement("div");
@@ -1460,6 +1477,8 @@ function createStudent(spawn, index) {
         dodgeCooldown: 0,
         dashTimer: 0,
         dashVector: null,
+        lastSafeX: spawn.x,
+        lastSafeY: spawn.y,
         element
     };
 
@@ -1472,6 +1491,8 @@ function createStudent(spawn, index) {
     element.style.setProperty("--student-hair-bottom", palette.hairBottom);
 
     placeEntityInFreeSpot(student);
+    student.lastSafeX = student.x;
+    student.lastSafeY = student.y;
     student.element.className = `entity student type-${type}`;
     gameArea.appendChild(student.element);
     updateStudentVisual(student, false);
@@ -1488,6 +1509,7 @@ function startGame() {
     state.lastFrame = performance.now();
     startOverlay.classList.add("d-none");
     endOverlay.classList.add("d-none");
+    closeFinalWipModal();
     startBackgroundMusic();
 }
 
@@ -1569,17 +1591,14 @@ function gameLoop(timestamp) {
 
 function updatePlayer(delta, timestamp) {
     let speedMult = 1.0;
+    const speedBoostActive = isPlayerSpeedBoostActive(timestamp);
     if (state.rageActive) {
         speedMult = 2.0;
-    } else if (state.player.speedBoostUntil) {
-        if (timestamp < state.player.speedBoostUntil) {
-            speedMult = 2.0;
-            state.player.element.classList.add("speed-boosted");
-        } else {
-            state.player.speedBoostUntil = 0;
-            state.player.element.classList.remove("speed-boosted");
-        }
+    } else if (speedBoostActive) {
+        speedMult = 2.0;
     }
+
+    state.player.element.classList.toggle("speed-boosted", speedBoostActive);
 
     if (state.player.superHammerUntil && timestamp >= state.player.superHammerUntil) {
         state.player.superHammerUntil = 0;
@@ -1640,13 +1659,15 @@ function updateStamina(delta, timestamp) {
             // Fine schivata
             state.player.isDodging = false;
             state.player.element.classList.remove("dodging");
+            state.player.dodgeDurationMs = GAME.dodgeDuration;
             return; // Esci dalla funzione per evitare ulteriori modifiche
         }
 
         // Calcola progresso con sicurezza
-        const dodgeStartTime = state.player.dodgeEndsAt - GAME.dodgeDuration;
+        const dodgeDuration = state.player.dodgeDurationMs || GAME.dodgeDuration;
+        const dodgeStartTime = state.player.dodgeEndsAt - dodgeDuration;
         const elapsed = Math.max(0, timestamp - dodgeStartTime);
-        const progress = Math.min(1, elapsed / GAME.dodgeDuration);
+        const progress = Math.min(1, elapsed / dodgeDuration);
 
         // Interpolazione lineare più semplice per ora
         const currentX = state.player.dodgeStartX +
@@ -1670,31 +1691,120 @@ function canDodge() {
 function performDodge(directionX, directionY, timestamp) {
     if (!canDodge()) return false;
 
+    // Calcola una destinazione sicura per evitare che la schivata finisca dentro gli ostacoli.
+    const dodgeDistance = GAME.dodgeDistance;
+    const startX = state.player.x;
+    const startY = state.player.y;
+    const rawTargetX = startX + (directionX * dodgeDistance);
+    const rawTargetY = startY + (directionY * dodgeDistance);
+    const clampedTargetX = Math.max(40, Math.min(GAME.width - 40, rawTargetX));
+    const clampedTargetY = Math.max(40, Math.min(GAME.height - 40, rawTargetY));
+    const safeTarget = getSafeDodgeTarget(state.player, clampedTargetX, clampedTargetY);
+
+    if (Math.abs(safeTarget.x - startX) < 0.5 && Math.abs(safeTarget.y - startY) < 0.5) {
+        return false;
+    }
+
     // Consuma stamina
     state.player.stamina -= GAME.staminaPerDodge;
     state.player.lastStaminaUse = timestamp;
 
-    // Calcola posizione target della schivata
-    const dodgeDistance = GAME.dodgeDistance;
-    state.player.dodgeStartX = state.player.x;
-    state.player.dodgeStartY = state.player.y;
-
-    // Calcola target con limiti dell'arena
-    const targetX = state.player.x + (directionX * dodgeDistance);
-    const targetY = state.player.y + (directionY * dodgeDistance);
-
-    // Assicura che la destinazione sia dentro i limiti
-    state.player.dodgeTargetX = Math.max(40, Math.min(GAME.width - 40, targetX));
-    state.player.dodgeTargetY = Math.max(40, Math.min(GAME.height - 40, targetY));
+    state.player.dodgeStartX = startX;
+    state.player.dodgeStartY = startY;
+    state.player.dodgeTargetX = safeTarget.x;
+    state.player.dodgeTargetY = safeTarget.y;
+    state.player.dodgeDurationMs = getPlayerDodgeDuration(timestamp);
 
     // Attiva schivata
     state.player.isDodging = true;
-    state.player.dodgeEndsAt = timestamp + GAME.dodgeDuration;
+    state.player.dodgeEndsAt = timestamp + state.player.dodgeDurationMs;
     state.player.element.classList.add("dodging");
 
     // Effetto sonoro della schivata
     playDodgeSound();
 
+    return true;
+}
+
+function isPlayerSpeedBoostActive(timestamp) {
+    if (!state.player || !state.player.speedBoostUntil) {
+        return false;
+    }
+
+    if (timestamp < state.player.speedBoostUntil) {
+        return true;
+    }
+
+    state.player.speedBoostUntil = 0;
+    return false;
+}
+
+function getPlayerDodgeDuration(timestamp) {
+    if (isPlayerSpeedBoostActive(timestamp)) {
+        return GAME.dodgeDuration / 2;
+    }
+
+    return GAME.dodgeDuration;
+}
+
+function getSafeDodgeTarget(entity, targetX, targetY) {
+    const startX = entity.x;
+    const startY = entity.y;
+    const totalDistance = Math.hypot(targetX - startX, targetY - startY);
+    const steps = Math.max(1, Math.ceil(totalDistance / 6));
+    const testEntity = {
+        ...entity,
+        isPlayerCollisionProbe: entity === state.player
+    };
+
+    let safeX = startX;
+    let safeY = startY;
+
+    for (let step = 1; step <= steps; step += 1) {
+        const progress = step / steps;
+        testEntity.x = startX + (targetX - startX) * progress;
+        testEntity.y = startY + (targetY - startY) * progress;
+
+        if (hitsObstacle(testEntity)) {
+            break;
+        }
+
+        safeX = testEntity.x;
+        safeY = testEntity.y;
+    }
+
+    return { x: safeX, y: safeY };
+}
+
+function getPreferredDodgeVector() {
+    const movement = getInputVector();
+    if (movement.x !== 0 || movement.y !== 0) {
+        return movement;
+    }
+
+    if (!state.player) {
+        return { x: 0, y: 0 };
+    }
+
+    const facingVectors = {
+        up: { x: 0, y: -1 },
+        down: { x: 0, y: 1 },
+        left: { x: -1, y: 0 },
+        right: { x: 1, y: 0 }
+    };
+
+    return facingVectors[state.player.direction] || facingVectors.right;
+}
+
+function queuePlayerDodge(vector) {
+    if (!state.running || !state.player) return false;
+
+    const normalized = normalizeVector(vector.x, vector.y);
+    if (normalized.x === 0 && normalized.y === 0) {
+        return false;
+    }
+
+    state.pendingDodge = normalized;
     return true;
 }
 
@@ -1720,6 +1830,8 @@ function getInputVector() {
 
 function updateStudents(delta, timestamp) {
     state.students.forEach((student) => {
+        rememberStudentSafePosition(student);
+
         if (student.isChanting) {
             // Guarda verso il falò al centro (640, 360)
             const dx = 640 - centerOf(student).x;
@@ -1732,6 +1844,7 @@ function updateStudents(delta, timestamp) {
                 student.talkTimer = randomBetween(1500, 3000);
                 speakChant(student);
             }
+            stabilizeStudentPosition(student);
             return;
         }
 
@@ -1938,6 +2051,8 @@ function updateStudents(delta, timestamp) {
             student.talkTimer = randomBetween(GAME.studentTalkMin, GAME.studentTalkMax);
             speakStudent(student);
         }
+
+        stabilizeStudentPosition(student);
     });
 }
 
@@ -2002,17 +2117,7 @@ function updateProjectiles(delta, timestamp) {
     const nextProjectiles = [];
 
     state.projectiles.forEach((projectile) => {
-        projectile.x += projectile.velocityX * delta;
-        projectile.y += projectile.velocityY * delta;
-        syncEntity(projectile);
-
-        const outsideArena =
-            projectile.x < 0 ||
-            projectile.y < 0 ||
-            projectile.x + projectile.width > GAME.width ||
-            projectile.y + projectile.height > GAME.height;
-
-        const hitsObstacle = state.obstacles.some((obstacle) => rectsIntersect(projectile, obstacle));
+        const { outsideArena, hitsObstacle } = advanceProjectile(projectile, delta);
 
         if (outsideArena || hitsObstacle) {
             projectile.element.remove();
@@ -2050,19 +2155,7 @@ function updateTeacherProjectiles(delta, timestamp) {
     const nextTeacherProjectiles = [];
 
     state.teacherProjectiles.forEach((projectile) => {
-        projectile.x += projectile.velocityX * delta;
-        projectile.y += projectile.velocityY * delta;
-        syncEntity(projectile);
-
-        // Rimuovi se esce dall'arena
-        const outsideArena =
-            projectile.x < 0 ||
-            projectile.y < 0 ||
-            projectile.x + projectile.width > GAME.width ||
-            projectile.y + projectile.height > GAME.height;
-
-        // Rimuovi se colpisce un ostacolo
-        const hitsObstacle = state.obstacles.some((obstacle) => rectsIntersect(projectile, obstacle));
+        const { outsideArena, hitsObstacle } = advanceProjectile(projectile, delta);
 
         if (outsideArena || hitsObstacle) {
             projectile.element.remove();
@@ -2105,6 +2198,40 @@ function updateTeacherProjectiles(delta, timestamp) {
     state.teacherProjectiles = nextTeacherProjectiles;
 }
 
+function advanceProjectile(projectile, delta) {
+    const totalStepX = projectile.velocityX * delta;
+    const totalStepY = projectile.velocityY * delta;
+    const maxStep = Math.max(Math.abs(totalStepX), Math.abs(totalStepY));
+    const steps = Math.max(1, Math.ceil(maxStep / 6));
+    const stepX = totalStepX / steps;
+    const stepY = totalStepY / steps;
+
+    for (let i = 0; i < steps; i += 1) {
+        projectile.x += stepX;
+        projectile.y += stepY;
+
+        const outsideArena =
+            projectile.x < 0 ||
+            projectile.y < 0 ||
+            projectile.x + projectile.width > GAME.width ||
+            projectile.y + projectile.height > GAME.height;
+
+        if (outsideArena) {
+            syncEntity(projectile);
+            return { outsideArena: true, hitsObstacle: false };
+        }
+
+        const hitsObstacle = state.obstacles.some((obstacle) => rectsIntersect(projectile, obstacle));
+        if (hitsObstacle) {
+            syncEntity(projectile);
+            return { outsideArena: false, hitsObstacle: true };
+        }
+    }
+
+    syncEntity(projectile);
+    return { outsideArena: false, hitsObstacle: false };
+}
+
 function updatePowerUps(delta) {
     if (!state.powerUp && !state.dragonStrike && !state.studiaStrike && state.gameTimeMs >= state.nextPowerUpAt && state.students.length > 0) {
         spawnPowerUp();
@@ -2118,7 +2245,7 @@ function updatePowerUps(delta) {
         spawnHeartPowerUp();
     }
 
-    if (state.powerUp && rectsIntersect(state.powerUp, state.player)) {
+    if (state.powerUp && canCollectPickup(state.powerUp)) {
         collectPowerUp();
     } else if (state.powerUp) {
         const remainingMs = Math.max(0, state.powerUp.expiresAt - state.gameTimeMs);
@@ -2130,7 +2257,7 @@ function updatePowerUps(delta) {
         }
     }
 
-    if (state.heartPowerUp && rectsIntersect(state.heartPowerUp, state.player)) {
+    if (state.heartPowerUp && canCollectPickup(state.heartPowerUp)) {
         collectHeartPowerUp();
     } else if (state.heartPowerUp) {
         const remainingMs = Math.max(0, state.heartPowerUp.expiresAt - state.gameTimeMs);
@@ -2296,10 +2423,8 @@ function pushZombieAndCheckServer(zombie, pushVector) {
         speakTeacher("Server power! Zombie offline!");
         increaseRage(30); // Bonus rage per lo stordimento strategico
     } else {
-        // Movimento normale
-        zombie.x = clamp(newX, 24, GAME.width - zombie.width - 24);
-        zombie.y = clamp(newY, 24, GAME.height - zombie.height - 24);
-        syncEntity(zombie);
+        moveWithCollisions(zombie, pushVector.x * pushDistance, pushVector.y * pushDistance);
+        stabilizeStudentPosition(zombie);
     }
 }
 
@@ -2537,50 +2662,138 @@ function damagePlayer() {
 }
 
 function moveWithCollisions(entity, stepX, stepY) {
-    // Risolviamo X e Y separatamente per evitare che i personaggi attraversino gli ostacoli in diagonale.
-    const originalX = entity.x;
-    entity.x += stepX;
+    const originX = entity.x;
+    const originY = entity.y;
+    const maxStep = Math.max(Math.abs(stepX), Math.abs(stepY));
+    const steps = Math.max(1, Math.ceil(maxStep / 6));
+    const deltaX = stepX / steps;
+    const deltaY = stepY / steps;
+
+    for (let i = 0; i < steps; i += 1) {
+        const previousX = entity.x;
+        entity.x += deltaX;
+        entity.x = clamp(entity.x, 24, GAME.width - entity.width - 24);
+
+        if (hitsObstacle(entity)) {
+            entity.x = previousX;
+        }
+
+        const previousY = entity.y;
+        entity.y += deltaY;
+        entity.y = clamp(entity.y, 24, GAME.height - entity.height - 24);
+
+        if (hitsObstacle(entity)) {
+            entity.y = previousY;
+        }
+    }
+
+    if (hitsObstacle(entity)) {
+        entity.x = originX;
+        entity.y = originY;
+    }
+
     entity.x = clamp(entity.x, 24, GAME.width - entity.width - 24);
-
-    if (hitsObstacle(entity)) {
-        entity.x = originalX;
-    }
-
-    const originalY = entity.y;
-    entity.y += stepY;
     entity.y = clamp(entity.y, 24, GAME.height - entity.height - 24);
-
-    if (hitsObstacle(entity)) {
-        entity.y = originalY;
-    }
-
     syncEntity(entity);
 }
 
-function placeEntityInFreeSpot(entity) {
-    if (!hitsObstacle(entity)) {
-        return;
-    }
+function isEntityInsideArena(entity) {
+    return (
+        entity.x >= 24 &&
+        entity.y >= 24 &&
+        entity.x <= GAME.width - entity.width - 24 &&
+        entity.y <= GAME.height - entity.height - 24
+    );
+}
 
-    const originX = entity.x;
-    const originY = entity.y;
+function isFreePositionForEntity(entity, x, y) {
+    const testEntity = {
+        ...entity,
+        x: clamp(x, 24, GAME.width - entity.width - 24),
+        y: clamp(y, 24, GAME.height - entity.height - 24)
+    };
+
+    return isEntityInsideArena(testEntity) && !hitsObstacle(testEntity);
+}
+
+function findNearestFreeSpot(entity, originX = entity.x, originY = entity.y) {
+    const clampedOriginX = clamp(originX, 24, GAME.width - entity.width - 24);
+    const clampedOriginY = clamp(originY, 24, GAME.height - entity.height - 24);
     const maxRadius = 220;
     const step = 12;
+
+    if (isFreePositionForEntity(entity, clampedOriginX, clampedOriginY)) {
+        return { x: clampedOriginX, y: clampedOriginY };
+    }
 
     for (let radius = step; radius <= maxRadius; radius += step) {
         for (let angle = 0; angle < 360; angle += 30) {
             const radians = angle * (Math.PI / 180);
-            entity.x = clamp(originX + Math.cos(radians) * radius, 24, GAME.width - entity.width - 24);
-            entity.y = clamp(originY + Math.sin(radians) * radius, 24, GAME.height - entity.height - 24);
+            const testX = clampedOriginX + Math.cos(radians) * radius;
+            const testY = clampedOriginY + Math.sin(radians) * radius;
 
-            if (!hitsObstacle(entity)) {
-                return;
+            if (isFreePositionForEntity(entity, testX, testY)) {
+                return {
+                    x: clamp(testX, 24, GAME.width - entity.width - 24),
+                    y: clamp(testY, 24, GAME.height - entity.height - 24)
+                };
             }
         }
     }
 
-    entity.x = clamp(originX, 24, GAME.width - entity.width - 24);
-    entity.y = clamp(originY, 24, GAME.height - entity.height - 24);
+    return { x: clampedOriginX, y: clampedOriginY };
+}
+
+function placeEntityInFreeSpot(entity) {
+    if (isEntityInsideArena(entity) && !hitsObstacle(entity)) {
+        return;
+    }
+
+    const safeSpot = findNearestFreeSpot(entity, entity.x, entity.y);
+    entity.x = safeSpot.x;
+    entity.y = safeSpot.y;
+}
+
+function rememberStudentSafePosition(student) {
+    if (!student || student.studentType === undefined) {
+        return;
+    }
+
+    if (isEntityInsideArena(student) && !hitsObstacle(student)) {
+        student.lastSafeX = student.x;
+        student.lastSafeY = student.y;
+    }
+}
+
+function stabilizeStudentPosition(student) {
+    if (!student || student.studentType === undefined) {
+        return;
+    }
+
+    student.x = clamp(student.x, 24, GAME.width - student.width - 24);
+    student.y = clamp(student.y, 24, GAME.height - student.height - 24);
+
+    if (isEntityInsideArena(student) && !hitsObstacle(student)) {
+        student.lastSafeX = student.x;
+        student.lastSafeY = student.y;
+        syncEntity(student);
+        return;
+    }
+
+    const hasSafeMemory =
+        Number.isFinite(student.lastSafeX) &&
+        Number.isFinite(student.lastSafeY) &&
+        isFreePositionForEntity(student, student.lastSafeX, student.lastSafeY);
+
+    const fallback = hasSafeMemory
+        ? { x: student.lastSafeX, y: student.lastSafeY }
+        : findNearestFreeSpot(student, student.x, student.y);
+
+    student.x = fallback.x;
+    student.y = fallback.y;
+    student.lastSafeX = fallback.x;
+    student.lastSafeY = fallback.y;
+    syncEntity(student);
 }
 
 function placePowerUpInFreeSpot(entity) {
@@ -2600,8 +2813,9 @@ function placePowerUpInFreeSpot(entity) {
         const overlapsOtherPowerUp =
             (state.powerUp && rectsIntersect(entity, state.powerUp)) ||
             (state.heartPowerUp && rectsIntersect(entity, state.heartPowerUp));
+        const overlapsBossOrCampfire = isPickupBlockedByBossOrCampfire(entity);
 
-        if (!hitsObstacle(entity) && !overlapsActor && !overlapsOtherPowerUp) {
+        if (!hitsObstacle(entity) && !overlapsActor && !overlapsOtherPowerUp && !overlapsBossOrCampfire) {
             return;
         }
     }
@@ -2610,8 +2824,47 @@ function placePowerUpInFreeSpot(entity) {
     entity.y = minY;
 }
 
+function getCampfireRect() {
+    if (!state.campfireElement) return null;
+
+    const left = parseFloat(state.campfireElement.style.left || "0");
+    const top = parseFloat(state.campfireElement.style.top || "0");
+
+    return {
+        x: left,
+        y: top,
+        width: 80,
+        height: 80
+    };
+}
+
+function isPickupBlockedByBossOrCampfire(entity) {
+    const pickupRect = expandRect(entity, 10);
+    const campfireRect = getCampfireRect();
+
+    if (campfireRect && rectsIntersect(pickupRect, expandRect(campfireRect, 6))) {
+        return true;
+    }
+
+    if (state.boss && rectsIntersect(pickupRect, expandRect(state.boss, 12))) {
+        return true;
+    }
+
+    return false;
+}
+
+function canCollectPickup(pickup) {
+    if (!state.player) return false;
+
+    const playerPickupRect = expandRect(getCollisionRect(state.player), 24);
+    const playerBodyRect = expandRect(state.player, 4);
+    const pickupRect = expandRect(pickup, 14);
+
+    return rectsIntersect(playerPickupRect, pickupRect) || rectsIntersect(playerBodyRect, pickupRect);
+}
+
 function getCollisionRect(entity) {
-    if (entity === state.player) {
+    if (entity === state.player || entity.isPlayerCollisionProbe) {
         // Docente (Player): visual 62x74. Shrink physics to bottom 20px (feet), 30px width (centered)
         return {
             x: entity.x + 16,
@@ -2628,11 +2881,11 @@ function getCollisionRect(entity) {
             height: 30
         };
     } else if (entity && entity.studentType !== undefined) {
-        // Studenti: visual 52x60. Shrink physics to bottom 18px, 26px width (centered)
+        // Studenti: hitbox dei piedi un po' piu' larga per evitare compenetrazioni visive con ostacoli/bordi.
         return {
-            x: entity.x + 13,
+            x: entity.x + 10,
             y: entity.y + 42,
-            width: 26,
+            width: 32,
             height: 18
         };
     }
@@ -2709,7 +2962,7 @@ function advanceToNextLevel() {
             }
         } else if (state.currentLevel === 2) {
             intermissionTitle.textContent = "Livello 2 Completato! 🔥";
-            intermissionMessage.textContent = "Attento! Gli studenti si stanno radunando attorno al fuoco per evocare qualcosa di spaventoso nel Livello 3...";
+            intermissionMessage.textContent = "Attento! Nel Livello 3 gli studenti si raduneranno attorno al fuoco per evocare qualcosa di spaventoso. Per fermarli e colpire anche da lontano, comparira un nuovo power-up: STUDIA.";
             if (intermissionButton) {
                 intermissionButton.textContent = "Affronta il Livello 3 (Boss Battle)";
             }
@@ -2738,9 +2991,9 @@ function spawnPowerUp() {
     
     let types = ["coffee", "shield", "speed", "super_hammer"];
 
-    // Nel livello 3, aggiungi il power-up "studia"
-    if (state.currentLevel === 3) {
-        types = ["coffee", "shield", "speed", "super_hammer", "studia", "studia"]; // Più probabilità per studia nel lvl 3
+    // Nel livello 3, aumenta molto la probabilita' del power-up "studia" solo quando il boss e' presente.
+    if (state.currentLevel === 3 && state.boss) {
+        types = ["coffee", "shield", "speed", "super_hammer", "studia", "studia", "studia", "studia", "studia", "studia"];
     }
 
     const type = types[Math.floor(Math.random() * types.length)];
@@ -2792,7 +3045,15 @@ function spawnPowerUpAt(x, y, type) {
     counter.className = "powerup-counter";
     counter.textContent = "3";
     powerUp.element.append(counter, icon);
-    
+
+    const overlapsActor =
+        rectsIntersect(powerUp, state.player) ||
+        state.students.some((student) => rectsIntersect(powerUp, student));
+
+    if (hitsObstacle(powerUp) || isPickupBlockedByBossOrCampfire(powerUp) || overlapsActor) {
+        placePowerUpInFreeSpot(powerUp);
+    }
+
     syncEntity(powerUp);
     gameArea.appendChild(powerUp.element);
     state.powerUp = powerUp;
@@ -2854,9 +3115,14 @@ function collectPowerUp() {
         state.player.superHammerUntil = now + 8000;
         state.player.element.classList.add("super-hammer-active");
     } else if (type === "studia") {
-        playTeacherRangedSound();
-        launchStudiaStrike(origin);
-        speakTeacher("STUDIA lanciato! Inseguirà il boss!");
+        state.pendingStudiaShots += 1;
+        if (tryLaunchStudiaStrike()) {
+            speakTeacher("STUDIA lanciato! Inseguirà il boss!");
+        } else if (state.boss) {
+            speakTeacher("Altro STUDIA pronto! Partira' subito dopo!");
+        } else {
+            speakTeacher("STUDIA pronto! Partira' appena arriva il boss!");
+        }
     }
 
     state.nextPowerUpAt = state.gameTimeMs + getPowerUpRespawnDelay();
@@ -2971,18 +3237,20 @@ function pickDragonTargetId() {
 
 function launchStudiaStrike(origin) {
     const element = document.createElement("div");
-    element.className = "teacher-projectile"; // Riutilizziamo lo stile esistente
+    element.className = "teacher-projectile";
+    element.textContent = "STUDIA";
 
     const strike = {
         x: origin.x - 30,
         y: origin.y - 12,
         width: 60,
         height: 24,
+        angle: 0,
         element: element
     };
 
     gameArea.appendChild(element);
-    syncEntity(strike);
+    syncStudiaStrike(strike);
     state.studiaStrike = strike;
 }
 
@@ -2996,18 +3264,71 @@ function updateStudiaStrike(delta) {
     const strikeCenter = centerOf(state.studiaStrike);
     const bossCenter = centerOf(state.boss);
     const vector = normalizeVector(bossCenter.x - strikeCenter.x, bossCenter.y - strikeCenter.y);
+    state.studiaStrike.angle = Math.atan2(vector.y, vector.x);
 
     state.studiaStrike.x += vector.x * GAME.dragonSpeed * delta;
     state.studiaStrike.y += vector.y * GAME.dragonSpeed * delta;
-    syncEntity(state.studiaStrike);
+    syncStudiaStrike(state.studiaStrike);
 
     if (rectsIntersect(expandRect(state.studiaStrike, -10), state.boss)) {
+        createStudiaImpact(
+            state.boss.x + state.boss.width / 2 - 30,
+            state.boss.y + state.boss.height / 2 - 30
+        );
+        state.boss.element.classList.add("studia-hit");
+        window.setTimeout(() => {
+            state.boss?.element?.classList.remove("studia-hit");
+        }, 260);
         createHitEffect(state.boss.x + state.boss.width / 2 - 18, state.boss.y + state.boss.height / 2 - 18);
         damageBoss();
         increaseRage(25);
         state.studiaStrike.element.remove();
         state.studiaStrike = null;
+        tryLaunchStudiaStrike();
     }
+}
+
+function syncStudiaStrike(strike) {
+    strike.element.style.transform = `translate(${strike.x}px, ${strike.y}px) rotate(${strike.angle || 0}rad)`;
+}
+
+function playPlayerRangedAttackAnimation() {
+    if (!state.player?.element) return;
+
+    state.player.element.classList.add("ranged-attacking");
+    window.setTimeout(() => {
+        state.player?.element?.classList.remove("ranged-attacking");
+    }, 300);
+}
+
+function tryLaunchStudiaStrike() {
+    if (!state.player || !state.boss || state.pendingStudiaShots <= 0 || state.studiaStrike) {
+        return false;
+    }
+
+    state.pendingStudiaShots -= 1;
+    playTeacherRangedSound();
+    playPlayerRangedAttackAnimation();
+    launchStudiaStrike(centerOf(state.player));
+    return true;
+}
+
+function createStudiaImpact(x, y) {
+    const effect = {
+        element: document.createElement("div")
+    };
+
+    effect.element.className = "effect studia-impact";
+    effect.element.textContent = "STUDIA!";
+    effect.element.style.left = `${x}px`;
+    effect.element.style.top = `${y}px`;
+    gameArea.appendChild(effect.element);
+    state.effects.push(effect);
+
+    window.setTimeout(() => {
+        effect.element.remove();
+        state.effects = state.effects.filter((entry) => entry !== effect);
+    }, 420);
 }
 
 function getStudentById(id) {
@@ -3087,6 +3408,13 @@ function finishGame(isVictory) {
     } else {
         localStorage.removeItem("aulab_rage_saved_level");
     }
+
+    if (isVictory && state.selectedHackademyId === "standard" && state.currentLevel === levelConfigs.length) {
+        selectHackademy("standard", false);
+        showFinalWipModal();
+        return;
+    }
+
     endOverlay.classList.remove("d-none");
     endEyebrow.textContent = isVictory ? "Arena ripulita" : "Missione fallita";
     endTitle.textContent = isVictory ? "Vittoria" : "Game Over";
@@ -3110,6 +3438,23 @@ function finishGame(isVictory) {
     } else {
         endMessage.textContent = `Le pietre hanno fermato ${teacher.name}. Riprova e libera l'ufficio dagli studenti svogliati.`;
     }
+}
+
+function showFinalWipModal() {
+    if (!finalWipModal) {
+        return;
+    }
+
+    endOverlay.classList.add("d-none");
+    finalWipModal.classList.remove("d-none");
+}
+
+function closeFinalWipModal() {
+    if (!finalWipModal) {
+        return;
+    }
+
+    finalWipModal.classList.add("d-none");
 }
 
 function updateHud() {
@@ -3301,12 +3646,6 @@ function scheduleMusicChunk() {
 
     const ctx = audioState.context;
     const lookAhead = 1.6;
-
-    // Modalità notte: battito cardiaco al posto della musica normale
-    if (state.selectedHackademyId === "notte_deploy") {
-        scheduleHeartbeatMusic(ctx, lookAhead);
-        return;
-    }
 
     const stepDuration = state.rageActive ? 0.22 : 0.34;
     const freqMult = state.rageActive ? 1.5 : 1.0;
@@ -3827,11 +4166,9 @@ function spawnBoss() {
         speed: 1.1,
         direction: "right",
         lastShotAt: 0,
-        lastSummonAt: 0,
         lastSpeechAt: 0,
         speechTimeoutId: null,
         shootCooldown: 2200,
-        summonCooldown: 8000,
         element
     };
     
@@ -3848,6 +4185,7 @@ function spawnBoss() {
     
     triggerScreenShake(800, 8);
     playBossShotSound(true);
+    tryLaunchStudiaStrike();
 }
 
 function triggerBossIntro() {
@@ -3989,14 +4327,6 @@ function updateBoss(delta, timestamp) {
         bossShoot(timestamp);
     }
     
-    // Evocazioni minion periodiche
-    if (!state.boss.lastSummonAt) {
-        state.boss.lastSummonAt = timestamp;
-    }
-    if (timestamp - state.boss.lastSummonAt > state.boss.summonCooldown) {
-        bossSummonStudent(timestamp);
-    }
-
     // Ripetizione frase "SKIBIDIBOPPI" a video e audio
     if (!state.boss.lastSpeechAt) {
         state.boss.lastSpeechAt = timestamp;
