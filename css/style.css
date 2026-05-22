@@ -1837,7 +1837,7 @@ kbd {
     width: 100px;
     height: 120px;
     position: absolute;
-    z-index: 6;
+    z-index: 500; /* ensure boss appears above overlays and other entities */
     transition: transform 0.1s linear;
 }
 .boss-figure {

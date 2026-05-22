@@ -243,13 +243,7 @@ const levelConfigs = [
             { x: 0, y: 0, width: 24, height: 720, type: "wall" },
             { x: 1256, y: 0, width: 24, height: 720, type: "wall" },
             
-            // Server racks (emitting sparks and fire)
-            { x: 280, y: 100, width: 80, height: 120, type: "server" },
-            { x: 200, y: 460, width: 80, height: 120, type: "server" },
-            { x: 920, y: 120, width: 80, height: 120, type: "server" },
-            { x: 1000, y: 480, width: 80, height: 120, type: "server" },
-            { x: 500, y: 60, width: 80, height: 120, type: "server" },
-            { x: 740, y: 60, width: 80, height: 120, type: "server" },
+            // Server racks removed (Level 3) // removed to match new design
 
             // Chaotic scattered obstacles (well-spaced to prevent movement blocks)
             { x: 100, y: 140, width: 134, height: 66, type: "desk" },
@@ -3105,8 +3099,8 @@ function speakTeacher(message) {
 
     const utterance = new SpeechSynthesisUtterance(message);
     utterance.lang = "it-IT";
-    utterance.rate = 0.95;
-    utterance.pitch = 0.75;
+    utterance.rate = 1.15;
+    utterance.pitch = 0.5;
     utterance.volume = 0.95;
     synth.speak(utterance);
 }
@@ -3376,7 +3370,7 @@ function speakBossSkibidiboppi(bypassRunning = false) {
         }, 2000);
     }
 
-    // Gestione sintesi vocale (audio grave e lento)
+    // Gestione sintesi vocale (audio grave e veloce)
     if (!audioState.speechEnabled || audioState.muted) return;
 
     const synth = window.speechSynthesis;
@@ -3389,8 +3383,8 @@ function speakBossSkibidiboppi(bypassRunning = false) {
 
     const utterance = new SpeechSynthesisUtterance("SKIBIDIBOPPI");
     utterance.lang = "it-IT";
-    utterance.rate = 0.5;  // tempo lento
-    utterance.pitch = 0.3; // timbro molto grave
+    utterance.rate = 1.0;
+    utterance.pitch = 0.3; 
     utterance.volume = 1.0;
     synth.speak(utterance);
 }
