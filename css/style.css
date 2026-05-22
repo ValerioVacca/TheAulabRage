@@ -2089,6 +2089,17 @@ kbd {
     animation: boss-bubble-pop 2.5s ease forwards;
 }
 
+/* Custom speak bubble for the teacher */
+.speech-bubble.teacher-bubble {
+    font-size: 0.8rem;
+    max-width: 140px;
+    padding: 0.4rem 0.6rem;
+    border: 2px solid #ff4a5a;
+    box-shadow: 0 0 10px rgba(255, 74, 90, 0.4), 0 8px 16px rgba(0, 0, 0, 0.25);
+    background: rgba(45, 10, 15, 0.95);
+    color: #ffd2d5;
+}
+
 @keyframes boss-bubble-pop {
     0% { transform: translate(-50%, 10px) scale(0.65); opacity: 0; }
     8% { transform: translate(-50%, 0) scale(1); opacity: 1; }
@@ -3156,4 +3167,406 @@ kbd {
         padding-bottom: 0.5rem;
         margin-bottom: 0.8rem;
     }
+}
+
+/* ==========================================================================
+   LEVEL 3 EMERGENCY LIGHTS & BURNING SERVERS
+   ========================================================================== */
+
+/* Level 3 Emergency Red Pulsing Overlay */
+.game-area.emergency-mode::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 0, 0, 0.12);
+    pointer-events: none;
+    z-index: 2;
+    animation: emergency-flash 2.5s infinite ease-in-out;
+}
+
+@keyframes emergency-flash {
+    0% { background: rgba(255, 0, 0, 0.03); }
+    50% { background: rgba(255, 0, 0, 0.16); }
+    100% { background: rgba(255, 0, 0, 0.03); }
+}
+
+/* SERVER OBSTACLE */
+.obstacle.server {
+    border-radius: 8px;
+    background: linear-gradient(135deg, #1c1f30 0%, #0d0f17 100%);
+    border: 3px solid #3b4260;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(0, 0, 0, 0.8);
+    position: relative;
+    overflow: visible;
+}
+
+/* Horizontal server blades */
+.obstacle.server::before {
+    content: "";
+    position: absolute;
+    top: 8%;
+    left: 8%;
+    right: 8%;
+    bottom: 8%;
+    background: repeating-linear-gradient(
+        to bottom,
+        #11131c,
+        #11131c 6px,
+        #2a3048 6px,
+        #2a3048 10px
+    );
+    border-radius: 4px;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+    z-index: 1;
+}
+
+/* Server LEDs */
+.server-leds {
+    position: absolute;
+    left: 15%;
+    top: 15%;
+    bottom: 15%;
+    width: 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.server-leds span {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #00ff66;
+    box-shadow: 0 0 6px #00ff66;
+}
+
+.server-leds span:nth-child(2n) {
+    background: #ffaa00;
+    box-shadow: 0 0 6px #ffaa00;
+    animation: server-led-blink-1 0.4s infinite alternate;
+}
+
+.server-leds span:nth-child(3n) {
+    background: #00ccff;
+    box-shadow: 0 0 6px #00ccff;
+    animation: server-led-blink-2 0.6s infinite alternate-reverse;
+}
+
+@keyframes server-led-blink-1 {
+    0% { opacity: 0.3; }
+    100% { opacity: 1; }
+}
+
+@keyframes server-led-blink-2 {
+    0% { opacity: 0.2; }
+    100% { opacity: 1; }
+}
+
+/* Server Fire */
+.server-fire {
+    position: absolute;
+    top: -24px;
+    left: 10%;
+    right: 10%;
+    height: 36px;
+    background: radial-gradient(circle at 50% 100%, #ffea00 0%, #ff5500 40%, transparent 80%);
+    filter: blur(2px);
+    animation: server-fire-flicker 0.15s infinite alternate;
+    pointer-events: none;
+    z-index: 3;
+    mix-blend-mode: screen;
+    transform-origin: bottom center;
+}
+
+@keyframes server-fire-flicker {
+    0% { transform: scaleX(0.85) scaleY(0.9); opacity: 0.85; }
+    100% { transform: scaleX(1.15) scaleY(1.2); opacity: 1; }
+}
+
+/* Sparks container & sparks */
+.server-sparks {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    overflow: visible;
+    z-index: 4;
+}
+
+.server-spark {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: #ffea00;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #ff5500;
+    pointer-events: none;
+}
+
+.server-spark.s1 { animation: spark-trajectory-1 1.2s infinite ease-out; }
+.server-spark.s2 { animation: spark-trajectory-2 1.6s infinite ease-out; animation-delay: 0.3s; }
+.server-spark.s3 { animation: spark-trajectory-3 1.4s infinite ease-out; animation-delay: 0.7s; }
+
+@keyframes spark-trajectory-1 {
+    0% { transform: translate(15px, 20px) scale(1); opacity: 1; }
+    100% { transform: translate(-10px, -45px) scale(0); opacity: 0; }
+}
+
+@keyframes spark-trajectory-2 {
+    0% { transform: translate(25px, 35px) scale(1); opacity: 1; }
+    100% { transform: translate(45px, -55px) scale(0); opacity: 0; }
+}
+
+@keyframes spark-trajectory-3 {
+    0% { transform: translate(35px, 15px) scale(1); opacity: 1; }
+    100% { transform: translate(20px, -60px) scale(0); opacity: 0; }
+}
+
+/* ==========================================================================
+   BOSS INTRO OVERLAY (VHS CINEMATIC VIEW)
+   ========================================================================== */
+#bossIntroOverlay {
+    background: radial-gradient(circle, rgba(15, 5, 5, 0.98) 0%, rgba(5, 2, 2, 0.99) 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.boss-intro-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    box-sizing: border-box;
+}
+
+/* Cinematic black bars */
+.boss-intro-cinematic-bar {
+    height: 70px;
+    background: #000000;
+    width: 100%;
+    z-index: 100;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.9);
+}
+
+.boss-intro-card {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    text-align: center;
+    color: #ffffff;
+    position: relative;
+    z-index: 50;
+}
+
+.boss-warning-badge {
+    background: #ff4a5a;
+    color: #ffffff;
+    font-weight: 900;
+    padding: 0.5rem 1.5rem;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    letter-spacing: 2px;
+    box-shadow: 0 0 15px rgba(255, 74, 90, 0.6);
+    margin-bottom: 1.5rem;
+    animation: warning-pulse 1s infinite alternate;
+}
+
+@keyframes warning-pulse {
+    0% { transform: scale(1); opacity: 0.9; }
+    100% { transform: scale(1.05); opacity: 1; box-shadow: 0 0 25px rgba(255, 74, 90, 0.9); }
+}
+
+.boss-intro-title {
+    font-family: 'Outfit', 'Inter', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: #ffffff;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3), 0 0 20px rgba(255, 74, 90, 0.6);
+    margin-bottom: 1.5rem;
+    letter-spacing: 1px;
+}
+
+/* VHS Camera Viewport Container */
+.boss-intro-avatar-container {
+    position: relative;
+    width: 260px;
+    height: 260px;
+    background: #06080e;
+    border: 4px solid #ff4a5a;
+    box-shadow: 0 0 25px rgba(255, 74, 90, 0.4), inset 0 0 30px rgba(0, 0, 0, 0.95);
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+/* CRT Scanlines Overlay */
+.boss-intro-avatar-container::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%, 
+        rgba(0, 0, 0, 0.35) 50%
+    );
+    background-size: 100% 4px;
+    z-index: 10;
+    pointer-events: none;
+}
+
+/* CRT Screen Flicker */
+.boss-intro-avatar-container::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255, 74, 90, 0.05);
+    opacity: 0;
+    z-index: 11;
+    pointer-events: none;
+    animation: crt-screen-flicker 0.1s infinite;
+}
+
+@keyframes crt-screen-flicker {
+    0% { opacity: 0.05; }
+    50% { opacity: 0.12; }
+    100% { opacity: 0.08; }
+}
+
+/* Glitch tracking line overlay */
+.boss-glitch-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.15) 10%, transparent 20%);
+    animation: vhs-glitch-roll 3s infinite linear;
+    z-index: 12;
+    pointer-events: none;
+}
+
+@keyframes vhs-glitch-roll {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+}
+
+/* REC blinker */
+.boss-video-rec {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    font-family: monospace;
+    font-size: 12px;
+    color: #ff4a5a;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    z-index: 20;
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+}
+
+.boss-video-rec::before {
+    content: "";
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    background: #ff4a5a;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #ff4a5a;
+    animation: camera-rec-blink 1s infinite steps(2);
+}
+
+@keyframes camera-rec-blink {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+/* Timecode */
+.boss-video-tc {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-family: monospace;
+    font-size: 12px;
+    color: #ffffff;
+    z-index: 20;
+    opacity: 0.9;
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+}
+
+/* Center and scale the boss element inside VHS screen */
+.boss-intro-avatar-container .boss-giant-student {
+    transform: scale(2.4);
+    position: relative;
+    width: 104px;
+    height: 120px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 5;
+}
+
+/* screaming/shaking animation */
+.boss-intro-avatar-container .boss-giant-student .student-figure {
+    position: absolute;
+    left: 18px;
+    top: 4px;
+    animation: boss-screaming-vibration 0.08s infinite alternate;
+}
+
+@keyframes boss-screaming-vibration {
+    0% { transform: translate(1px, 2px) rotate(0.5deg); }
+    100% { transform: translate(-2px, -1px) rotate(-0.5deg); }
+}
+
+/* Giant subtitles */
+.boss-intro-subtitles {
+    font-family: 'Outfit', 'Inter', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: #ffea00;
+    text-shadow: 0 0 10px rgba(255, 234, 0, 0.5), 0 4px 6px rgba(0, 0, 0, 0.8);
+    margin-bottom: 2rem;
+    animation: subtitle-grow 0.5s ease-out;
+}
+
+@keyframes subtitle-grow {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* Warning loading bar */
+.boss-loading-bar {
+    width: 320px;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    border: 2px solid #ff4a5a;
+    overflow: hidden;
+    box-shadow: 0 0 15px rgba(255, 74, 90, 0.2);
+}
+
+.boss-loading-progress {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #ff4a5a, #ffea00);
+    box-shadow: 0 0 10px #ff4a5a;
+    transition: width 3.5s linear;
 }

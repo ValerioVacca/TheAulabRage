@@ -242,14 +242,30 @@ const levelConfigs = [
             { x: 0, y: 696, width: 1280, height: 24, type: "wall" },
             { x: 0, y: 0, width: 24, height: 720, type: "wall" },
             { x: 1256, y: 0, width: 24, height: 720, type: "wall" },
-            { x: 100, y: 80, width: 134, height: 66, type: "desk" },
-            { x: 1046, y: 80, width: 134, height: 66, type: "desk" },
-            { x: 100, y: 560, width: 134, height: 66, type: "desk" },
-            { x: 1046, y: 560, width: 134, height: 66, type: "desk" },
-            { x: 260, y: 80, width: 46, height: 58, type: "plant" },
-            { x: 970, y: 80, width: 46, height: 58, type: "plant" },
-            { x: 146, y: 154, width: 42, height: 34, type: "chair" },
-            { x: 1092, y: 154, width: 42, height: 34, type: "chair" }
+            
+            // Server racks (emitting sparks and fire)
+            { x: 280, y: 100, width: 80, height: 120, type: "server" },
+            { x: 200, y: 460, width: 80, height: 120, type: "server" },
+            { x: 920, y: 120, width: 80, height: 120, type: "server" },
+            { x: 1000, y: 480, width: 80, height: 120, type: "server" },
+            { x: 500, y: 60, width: 80, height: 120, type: "server" },
+            { x: 740, y: 60, width: 80, height: 120, type: "server" },
+
+            // Chaotic scattered obstacles (well-spaced to prevent movement blocks)
+            { x: 100, y: 140, width: 134, height: 66, type: "desk" },
+            { x: 146, y: 206, width: 42, height: 34, type: "chair" },
+            { x: 80, y: 420, width: 40, height: 48, type: "bin" },
+            { x: 380, y: 300, width: 46, height: 58, type: "plant" },
+            { x: 340, y: 480, width: 134, height: 66, type: "desk" },
+
+            { x: 880, y: 320, width: 134, height: 66, type: "desk" },
+            { x: 1120, y: 150, width: 134, height: 66, type: "desk" },
+            { x: 1080, y: 220, width: 42, height: 34, type: "chair" },
+            { x: 850, y: 100, width: 40, height: 48, type: "bin" },
+            { x: 1150, y: 420, width: 46, height: 58, type: "plant" },
+
+            { x: 580, y: 580, width: 134, height: 66, type: "desk" },
+            { x: 626, y: 646, width: 42, height: 34, type: "chair" }
         ]
     }
 ];
@@ -300,7 +316,14 @@ const studentStyles = [
 const studentMessages = [
     "non studio!",
     "che schifo Aulab",
-    "quando c'era lui"
+    "quando c'era lui",
+    "Faccio tutto con l'AI"
+];
+
+const teacherHitMessages = [
+    "Meno ChatGPT!",
+    "Torna a studiare",
+    "Fallo fare all'AI adesso!"
 ];
 
 const typeMessages = {
@@ -309,28 +332,32 @@ const typeMessages = {
         "vado a 100 all'ora!",
         "non mi prendi!",
         "vado di fretta!",
-        "sono altrove..."
+        "sono altrove...",
+        "Faccio tutto con l'AI"
     ],
     shooter: [
         "prendi questo!",
         "pioggia di pietre!",
         "non mi fermo!",
         "ti colpisco!",
-        "tieni!"
+        "tieni!",
+        "Faccio tutto con l'AI"
     ],
     dodger: [
         "schivato!",
         "liscio!",
         "copio e scappo!",
         "quasi preso!",
-        "ti piacerebbe!"
+        "ti piacerebbe!",
+        "Faccio tutto con l'AI"
     ],
     cheater: [
         "fammi copiare!",
         "passami il codice!",
         "quasi finito di copiare...",
         "copiato tutto!",
-        "cheat activated!"
+        "cheat activated!",
+        "Faccio tutto con l'AI"
     ]
 };
 
@@ -752,6 +779,32 @@ function createObstacles(layout) {
         element.className = `obstacle ${config.type}`;
         setRectStyles(element, config);
         gameArea.appendChild(element);
+
+        // Decorate server obstacles with LED lights, flames, and flying sparks
+        if (config.type === "server") {
+            const ledsContainer = document.createElement("div");
+            ledsContainer.className = "server-leds";
+            for (let i = 0; i < 5; i++) {
+                ledsContainer.appendChild(document.createElement("span"));
+            }
+            element.appendChild(ledsContainer);
+
+            const fire = document.createElement("div");
+            fire.className = "server-fire";
+            element.appendChild(fire);
+
+            const sparksContainer = document.createElement("div");
+            sparksContainer.className = "server-sparks";
+            const s1 = document.createElement("span");
+            s1.className = "server-spark s1";
+            const s2 = document.createElement("span");
+            s2.className = "server-spark s2";
+            const s3 = document.createElement("span");
+            s3.className = "server-spark s3";
+            sparksContainer.append(s1, s2, s3);
+            element.appendChild(sparksContainer);
+        }
+
         state.obstacles.push({ ...config, element });
     });
 }
@@ -1055,8 +1108,16 @@ function getCurrentLevelConfig() {
 }
 
 function buildLevel(levelNumber, resetPlayerLives = false) {
+    clearLevelActors(true);
     state.currentLevel = levelNumber;
     const level = getCurrentLevelConfig();
+
+    // Toggle emergency red lights overlay for level 3
+    if (levelNumber === 3) {
+        gameArea.classList.add("emergency-mode");
+    } else {
+        gameArea.classList.remove("emergency-mode");
+    }
 
     // Usa la mappa personalizzata dell'editor se disponibile, altrimenti usa il default
     const customObstacles = (typeof MapEditor !== "undefined")
@@ -1348,7 +1409,7 @@ function gameLoop(timestamp) {
                     }
                 });
 
-                spawnBoss();
+                triggerBossIntro();
             }
         }
 
@@ -1798,6 +1859,7 @@ function attack() {
         increaseRage(15);
     }
 
+    let studentHit = false;
     const survivors = [];
     state.students.forEach((student) => {
         if (rectsIntersect(attackZone, student)) {
@@ -1811,6 +1873,7 @@ function attack() {
             createHitEffect(student.x - 18, student.y - 18);
             student.element.remove();
             increaseRage(20);
+            studentHit = true;
             return;
         }
 
@@ -1819,7 +1882,13 @@ function attack() {
 
     state.students = survivors;
 
-    // Gestione colpi alle sedie scorrevoli
+    if (studentHit) {
+        const randomMsg = teacherHitMessages[Math.floor(Math.random() * teacherHitMessages.length)];
+        speakTeacher(randomMsg);
+    }
+
+    // Gestione colpi alle sedie scorrevoli e ai cestini
+    const remainingObstacles = [];
     state.obstacles.forEach((obstacle) => {
         if (obstacle.type === "chair" && rectsIntersect(attackZone, obstacle)) {
             obstacle.sliding = true;
@@ -1843,8 +1912,36 @@ function attack() {
             
             playChairSlideSound();
             createHitEffect(obstacle.x + obstacle.width / 2 - 18, obstacle.y + obstacle.height / 2 - 18);
+        } else if (obstacle.type === "bin" && rectsIntersect(attackZone, obstacle)) {
+            if (obstacle.element) {
+                obstacle.element.remove();
+            }
+            
+            let type = "speed";
+            if (state.selectedHackademyId === "standard") {
+                if (state.currentLevel === 1) {
+                    type = "speed";
+                } else if (state.currentLevel === 2) {
+                    type = "shield";
+                } else {
+                    type = "super_hammer";
+                }
+            } else {
+                const types = ["coffee", "shield", "speed", "super_hammer"];
+                type = types[Math.floor(Math.random() * types.length)];
+            }
+            
+            const spawnX = obstacle.x + obstacle.width / 2 - 16;
+            const spawnY = obstacle.y + obstacle.height / 2 - 16;
+            spawnPowerUpAt(spawnX, spawnY, type);
+            
+            playChairBounceSound();
+            createHitEffect(obstacle.x + obstacle.width / 2 - 18, obstacle.y + obstacle.height / 2 - 18);
+            return;
         }
+        remainingObstacles.push(obstacle);
     });
+    state.obstacles = remainingObstacles;
 }
 
 function getAttackZone() {
@@ -2082,18 +2179,20 @@ function damagePlayer() {
 
 function moveWithCollisions(entity, stepX, stepY) {
     // Risolviamo X e Y separatamente per evitare che i personaggi attraversino gli ostacoli in diagonale.
+    const originalX = entity.x;
     entity.x += stepX;
     entity.x = clamp(entity.x, 24, GAME.width - entity.width - 24);
 
     if (hitsObstacle(entity)) {
-        entity.x -= stepX;
+        entity.x = originalX;
     }
 
+    const originalY = entity.y;
     entity.y += stepY;
     entity.y = clamp(entity.y, 24, GAME.height - entity.height - 24);
 
     if (hitsObstacle(entity)) {
-        entity.y -= stepY;
+        entity.y = originalY;
     }
 
     syncEntity(entity);
@@ -2152,8 +2251,44 @@ function placePowerUpInFreeSpot(entity) {
     entity.y = minY;
 }
 
+function getCollisionRect(entity) {
+    if (entity === state.player) {
+        // Docente (Player): visual 62x74. Shrink physics to bottom 20px (feet), 30px width (centered)
+        return {
+            x: entity.x + 16,
+            y: entity.y + 54,
+            width: 30,
+            height: 20
+        };
+    } else if (entity === state.boss) {
+        // Boss: visual 104x120. Shrink physics to bottom 30px, 60px width (centered)
+        return {
+            x: entity.x + 22,
+            y: entity.y + 90,
+            width: 60,
+            height: 30
+        };
+    } else if (entity && entity.studentType !== undefined) {
+        // Studenti: visual 52x60. Shrink physics to bottom 18px, 26px width (centered)
+        return {
+            x: entity.x + 13,
+            y: entity.y + 42,
+            width: 26,
+            height: 18
+        };
+    }
+    return entity;
+}
+
 function hitsObstacle(entity) {
-    return state.obstacles.some((obstacle) => rectsIntersect(entity, obstacle));
+    const colRect = getCollisionRect(entity);
+    return state.obstacles.some((obstacle) => {
+        // Ignora le sedie che stanno scivolando per evitare blocchi o incastri
+        if (obstacle.type === "chair" && obstacle.sliding) {
+            return false;
+        }
+        return rectsIntersect(colRect, obstacle);
+    });
 }
 
 // Ritorna il delay (ms) tra un power-up e il successivo, scalato per livello:
@@ -2265,6 +2400,36 @@ function spawnPowerUp() {
     placePowerUpInFreeSpot(powerUp);
     gameArea.appendChild(powerUp.element);
     syncEntity(powerUp);
+    state.powerUp = powerUp;
+}
+
+function spawnPowerUpAt(x, y, type) {
+    if (state.powerUp) {
+        expirePowerUp();
+    }
+    
+    const counter = document.createElement("span");
+    const icon = document.createElement("span");
+    
+    const powerUp = {
+        x: x,
+        y: y,
+        width: 32,
+        height: 32,
+        type,
+        expiresAt: state.gameTimeMs + GAME.powerUpLifetime,
+        counter,
+        element: document.createElement("div")
+    };
+
+    powerUp.element.className = `game-powerup type-${type}`;
+    icon.className = "powerup-icon";
+    counter.className = "powerup-counter";
+    counter.textContent = "3";
+    powerUp.element.append(counter, icon);
+    
+    syncEntity(powerUp);
+    gameArea.appendChild(powerUp.element);
     state.powerUp = powerUp;
 }
 
@@ -2482,6 +2647,10 @@ function finishGame(isVictory) {
     endOverlay.classList.remove("d-none");
     endEyebrow.textContent = isVictory ? "Arena ripulita" : "Missione fallita";
     endTitle.textContent = isVictory ? "Vittoria" : "Game Over";
+    
+    if (restartButton) {
+        restartButton.textContent = isVictory ? "Vai al livello successivo" : "Rigioca";
+    }
     
     const teacher = getSelectedTeacher();
     if (isVictory) {
@@ -2898,6 +3067,50 @@ function stopStudentSpeech() {
     }
 }
 
+function speakTeacher(message) {
+    if (!state.player || !state.running) return;
+
+    const previousBubble = state.player.element.querySelector(".speech-bubble");
+    if (previousBubble) {
+        previousBubble.remove();
+    }
+    if (state.player.speechTimeoutId) {
+        window.clearTimeout(state.player.speechTimeoutId);
+    }
+
+    const bubble = document.createElement("div");
+    bubble.className = "speech-bubble teacher-bubble";
+    bubble.textContent = message;
+    state.player.element.appendChild(bubble);
+    state.player.element.classList.add("speaking");
+
+    state.player.speechTimeoutId = window.setTimeout(() => {
+        bubble.remove();
+        if (state.player && state.player.element) {
+            state.player.element.classList.remove("speaking");
+        }
+        if (state.player) {
+            state.player.speechTimeoutId = null;
+        }
+    }, 1500);
+
+    if (!audioState.speechEnabled || audioState.muted) return;
+
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+
+    if (synth.speaking || synth.pending) {
+        synth.cancel();
+    }
+
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.lang = "it-IT";
+    utterance.rate = 0.95;
+    utterance.pitch = 0.75;
+    utterance.volume = 0.95;
+    synth.speak(utterance);
+}
+
 // --- FUNZIONALITÀ BOSS E RITO DI EVOCAZIONE (LIVELLO 3) ---
 
 const chantMessages = [
@@ -3076,33 +3289,92 @@ function spawnBoss() {
     playBossShotSound(true);
 }
 
-function speakBossSkibidiboppi() {
-    if (!state.boss || state.boss.lives <= 0 || !state.running) return;
+function triggerBossIntro() {
+    state.running = false;
+    state.keys.clear();
+
+    const introOverlay = document.getElementById("bossIntroOverlay");
+    if (introOverlay) {
+        introOverlay.classList.remove("d-none");
+    }
+
+    const progressEl = document.getElementById("bossIntroProgress");
+    if (progressEl) {
+        progressEl.style.transition = "none";
+        progressEl.style.width = "0%";
+        // Force reflow
+        progressEl.offsetHeight;
+        progressEl.style.transition = "width 3.5s linear";
+        progressEl.style.width = "100%";
+    }
+
+    let tcFrames = 0;
+    let tcSeconds = 0;
+    let tcMinutes = 0;
+    let tcHours = 0;
+    const tcEl = document.getElementById("bossVideoTc");
+
+    const tcInterval = setInterval(() => {
+        tcFrames++;
+        if (tcFrames >= 30) {
+            tcFrames = 0;
+            tcSeconds++;
+            if (tcSeconds >= 60) {
+                tcSeconds = 0;
+                tcMinutes++;
+                if (tcMinutes >= 60) {
+                    tcMinutes = 0;
+                    tcHours++;
+                }
+            }
+        }
+        const pad = (num) => String(num).padStart(2, "0");
+        if (tcEl) {
+            tcEl.textContent = `TC ${pad(tcHours)}:${pad(tcMinutes)}:${pad(tcSeconds)}:${pad(tcFrames)}`;
+        }
+    }, 33);
+
+    speakBossSkibidiboppi(true);
+
+    setTimeout(() => {
+        clearInterval(tcInterval);
+        if (introOverlay) {
+            introOverlay.classList.add("d-none");
+        }
+        spawnBoss();
+        state.running = true;
+    }, 3500);
+}
+
+function speakBossSkibidiboppi(bypassRunning = false) {
+    if (!bypassRunning && (!state.boss || state.boss.lives <= 0 || !state.running)) return;
 
     // Gestione fumetto visivo a video
-    const previousBubble = state.boss.element.querySelector(".speech-bubble");
-    if (previousBubble) {
-        previousBubble.remove();
-    }
-    if (state.boss.speechTimeoutId) {
-        window.clearTimeout(state.boss.speechTimeoutId);
-    }
-
-    const bubble = document.createElement("div");
-    bubble.className = "speech-bubble boss-bubble";
-    bubble.textContent = "SKIBIDIBOPPI";
-    state.boss.element.appendChild(bubble);
-    state.boss.element.classList.add("speaking");
-
-    state.boss.speechTimeoutId = window.setTimeout(() => {
-        bubble.remove();
-        if (state.boss && state.boss.element) {
-            state.boss.element.classList.remove("speaking");
+    if (state.boss && state.boss.element) {
+        const previousBubble = state.boss.element.querySelector(".speech-bubble");
+        if (previousBubble) {
+            previousBubble.remove();
         }
-        if (state.boss) {
-            state.boss.speechTimeoutId = null;
+        if (state.boss.speechTimeoutId) {
+            window.clearTimeout(state.boss.speechTimeoutId);
         }
-    }, 2000);
+
+        const bubble = document.createElement("div");
+        bubble.className = "speech-bubble boss-bubble";
+        bubble.textContent = "SKIBIDIBOPPI";
+        state.boss.element.appendChild(bubble);
+        state.boss.element.classList.add("speaking");
+
+        state.boss.speechTimeoutId = window.setTimeout(() => {
+            bubble.remove();
+            if (state.boss && state.boss.element) {
+                state.boss.element.classList.remove("speaking");
+            }
+            if (state.boss) {
+                state.boss.speechTimeoutId = null;
+            }
+        }, 2000);
+    }
 
     // Gestione sintesi vocale (audio grave e lento)
     if (!audioState.speechEnabled || audioState.muted) return;
