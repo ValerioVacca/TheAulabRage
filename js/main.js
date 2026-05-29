@@ -20,6 +20,9 @@ const modeOverlay = document.getElementById("modeOverlay");
 const politicallyCorrectModeBtn = document.getElementById("politicallyCorrectModeBtn");
 const explicitContentModeBtn = document.getElementById("explicitContentModeBtn");
 
+// Override di sviluppo: usa ?devLevel=4 nell'URL per partire da un livello specifico.
+const DEV_START_LEVEL_QUERY_PARAM = "devLevel";
+
 // Nuovi elementi DOM per la gestione del Docente
 const addTeacherBtn = document.getElementById("addTeacherBtn");
 const teacherModal = document.getElementById("teacherModal");
@@ -58,6 +61,12 @@ const savedLevelNum = document.getElementById("savedLevelNum");
 const menuButton = document.getElementById("menuButton");
 const finalWipModal = document.getElementById("finalWipModal");
 const finalWipMenuButton = document.getElementById("finalWipMenuButton");
+const weaponVisionOverlay = document.getElementById("weaponVisionOverlay");
+const weaponVisionCaption = document.getElementById("weaponVisionCaption");
+const weaponVisionProgress = document.getElementById("weaponVisionProgress");
+const weaponVisionTc = document.getElementById("weaponVisionTc");
+const weaponVisionTeacherFace = document.getElementById("weaponVisionTeacherFace");
+const skipWeaponVisionBtn = document.getElementById("skipWeaponVisionBtn");
 
 // Elementi DOM per la stamina
 const hudStamina = document.getElementById("hudStamina");
@@ -75,10 +84,10 @@ const GAME = {
     attackCooldown: 380,
     spawnLives: 3,
     firstPowerUpDelay: 5000,
-    powerUpLifetime: 3000,
+    powerUpLifetime: 5000,
     powerUpRespawnDelay: 10000,
     firstHeartPowerUpDelay: 7000,
-    heartPowerUpLifetime: 3000,
+    heartPowerUpLifetime: 5000,
     heartPowerUpRespawnDelay: 10000,
     // Sistema di stamina e schivata
     maxStamina: 100,
@@ -90,18 +99,11 @@ const GAME = {
     dodgeCooldown: 100,
 };
 
-const storyParagraphs = [
-    "[SISTEMA] Rilevata anomalia Hackademy - Ore 03:00 AM...",
-    "È la notte prima della consegna del progetto finale. L'aria è densa di disperazione, lattine di energy drink vuote e righe di codice scritte a caso.",
-    "La stanchezza ha preso il sopravvento: gli studenti si rifiutano di programmare e lanciano pietre! I più subdoli, gli \"Studenti Copiatori\", si muovono furtivamente con gli occhiali da sole per passare codice buggato ai compagni, scatenando il panico.",
-    "Nel caos dell'aula, attento alle Sedie Scorrevoli: se colpite col martello, schizzeranno come proiettili travolgendo chiunque sul loro percorso!",
-    "E se non bastasse, nelle profondità dell'Aulab si aggira il leggendario BOSS finale: uno Studente Gigante ed estremamente svogliato che urla a ripetizione la sua formula magica: \"SKIBIDIBOPPI!\".",
-    "Solo tu, nei panni del Docente, puoi ripristinare l'ordine col mitico \"Martello di Gomma della Motivazione\". Raccogli il Caffè per scatenare la Rage Mode ed evocare Charizard, ferma i copiatori, e sconfiggi il Grande Svogliato!",
-    "La classe ti aspetta. Non c'è tempo da perdere..."
+const miniStoryParagraphs = [
+    "[SISTEMA] Hackademy nel caos. Gli studenti si sono ribellati e stanno trasformando l'aula in una zona di guerra.",
+    "I docenti devono rimettere ordine colpendo studenti, raccogliendo power-up e sopravvivendo abbastanza da arrivare al boss finale.",
+    "Entra, menali con eleganza accademica e salva la consegna finale."
 ];
-
-let storyTimeouts = [];
-let typingActive = false;
 
 const defaultTeachers = [
     {
@@ -160,7 +162,13 @@ const state = {
     rageMeter: 0,
     rageActiveUntil: 0,
     contentMode: null,
-    lastRageParticleSpawnAt: 0
+    bonusRoad: null,
+    lastRageParticleSpawnAt: 0,
+    shakeOffsetX: 0,
+    shakeOffsetY: 0,
+    cutsceneTimeoutIds: [],
+    cutsceneIntervalIds: [],
+    activeCutsceneSkipHandler: null
 };
 
 const audioState = {
@@ -176,6 +184,68 @@ const audioState = {
     speechPrimed: false,
     muted: false
 };
+
+function getViewportMetrics() {
+    const visualViewport = window.visualViewport;
+    return {
+        width: Math.max(1, Math.round(visualViewport?.width || window.innerWidth || gameViewport?.clientWidth || GAME.width)),
+        height: Math.max(1, Math.round(visualViewport?.height || window.innerHeight || gameViewport?.clientHeight || GAME.height))
+    };
+}
+
+function isTouchViewport() {
+    return (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) || (navigator.maxTouchPoints || 0) > 0;
+}
+
+function isCompactMobileViewport() {
+    const { width, height } = getViewportMetrics();
+    return isTouchViewport() || width <= 1024 || height <= 820;
+}
+
+function syncViewportCssVars() {
+    const { width, height } = getViewportMetrics();
+    document.documentElement.style.setProperty("--app-width", `${width}px`);
+    document.documentElement.style.setProperty("--app-height", `${height}px`);
+}
+
+function applyDeviceUiMode() {
+    document.body.classList.toggle("mobile-optimized", isCompactMobileViewport());
+}
+
+function updateViewportLayout() {
+    syncViewportCssVars();
+    applyDeviceUiMode();
+    updateGameScale();
+}
+
+function attemptImmersiveMode() {
+    if (!isCompactMobileViewport()) {
+        return;
+    }
+
+    const fullscreenTarget = document.documentElement;
+    const requestFullscreen =
+        fullscreenTarget.requestFullscreen ||
+        fullscreenTarget.webkitRequestFullscreen ||
+        fullscreenTarget.msRequestFullscreen;
+
+    if (!document.fullscreenElement && typeof requestFullscreen === "function") {
+        Promise.resolve(requestFullscreen.call(fullscreenTarget, { navigationUI: "hide" })).catch(() => {});
+    }
+
+    if (screen.orientation && typeof screen.orientation.lock === "function") {
+        screen.orientation.lock("landscape").catch(() => {});
+    }
+
+    window.setTimeout(updateViewportLayout, 120);
+}
+
+function applyGameAreaTransform() {
+    const scale = state.currentScale || 1;
+    const dx = state.shakeOffsetX || 0;
+    const dy = state.shakeOffsetY || 0;
+    gameArea.style.transform = `translate(${dx}px, ${dy}px) scale(${scale})`;
+}
 
 const levelConfigs = [
     {
@@ -260,6 +330,8 @@ const levelConfigs = [
         id: 3,
         projectilesPerShot: 3,
         playerSpawn: { x: 80, y: 320 },
+        bossKind: "greatSlacker",
+        summoningDuration: 5000,
         studentSpawns: [
             { x: 520, y: 340 },
             { x: 680, y: 340 },
@@ -290,8 +362,466 @@ const levelConfigs = [
             { x: 580, y: 580, width: 134, height: 66, type: "desk" },
             { x: 626, y: 646, width: 42, height: 34, type: "chair" }
         ]
+    },
+    {
+        id: 4,
+        mode: "roadTrip",
+        projectilesPerShot: 1,
+        playerSpawn: { x: 170, y: 320 },
+        studentSpawns: [],
+        obstacles: []
+    },
+    {
+        id: 5,
+        projectilesPerShot: 3,
+        playerSpawn: { x: 88, y: 616 },
+        studentSpawns: [
+            { x: 1060, y: 118, studentType: "fast", speechType: "panicked", roleLabel: "NASPI" },
+            { x: 1114, y: 554, studentType: "shooter", speechType: "boomer", roleLabel: "SPID" },
+            { x: 856, y: 176, studentType: "shooter", speechType: "passacarte", roleLabel: "MODULI" },
+            { x: 688, y: 602, studentType: "dodger", speechType: "spid", roleLabel: "OTP" },
+            { x: 414, y: 134, studentType: "cheater", speechType: "caf", roleLabel: "CAF" },
+            { x: 962, y: 354, studentType: "shooter", speechType: "boomer", roleLabel: "PIN" },
+            { x: 536, y: 268, studentType: "fast", speechType: "panicked", roleLabel: "AIUTO" }
+        ],
+        obstacles: [
+            { x: 0, y: 0, width: 1280, height: 24, type: "wall" },
+            { x: 0, y: 696, width: 1280, height: 24, type: "wall" },
+            { x: 0, y: 0, width: 24, height: 720, type: "wall" },
+            { x: 1256, y: 0, width: 24, height: 720, type: "wall" },
+            { x: 510, y: 126, width: 260, height: 26, type: "barrier" },
+            { x: 540, y: 218, width: 200, height: 148, type: "kiosk" },
+            { x: 214, y: 238, width: 198, height: 52, type: "bench" },
+            { x: 868, y: 238, width: 198, height: 52, type: "bench" },
+            { x: 138, y: 132, width: 72, height: 174, type: "sign" },
+            { x: 1070, y: 132, width: 72, height: 174, type: "sign" },
+            { x: 246, y: 492, width: 108, height: 52, type: "planter" },
+            { x: 926, y: 492, width: 108, height: 52, type: "planter" },
+            { x: 480, y: 420, width: 42, height: 34, type: "chair" },
+            { x: 758, y: 420, width: 42, height: 34, type: "chair" },
+            { x: 420, y: 572, width: 40, height: 48, type: "bin" },
+            { x: 818, y: 572, width: 40, height: 48, type: "bin" }
+        ]
+    },
+    {
+        id: 6,
+        projectilesPerShot: 4,
+        playerSpawn: { x: 98, y: 626 },
+        studentSpawns: [
+            { x: 1040, y: 112, studentType: "shooter", speechType: "vocal", roleLabel: "VOCALI" },
+            { x: 1142, y: 584, studentType: "fast", speechType: "panicked", roleLabel: "AIUTO" },
+            { x: 796, y: 118, studentType: "cheater", speechType: "caf", roleLabel: "CAF" },
+            { x: 902, y: 602, studentType: "dodger", speechType: "spid", roleLabel: "OTP" },
+            { x: 624, y: 202, studentType: "shooter", speechType: "passacarte", roleLabel: "MODULI" },
+            { x: 468, y: 602, studentType: "shooter", speechType: "boomer", roleLabel: "PIN" },
+            { x: 282, y: 164, studentType: "fast", speechType: "panicked", roleLabel: "NASPI" },
+            { x: 986, y: 362, studentType: "shooter", speechType: "vocal", roleLabel: "AUDIO" }
+        ],
+        obstacles: [
+            { x: 0, y: 0, width: 1280, height: 24, type: "wall" },
+            { x: 0, y: 696, width: 1280, height: 24, type: "wall" },
+            { x: 0, y: 0, width: 24, height: 720, type: "wall" },
+            { x: 1256, y: 0, width: 24, height: 720, type: "wall" },
+            { x: 490, y: 86, width: 300, height: 92, type: "stage" },
+            { x: 246, y: 188, width: 176, height: 26, type: "barrier" },
+            { x: 858, y: 188, width: 176, height: 26, type: "barrier" },
+            { x: 560, y: 254, width: 160, height: 26, type: "barrier" },
+            { x: 126, y: 254, width: 70, height: 88, type: "speaker" },
+            { x: 1084, y: 254, width: 70, height: 88, type: "speaker" },
+            { x: 88, y: 376, width: 72, height: 170, type: "sign" },
+            { x: 1120, y: 376, width: 72, height: 170, type: "sign" },
+            { x: 232, y: 424, width: 202, height: 52, type: "bench" },
+            { x: 846, y: 424, width: 202, height: 52, type: "bench" },
+            { x: 552, y: 480, width: 184, height: 150, type: "kiosk" },
+            { x: 460, y: 314, width: 42, height: 34, type: "chair" },
+            { x: 782, y: 314, width: 42, height: 34, type: "chair" },
+            { x: 464, y: 602, width: 42, height: 34, type: "chair" },
+            { x: 778, y: 602, width: 42, height: 34, type: "chair" },
+            { x: 360, y: 560, width: 40, height: 48, type: "bin" },
+            { x: 878, y: 560, width: 40, height: 48, type: "bin" }
+        ]
+    },
+    {
+        id: 7,
+        projectilesPerShot: 4,
+        playerSpawn: { x: 88, y: 342 },
+        bossKind: "spidOverlord",
+        summoningDuration: 5500,
+        studentSpawns: [
+            { x: 536, y: 250, studentType: "shooter", speechType: "passacarte", roleLabel: "OTP" },
+            { x: 694, y: 250, studentType: "cheater", speechType: "caf", roleLabel: "CAF" },
+            { x: 536, y: 430, studentType: "shooter", speechType: "vocal", roleLabel: "AUDIO" },
+            { x: 694, y: 430, studentType: "dodger", speechType: "spid", roleLabel: "SPID" }
+        ],
+        obstacles: [
+            { x: 0, y: 0, width: 1280, height: 24, type: "wall" },
+            { x: 0, y: 696, width: 1280, height: 24, type: "wall" },
+            { x: 0, y: 0, width: 24, height: 720, type: "wall" },
+            { x: 1256, y: 0, width: 24, height: 720, type: "wall" },
+            { x: 142, y: 120, width: 188, height: 30, type: "barrier" },
+            { x: 952, y: 120, width: 188, height: 30, type: "barrier" },
+            { x: 142, y: 570, width: 188, height: 30, type: "barrier" },
+            { x: 952, y: 570, width: 188, height: 30, type: "barrier" },
+            { x: 176, y: 264, width: 70, height: 88, type: "speaker" },
+            { x: 1034, y: 264, width: 70, height: 88, type: "speaker" },
+            { x: 378, y: 114, width: 84, height: 170, type: "sign" },
+            { x: 818, y: 114, width: 84, height: 170, type: "sign" },
+            { x: 374, y: 504, width: 84, height: 170, type: "sign" },
+            { x: 822, y: 504, width: 84, height: 170, type: "sign" },
+            { x: 566, y: 148, width: 146, height: 84, type: "stage" },
+            { x: 566, y: 488, width: 146, height: 84, type: "stage" },
+            { x: 312, y: 330, width: 168, height: 58, type: "bench" },
+            { x: 800, y: 330, width: 168, height: 58, type: "bench" },
+            { x: 574, y: 302, width: 130, height: 118, type: "terminal" }
+        ]
     }
 ];
+
+function isDevelopmentStartLevelEnabled() {
+    return window.location.protocol === "file:" || ["localhost", "127.0.0.1"].includes(window.location.hostname);
+}
+
+function getDevelopmentStartLevelOverride() {
+    if (!isDevelopmentStartLevelEnabled()) {
+        return null;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const rawLevel = params.get(DEV_START_LEVEL_QUERY_PARAM);
+    const parsedLevel = Number.parseInt(rawLevel || "", 10);
+
+    if (!Number.isInteger(parsedLevel) || parsedLevel < 1 || parsedLevel > levelConfigs.length) {
+        return null;
+    }
+
+    return parsedLevel;
+}
+
+function isRoadTripLevel(levelNumber = state.currentLevel) {
+    const level = levelConfigs.find((entry) => entry.id === levelNumber);
+    return level?.mode === "roadTrip";
+}
+
+function isRoadTripActive() {
+    return Boolean(state.bonusRoad?.active);
+}
+
+function isLevelSixMachineGunActive() {
+    return state.currentLevel === 7;
+}
+
+function registerCutsceneTimeout(callback, delay) {
+    const timeoutId = window.setTimeout(() => {
+        state.cutsceneTimeoutIds = state.cutsceneTimeoutIds.filter((id) => id !== timeoutId);
+        callback();
+    }, delay);
+    state.cutsceneTimeoutIds.push(timeoutId);
+    return timeoutId;
+}
+
+function registerCutsceneInterval(callback, delay) {
+    const intervalId = window.setInterval(callback, delay);
+    state.cutsceneIntervalIds.push(intervalId);
+    return intervalId;
+}
+
+function clearCutsceneTimers() {
+    state.cutsceneTimeoutIds.forEach((id) => window.clearTimeout(id));
+    state.cutsceneIntervalIds.forEach((id) => window.clearInterval(id));
+    state.cutsceneTimeoutIds = [];
+    state.cutsceneIntervalIds = [];
+}
+
+function resetCutsceneOverlays() {
+    state.activeCutsceneSkipHandler = null;
+
+    if (weaponVisionOverlay) {
+        weaponVisionOverlay.classList.add("d-none");
+        weaponVisionOverlay.classList.remove("playing");
+    }
+    if (weaponVisionCaption) {
+        weaponVisionCaption.textContent = "Segnale dal cloud... upgrade in arrivo.";
+    }
+    if (weaponVisionProgress) {
+        weaponVisionProgress.style.width = "0%";
+    }
+    if (weaponVisionTc) {
+        weaponVisionTc.textContent = "TC 00:00:00:00";
+    }
+
+    const bossIntroOverlay = document.getElementById("bossIntroOverlay");
+    if (bossIntroOverlay) {
+        bossIntroOverlay.classList.add("d-none");
+    }
+}
+
+function clearActiveCutscenes() {
+    clearCutsceneTimers();
+    resetCutsceneOverlays();
+}
+
+function getPlayerAttackCooldown() {
+    if (isRoadTripActive()) {
+        return 240;
+    }
+    return isLevelSixMachineGunActive() ? 95 : GAME.attackCooldown;
+}
+
+function getPlayerWeaponToolStyle() {
+    const selectedTeacher = getSelectedTeacher();
+    if (isLevelSixMachineGunActive()) {
+        return "machinegun";
+    }
+    return selectedTeacher?.toolStyle || "hammer";
+}
+
+function clearBonusRoad() {
+    if (!state.bonusRoad) {
+        return;
+    }
+
+    state.bonusRoad.entities?.forEach((entity) => entity.element?.remove());
+    state.bonusRoad.entities = [];
+    gameArea.style.removeProperty("--road-shift");
+    gameArea.classList.remove("roadtrip-mode");
+    state.bonusRoad = null;
+}
+
+function setupRoadTripLevel() {
+    clearBonusRoad();
+    gameArea.classList.add("roadtrip-mode");
+    state.bonusRoad = {
+        active: true,
+        distance: 0,
+        goalDistance: 18500,
+        scrollSpeed: 5.4,
+        spawnTimer: 1050,
+        groundY: 592,
+        jumpStartedAt: 0,
+        jumpEndsAt: 0,
+        jumpHeight: 132,
+        jumpInputLatched: false,
+        entities: []
+    };
+
+    state.player.width = 138;
+    state.player.height = 86;
+    state.player.direction = "right";
+    state.player.x = 118;
+    state.player.y = state.bonusRoad.groundY - state.player.height;
+    state.player.element.classList.add("bonus-driving");
+    state.player.element.classList.remove("attacking", "dodging");
+    syncRoadTripPlayer();
+    updateAttackButtonAppearance();
+
+    window.setTimeout(() => {
+        if (state.currentLevel === 4 && state.bonusRoad?.active) {
+            showToast("🚗 Livello bonus 2D laterale: la macchina corre da sola. Salta con Space o col tasto salto e lancia il martello con Ctrl o col tasto attacco.");
+        }
+    }, 900);
+}
+
+function teardownRoadTripPlayerState() {
+    if (!state.player) {
+        return;
+    }
+
+    state.player.width = 62;
+    state.player.height = 74;
+    state.player.element.style.removeProperty("transform");
+    state.player.element.classList.remove("bonus-driving", "bonus-jumping");
+}
+
+function getRoadTripJumpOffset() {
+    if (!isRoadTripActive()) {
+        return 0;
+    }
+
+    const now = performance.now();
+    if (now >= state.bonusRoad.jumpEndsAt) {
+        return 0;
+    }
+
+    const duration = Math.max(1, state.bonusRoad.jumpEndsAt - state.bonusRoad.jumpStartedAt);
+    const progress = clamp((now - state.bonusRoad.jumpStartedAt) / duration, 0, 1);
+    return Math.sin(progress * Math.PI) * state.bonusRoad.jumpHeight;
+}
+
+function syncRoadTripPlayer() {
+    if (!state.player) {
+        return;
+    }
+
+    const jumpOffset = getRoadTripJumpOffset();
+    const bob = jumpOffset > 0 ? 0 : Math.sin(state.gameTimeMs / 120) * 3;
+    state.player.element.style.transform = `translate(${state.player.x}px, ${state.player.y - jumpOffset + bob}px)`;
+}
+
+function triggerRoadTripJump() {
+    if (!isRoadTripActive()) {
+        return false;
+    }
+
+    const now = performance.now();
+    if (now < state.bonusRoad.jumpEndsAt) {
+        return false;
+    }
+
+    state.bonusRoad.jumpStartedAt = now;
+    state.bonusRoad.jumpEndsAt = now + 620;
+    state.player.element.classList.add("bonus-jumping");
+    playSpeedSound();
+    syncRoadTripPlayer();
+    return true;
+}
+
+function spawnRoadTripEntity() {
+    if (!isRoadTripActive()) {
+        return;
+    }
+
+    const roll = Math.random();
+    let type = "student";
+    if (roll > 0.8) {
+        type = "barrier";
+    } else if (roll > 0.54) {
+        type = "pothole";
+    } else if (roll > 0.26) {
+        type = "scooter";
+    }
+
+    const configs = {
+        student: { width: 54, height: 70, speed: 7.8, removable: true, damage: 1, jumpClearance: 62, yOffset: 70 },
+        pothole: { width: 116, height: 22, speed: 8.4, removable: false, damage: 1, jumpClearance: 30, yOffset: 10 },
+        barrier: { width: 82, height: 58, speed: 7.2, removable: true, damage: 1, jumpClearance: 68, yOffset: 58 },
+        scooter: { width: 108, height: 52, speed: 8.6, removable: true, damage: 1, jumpClearance: 58, yOffset: 52 }
+    };
+    const config = configs[type];
+    const y = state.bonusRoad.groundY - config.yOffset;
+    const element = document.createElement("div");
+    element.className = `roadtrip-entity roadtrip-${type}`;
+
+    if (type === "student") {
+        element.innerHTML = `<span class="roadtrip-student-head"></span><span class="roadtrip-student-body"></span>`;
+    } else if (type === "barrier") {
+        element.innerHTML = `<span class="roadtrip-barrier-plank"></span>`;
+    } else if (type === "scooter") {
+        element.innerHTML = `<span class="roadtrip-scooter-seat"></span><span class="roadtrip-scooter-wheel front"></span><span class="roadtrip-scooter-wheel rear"></span>`;
+    }
+
+    gameArea.appendChild(element);
+    state.bonusRoad.entities.push({
+        type,
+        x: GAME.width + 40,
+        y,
+        width: config.width,
+        height: config.height,
+        speed: config.speed,
+        removable: config.removable,
+        damage: config.damage,
+        jumpClearance: config.jumpClearance,
+        element
+    });
+
+    if (Math.random() < 0.34) {
+        const comboType = type === "pothole"
+            ? "student"
+            : type === "student"
+                ? (Math.random() < 0.5 ? "pothole" : "scooter")
+                : "student";
+        const comboConfig = configs[comboType];
+        const comboElement = document.createElement("div");
+        const comboY = state.bonusRoad.groundY - comboConfig.yOffset;
+        comboElement.className = `roadtrip-entity roadtrip-${comboType}`;
+
+        if (comboType === "student") {
+            comboElement.innerHTML = `<span class="roadtrip-student-head"></span><span class="roadtrip-student-body"></span>`;
+        } else if (comboType === "barrier") {
+            comboElement.innerHTML = `<span class="roadtrip-barrier-plank"></span>`;
+        } else if (comboType === "scooter") {
+            comboElement.innerHTML = `<span class="roadtrip-scooter-seat"></span><span class="roadtrip-scooter-wheel front"></span><span class="roadtrip-scooter-wheel rear"></span>`;
+        }
+
+        gameArea.appendChild(comboElement);
+        state.bonusRoad.entities.push({
+            type: comboType,
+            x: GAME.width + randomBetween(210, 320),
+            y: comboY,
+            width: comboConfig.width,
+            height: comboConfig.height,
+            speed: comboConfig.speed,
+            removable: comboConfig.removable,
+            damage: comboConfig.damage,
+            jumpClearance: comboConfig.jumpClearance,
+            element: comboElement
+        });
+    }
+}
+
+function fireRoadTripHammer() {
+    const projectile = {
+        x: state.player.x + state.player.width - 34,
+        y: state.player.y + 24,
+        width: 28,
+        height: 28,
+        velocityX: GAME.projectileSpeed * 2.95,
+        velocityY: 0,
+        ownerId: "road-hammer",
+        element: document.createElement("div")
+    };
+
+    projectile.element.className = "teacher-projectile roadtrip-hammer-projectile";
+    projectile.element.textContent = "🔨";
+    gameArea.appendChild(projectile.element);
+    syncEntity(projectile);
+    state.teacherProjectiles.push(projectile);
+    playHammerSound();
+    playPlayerRangedAttackAnimation();
+}
+
+function applyPlayerWeaponAppearance(player) {
+    if (!player?.element) {
+        return;
+    }
+
+    const weapon = player.element.querySelector(".player-hammer");
+    if (!weapon) {
+        return;
+    }
+
+    weapon.className = `player-hammer tool-${getPlayerWeaponToolStyle()}`;
+}
+
+function updateAttackButtonAppearance() {
+    const attackButton = document.getElementById("touchAttackBtn");
+    const dodgeButton = document.getElementById("touchDodgeBtn");
+    if (!attackButton) {
+        return;
+    }
+
+    if (isRoadTripActive()) {
+        attackButton.textContent = "🔨";
+        attackButton.setAttribute("aria-label", "Lancia martello");
+        if (dodgeButton) {
+            dodgeButton.textContent = "⤴️";
+            dodgeButton.setAttribute("aria-label", "Salta");
+        }
+    } else if (isLevelSixMachineGunActive()) {
+        attackButton.textContent = "🔫";
+        attackButton.setAttribute("aria-label", "Spara");
+        if (dodgeButton) {
+            dodgeButton.textContent = "💨";
+            dodgeButton.setAttribute("aria-label", "Schivata");
+        }
+    } else {
+        attackButton.textContent = "🔨";
+        attackButton.setAttribute("aria-label", "Attacca");
+        if (dodgeButton) {
+            dodgeButton.textContent = "💨";
+            dodgeButton.setAttribute("aria-label", "Schivata");
+        }
+    }
+}
 
 const studentStyles = [
     {
@@ -349,6 +879,36 @@ const speechProfiles = {
             "Torna a studiare",
             "Fallo fare all'AI adesso!"
         ],
+        teacherHitMessagesByLevel: {
+            4: [
+                "Tieni la corsia, stiamo andando in piazza!",
+                "Via dalla strada, devo arrivare all'evento!",
+                "Il martello oggi si lancia dal finestrino!",
+                "Occhio alle buche, il viaggio non e' finito!",
+                "Niente imboscate, devo raggiungere il gazebo!"
+            ],
+            5: [
+                "Signori, lo SPID non si attiva lanciando pietre!",
+                "Uno alla volta al gazebo, grazie!",
+                "L'evento Aulab non e' un CAF improvvisato!",
+                "Niente panico digitale, prego!",
+                "Le richieste in piazza si fanno senza assaltare il docente!"
+            ],
+            6: [
+                "Giu' le mani dal gazebo Aulab!",
+                "I vocali da tre minuti non accelerano la coda!",
+                "Il ticket si ritira, non si urla!",
+                "Niente assalto allo stand, grazie!",
+                "Le OTP non si risolvono prendendo a sassate il docente!"
+            ],
+            7: [
+                "Il Signore dello SPID finisce qui!",
+                "Niente OTP infinite oggi!",
+                "Autenticazione o no, ti spengo io!",
+                "Questo palco non cade per colpa tua!",
+                "Basta caos digitale, boss!"
+            ]
+        },
         typeMessages: {
             fast: [
                 "TikTok > studio!",
@@ -388,19 +948,86 @@ const speechProfiles = {
                 "Caffè... finito...",
                 "Bug... infiniti...",
                 "Stack overflow..."
+            ],
+            panicked: [
+                "mi aiuta un secondo?!",
+                "ho toccato qualcosa!",
+                "si e' bloccato tutto!",
+                "non trovo piu' la password!",
+                "la NASpI mi ha sconfitto!",
+                "dov'e' il tasto per uscire?!"
+            ],
+            boomer: [
+                "mi serve lo SPID subito!",
+                "mi sente?!",
+                "il telefono fa cose strane!",
+                "mi hanno detto di chiedere qui!",
+                "dove arriva il codice?!",
+                "non mi legge la faccia!"
+            ],
+            spid: [
+                "mi serve l'OTP!",
+                "ho perso il PIN!",
+                "non parte il riconoscimento!",
+                "mi dice accesso negato!",
+                "non trovo la PEC!",
+                "mi aiuta con la CIE?!"
+            ],
+            passacarte: [
+                "ho qui tutti i moduli!",
+                "mi manca solo una firma!",
+                "glielo stampo subito!",
+                "prenda questo foglio!",
+                "ho portato tutte le carte!",
+                "mi hanno detto di compilare tutto!"
+            ],
+            vocal: [
+                "le mando un vocale!",
+                "ascolti questo audio!",
+                "gliel'ho spiegato in cinque minuti di messaggio!",
+                "ora inoltro tutto sul gruppo!",
+                "mi sente? la nota vocale parte da sola!",
+                "aspetti che le faccio sentire mio cugino!"
+            ],
+            caf: [
+                "glielo spiego io!",
+                "mio cugino al CAF fa prima!",
+                "serve un modulo in triplice copia!",
+                "tranquilli, so tutto io!",
+                "basta cliccare qualcosa!",
+                "passi da me con i documenti!"
             ]
         },
-        chantMessages: [
-            "Sorgi, o Grande Svogliato!",
-            "Evoca il potere dello svacco!",
-            "Niente studio oggi!",
-            "Grande Svogliato, ascoltaci!",
-            "Vieni a liberarci!",
-            "La procrastinazione trionferà!"
-        ],
-        bossMessages: [
-            "SKIBIDIBOPPI"
-        ],
+        chantMessages: {
+            greatSlacker: [
+                "Sorgi, o Grande Svogliato!",
+                "Evoca il potere dello svacco!",
+                "Niente studio oggi!",
+                "Grande Svogliato, ascoltaci!",
+                "Vieni a liberarci!",
+                "La procrastinazione trionferà!"
+            ],
+            spidOverlord: [
+                "Apri il portale dello SPID!",
+                "Convalidaci, o signore dei codici!",
+                "OTP, sorgi dalla nube!",
+                "Grande autenticatore, ascoltaci!",
+                "Facci accedere subito!",
+                "Che la burocrazia digitale trionfi!"
+            ]
+        },
+        bossMessages: {
+            greatSlacker: [
+                "SKIBIDIBOPPI"
+            ],
+            spidOverlord: [
+                "Mi serve il codice di verifica!",
+                "Chi ha preso il mio OTP?!",
+                "Nessuno esce senza autenticazione!",
+                "Io sono il Signore dello SPID!",
+                "Riconoscimento facciale fallito!"
+            ]
+        },
         teacherContextMessages: {
             serverPower: [
                 "Server power! Zombie offline!"
@@ -433,6 +1060,36 @@ const speechProfiles = {
             "meno ChatGPT, stronzetto!",
             "falla fare all'AI adesso, merda!"
         ],
+        teacherHitMessagesByLevel: {
+            4: [
+                "Levatevi dal cazzo, sto andando in piazza!",
+                "Fuori dalla strada, bestie!",
+                "Il martello oggi vola dal finestrino, stronzi!",
+                "Se becco un'altra buca mi incazzo sul serio!",
+                "Niente agguati, devo arrivare al gazebo intero!"
+            ],
+            5: [
+                "Lo SPID non si attiva rompendo i coglioni!",
+                "Uno alla volta al gazebo, porca miseria!",
+                "Questo non e' un cazzo di CAF abusivo!",
+                "Niente panico di merda, in fila!",
+                "Se tirate ancora, vi disinstallo io!"
+            ],
+            6: [
+                "Giu' dal gazebo, bestie!",
+                "I vocali del cazzo non vi fanno passare prima!",
+                "La coda non si salta urlando come disperati!",
+                "State sfondando lo stand, stronzi!",
+                "L'OTP non si sblocca a sassate, geni del cazzo!"
+            ],
+            7: [
+                "Tu e il tuo SPID del cazzo finite adesso!",
+                "Mo' ti spengo io, boss di merda!",
+                "Basta OTP, PIN e troiate digitali!",
+                "Scendi dal palco, cesso autenticato!",
+                "Il Signore dello SPID oggi va offline!"
+            ]
+        },
         typeMessages: {
             fast: [
                 "non mi prendi manco per il cazzo!",
@@ -472,23 +1129,90 @@ const speechProfiles = {
                 "caffe' finito... porca troia...",
                 "bug infiniti... che inculata...",
                 "stack overflow... e fanculo..."
+            ],
+            panicked: [
+                "mi si e' inculato tutto!",
+                "ho schiacciato una roba del cazzo!",
+                "aiutami che non funziona un cazzo!",
+                "non trovo piu' sta password di merda!",
+                "la NASpI mi sta massacrando!",
+                "dimmi dove devo cliccare, cristo!"
+            ],
+            boomer: [
+                "voglio lo SPID adesso, cazzo!",
+                "mi sente o no?!",
+                "sto telefono di merda fa come vuole!",
+                "mi hanno detto di rompere qui!",
+                "dov'e' il cazzo di codice?!",
+                "sta faccia non me la legge, merda!"
+            ],
+            spid: [
+                "ridammi l'OTP, bastardo!",
+                "ho perso il PIN del cazzo!",
+                "sto riconoscimento di merda non parte!",
+                "mi dice accesso negato, infami!",
+                "chi cazzo mi ha nascosto la PEC?!",
+                "fammi entrare con sta CIE!"
+            ],
+            passacarte: [
+                "beccati sti moduli del cazzo!",
+                "mi manca una firma di merda!",
+                "te lo stampo in faccia!",
+                "prendi sto foglio, stronzo!",
+                "ho una cartella piena di scartoffie!",
+                "compila tutto e non rompere i coglioni!"
+            ],
+            vocal: [
+                "ti mando un vocale di otto minuti!",
+                "ascolta sto audio del cazzo!",
+                "te lo spiego con trentadue messaggi!",
+                "ora inoltro tutto al gruppo, merde!",
+                "la nota vocale parte e non si ferma piu'!",
+                "aspetta che senti mio cugino, bastardo!"
+            ],
+            caf: [
+                "ve la spiego io, minchioni!",
+                "mio cugino al CAF ve la chiude in due minuti!",
+                "ci vuole un modulo del cazzo in triplice copia!",
+                "tranquilli, so tutto io, stronzi!",
+                "basta cliccare a caso, no?!",
+                "passa da me con tutti i documenti, coglione!"
             ]
         },
-        chantMessages: [
-            "sorgi, bestione del cazzo!",
-            "evocalo, porca troia!",
-            "niente studio, solo casino!",
-            "grande svogliato, spaccagli il culo!",
-            "vieni a salvarci da sto prof di merda!",
-            "la procrastinazione vince, stronzi!"
-        ],
-        bossMessages: [
-            "SKIBIDIBOPPI, teste di cazzo!",
-            "non studio un cazzo!",
-            "vi mando tutti affanculo!",
-            "sono il boss dei fancazzisti, merde!",
-            "fallite tutti, stronzi!"
-        ],
+        chantMessages: {
+            greatSlacker: [
+                "sorgi, bestione del cazzo!",
+                "evocalo, porca troia!",
+                "niente studio, solo casino!",
+                "grande svogliato, spaccagli il culo!",
+                "vieni a salvarci da sto prof di merda!",
+                "la procrastinazione vince, stronzi!"
+            ],
+            spidOverlord: [
+                "apri sto portale del cazzo!",
+                "evoca il signore dello SPID, merde!",
+                "OTP di merda, materializzati!",
+                "grande autenticatore, facci entrare subito!",
+                "vieni a devastare sto gazebo del cazzo!",
+                "che la burocrazia ci asfalti tutti!"
+            ]
+        },
+        bossMessages: {
+            greatSlacker: [
+                "SKIBIDIBOPPI, teste di cazzo!",
+                "non studio un cazzo!",
+                "vi mando tutti affanculo!",
+                "sono il boss dei fancazzisti, merde!",
+                "fallite tutti, stronzi!"
+            ],
+            spidOverlord: [
+                "dov'e' il cazzo di codice?!",
+                "chi mi ha inculato l'OTP?!",
+                "nessuno passa senza autenticazione, stronzi!",
+                "io sono il Signore dello SPID, merde!",
+                "sta procedura di merda e' fallita di nuovo!"
+            ]
+        },
         teacherContextMessages: {
             serverPower: [
                 "server del cazzo, zombie asfaltato!"
@@ -521,87 +1245,57 @@ const musicBassPattern = [
     164.81, 164.81, 146.83, 146.83
 ];
 
+const roadTripLeadPattern = [
+    659.25, 783.99, 880.0, 783.99,
+    698.46, 783.99, 987.77, 783.99
+];
+
+const roadTripBassPattern = [
+    164.81, 164.81, 164.81, 164.81,
+    220.0, 220.0, 196.0, 196.0
+];
+
+function showToast(message) {
+    const toast = document.getElementById("mapEditorToast");
+    if (!toast) {
+        return;
+    }
+
+    toast.textContent = message;
+    toast.classList.add("show");
+    window.setTimeout(() => toast.classList.remove("show"), 2200);
+}
+
 function showStoryOverlay() {
     unlockAudio();
     primeSpeechSynthesis();
+    attemptImmersiveMode();
     if (storyOverlay) {
         storyOverlay.classList.remove("d-none");
     }
-    showStoryText();
+    renderStoryParagraphs(miniStoryParagraphs);
 }
 
-function showStoryText() {
+function renderStoryParagraphs(paragraphs) {
     if (!storyContent) return;
-    
-    // Clear any previous typewriter timeouts
-    storyTimeouts.forEach(t => clearTimeout(t));
-    storyTimeouts = [];
+
     storyContent.innerHTML = "";
-    typingActive = true;
-    
-    let pIndex = 0;
-    
-    function typeParagraph() {
-        if (pIndex >= storyParagraphs.length || !typingActive) {
-            typingActive = false;
-            return;
-        }
-        
-        const pText = storyParagraphs[pIndex];
+    paragraphs.forEach((text, index) => {
         const pElement = document.createElement("p");
         pElement.className = "story-paragraph";
-        
-        if (pText.startsWith("[SISTEMA]") || pText.startsWith("È la notte")) {
+        if (index === 0 || text.startsWith("[SISTEMA]")) {
             pElement.classList.add("text-neon-cyan");
         }
-        
+        pElement.textContent = text;
         storyContent.appendChild(pElement);
-        
-        let charIndex = 0;
-        
-        function typeChar() {
-            if (!typingActive) return;
-            
-            if (charIndex < pText.length) {
-                pElement.textContent += pText.charAt(charIndex);
-                charIndex++;
-                storyContent.scrollTop = storyContent.scrollHeight;
-                
-                const t = setTimeout(typeChar, 10);
-                storyTimeouts.push(t);
-            } else {
-                pIndex++;
-                const t = setTimeout(typeParagraph, 350);
-                storyTimeouts.push(t);
-            }
-        }
-        
-        typeChar();
-    }
-    
-    typeParagraph();
+    });
+    storyContent.scrollTop = 0;
 }
 
 function skipStory() {
     unlockAudio();
     primeSpeechSynthesis();
-    typingActive = false;
-    storyTimeouts.forEach(t => clearTimeout(t));
-    storyTimeouts = [];
-    
-    if (storyContent) {
-        storyContent.innerHTML = "";
-        storyParagraphs.forEach(pText => {
-            const pElement = document.createElement("p");
-            pElement.className = "story-paragraph";
-            if (pText.startsWith("[SISTEMA]") || pText.startsWith("È la notte")) {
-                pElement.classList.add("text-neon-cyan");
-            }
-            pElement.textContent = pText;
-            storyContent.appendChild(pElement);
-        });
-        storyContent.scrollTop = storyContent.scrollHeight;
-    }
+    attemptImmersiveMode();
     
     if (storyOverlay) {
         storyOverlay.classList.add("d-none");
@@ -621,16 +1315,14 @@ function init() {
 
     loadTeachers();
     loadHackademies();
+    updateViewportLayout();
     bindEvents();
     initTouchControls();
     resetGame();
-    updateGameScale();
     updateMuteButtonVisual();
     MapEditor.init();
     requestAnimationFrame(gameLoop);
-    
-    // Start narrative screen typewriter
-    showStoryText();
+    renderStoryParagraphs(miniStoryParagraphs);
 }
 
 function initTouchControls() {
@@ -743,25 +1435,50 @@ function initTouchControls() {
         }
     });
 
-    function bindTouchAction(button, action) {
+    function bindTouchAction(button, action, options = {}) {
         const handler = (event) => {
+            if (options.onPress) {
+                options.onPress();
+            }
             action();
             event.preventDefault();
         };
 
         if ("PointerEvent" in window) {
             button.addEventListener("pointerdown", handler, { passive: false });
+            if (options.onRelease) {
+                const releaseHandler = () => options.onRelease();
+                button.addEventListener("pointerup", releaseHandler, { passive: true });
+                button.addEventListener("pointercancel", releaseHandler, { passive: true });
+                button.addEventListener("pointerleave", releaseHandler, { passive: true });
+            }
         } else {
             button.addEventListener("touchstart", handler, { passive: false });
+            if (options.onRelease) {
+                const releaseHandler = () => options.onRelease();
+                button.addEventListener("touchend", releaseHandler, { passive: true });
+                button.addEventListener("touchcancel", releaseHandler, { passive: true });
+            }
         }
     }
 
     bindTouchAction(touchAttackBtn, () => {
         attack();
+    }, {
+        onPress: () => {
+            state.keys.add("attack");
+        },
+        onRelease: () => {
+            state.keys.delete("attack");
+        }
     });
 
     bindTouchAction(touchDodgeBtn, () => {
-        queuePlayerDodge(getPreferredDodgeVector());
+        if (isRoadTripActive()) {
+            triggerRoadTripJump();
+        } else {
+            queuePlayerDodge(getPreferredDodgeVector());
+        }
     });
 }
 
@@ -795,12 +1512,47 @@ function bindEvents() {
             resetGame();
         });
     }
+    if (skipWeaponVisionBtn) {
+        skipWeaponVisionBtn.addEventListener("click", () => {
+            if (typeof state.activeCutsceneSkipHandler === "function") {
+                state.activeCutsceneSkipHandler();
+            }
+        });
+    }
 
     window.addEventListener("keydown", (event) => {
         const key = normalizeKey(event.key);
 
         if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(event.key) || ["w", "a", "s", "d"].includes(key)) {
             event.preventDefault();
+        }
+
+        if (
+            weaponVisionOverlay &&
+            !weaponVisionOverlay.classList.contains("d-none") &&
+            ["space", "enter", "escape"].includes(key)
+        ) {
+            if (typeof state.activeCutsceneSkipHandler === "function") {
+                state.activeCutsceneSkipHandler();
+            }
+            return;
+        }
+
+        if (isRoadTripActive()) {
+            if (!event.repeat && (key === "up" || key === "down" || key === "space")) {
+                triggerRoadTripJump();
+                return;
+            }
+            if (key === "left" || key === "right") {
+                return;
+            }
+            if (key === "control") {
+                state.keys.add("attack");
+                if (!event.repeat) {
+                    attack();
+                }
+                return;
+            }
         }
 
         // Gestione schivata con CTRL + direzione
@@ -838,6 +1590,7 @@ function bindEvents() {
         }
 
         if (key === "space") {
+            state.keys.add("attack");
             if (!event.repeat) {
                 attack();
             }
@@ -848,10 +1601,23 @@ function bindEvents() {
     });
 
     window.addEventListener("keyup", (event) => {
-        state.keys.delete(normalizeKey(event.key));
+        const key = normalizeKey(event.key);
+        state.keys.delete(key);
+        if (key === "space") {
+            state.keys.delete("attack");
+        }
+        if (key === "control") {
+            state.keys.delete("attack");
+        }
     });
 
-    window.addEventListener("resize", updateGameScale);
+    window.addEventListener("resize", updateViewportLayout);
+    window.addEventListener("orientationchange", updateViewportLayout);
+    document.addEventListener("fullscreenchange", updateViewportLayout);
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", updateViewportLayout);
+        window.visualViewport.addEventListener("scroll", updateViewportLayout);
+    }
 
     // Event listener per la creazione del docente
     addTeacherBtn.addEventListener("click", () => {
@@ -1055,6 +1821,7 @@ function resetGame() {
     deactivateRageMode();
     clearEntities();
     stopStudentSpeech();
+    state.keys.delete("attack");
 
     state.running = false;
     state.gameOver = false;
@@ -1062,8 +1829,8 @@ function resetGame() {
     state.currentLevel = 1;
     state.lastAttackAt = 0;
     state.gameTimeMs = 0;
-    state.nextPowerUpAt = GAME.firstPowerUpDelay;
-    state.nextHeartPowerUpAt = GAME.firstHeartPowerUpDelay;
+    state.nextPowerUpAt = getPowerUpSpawnWindowDelay();
+    state.nextHeartPowerUpAt = getHeartPowerUpRespawnDelay();
     buildLevel(state.currentLevel, true);
     updateHud();
 
@@ -1084,9 +1851,10 @@ function resetGame() {
 function resumeGame() {
     unlockAudio();
     primeSpeechSynthesis();
+    attemptImmersiveMode();
     const savedLevel = localStorage.getItem("aulab_rage_saved_level");
     const parsedLevel = parseInt(savedLevel, 10);
-    if (parsedLevel && parsedLevel > 1 && parsedLevel <= 3) {
+    if (parsedLevel && parsedLevel > 1 && parsedLevel <= levelConfigs.length) {
         selectHackademy("standard", false);
 
         buildLevel(parsedLevel, true);
@@ -1105,7 +1873,7 @@ function updateResumeButton() {
     if (!resumeButton) return;
     const savedLevel = localStorage.getItem("aulab_rage_saved_level");
     const parsedLevel = parseInt(savedLevel, 10);
-    if (parsedLevel && parsedLevel > 1 && parsedLevel <= 3) {
+    if (parsedLevel && parsedLevel > 1 && parsedLevel <= levelConfigs.length) {
         if (savedLevelNum) {
             savedLevelNum.textContent = parsedLevel;
         }
@@ -1116,6 +1884,8 @@ function updateResumeButton() {
 }
 
 function clearEntities() {
+    clearActiveCutscenes();
+    clearBonusRoad();
     state.students.forEach((student) => {
         if (student.speechTimeoutId) {
             window.clearTimeout(student.speechTimeoutId);
@@ -1137,12 +1907,13 @@ function clearEntities() {
     const summoningBanner = document.getElementById("summoningBanner");
     if (summoningBanner) summoningBanner.classList.add("d-none");
 
-    [state.player, ...state.students, ...state.projectiles, ...state.effects, state.powerUp, state.heartPowerUp, state.dragonStrike, state.studiaStrike]
+    [state.player, ...state.students, ...state.projectiles, ...state.teacherProjectiles, ...state.effects, state.powerUp, state.heartPowerUp, state.dragonStrike, state.studiaStrike]
         .filter(Boolean)
         .forEach((entity) => entity.element.remove());
 
     state.students = [];
     state.projectiles = [];
+    state.teacherProjectiles = [];
     state.effects = [];
     state.powerUp = null;
     state.heartPowerUp = null;
@@ -1156,6 +1927,8 @@ function clearEntities() {
 }
 
 function clearLevelActors(keepPlayer = true) {
+    clearActiveCutscenes();
+    clearBonusRoad();
     state.students.forEach((student) => {
         if (student.speechTimeoutId) {
             window.clearTimeout(student.speechTimeoutId);
@@ -1373,16 +2146,8 @@ function closeResetConfirmModal() {
 }
 
 function updateStartDescription() {
-    const teacher = getSelectedTeacher();
     if (startDescription) {
-        let targetText = "l'ufficio Aulab";
-        if (state.selectedHackademyId !== "standard") {
-            const hackademy = state.hackademies.find(h => h.id === state.selectedHackademyId);
-            if (hackademy) {
-                targetText = `la classe ${hackademy.name}`;
-            }
-        }
-        startDescription.innerHTML = `I docenti devono liberare ${targetText} inseguendo gli studenti che non studiano, schivando le pietre e colpendoli con la loro arma... hem, sì... volevo dire "arma giocattolo".`;
+        startDescription.textContent = "";
     }
 }
 
@@ -1420,6 +2185,36 @@ function buildStudentsFromSpawns(studentSpawns) {
     return builtStudents;
 }
 
+function setupSummoningSequence(levelNumber, level) {
+    spawnSummoningFocus(level.bossKind || "greatSlacker");
+    state.students.forEach((student) => {
+        student.isChanting = true;
+        student.element.classList.add("student-chanting");
+    });
+    state.summoningActive = true;
+    state.summoningTimer = level.summoningDuration || 5000;
+    state.lastRumbleAt = 0;
+
+    const banner = document.getElementById("summoningBanner");
+    const bannerText = banner?.querySelector(".summoning-text");
+    if (banner) {
+        banner.classList.remove("d-none");
+    }
+    if (bannerText) {
+        bannerText.innerHTML = levelNumber === 7
+            ? `Autenticazione del Caos... <span id="summoningTimer">${Math.ceil(state.summoningTimer / 1000)}</span>s`
+            : `Evocazione in corso... <span id="summoningTimer">${Math.ceil(state.summoningTimer / 1000)}</span>s`;
+    }
+
+    window.setTimeout(() => {
+        if (levelNumber === 3) {
+            showToast("🎯 NUOVA ARMA DISPONIBILE! Cerca i power-up 'STUDIA' per ottenere l'arma a distanza che insegue il boss!");
+        } else if (levelNumber === 7) {
+            showToast("🔫 Livello 7: mitraglietta equipaggiata. Tieni premuto il colpo e scaricala sul Signore dello SPID.");
+        }
+    }, 1000);
+}
+
 function buildLevel(levelNumber, resetPlayerLives = false) {
     clearLevelActors(true);
     state.currentLevel = levelNumber;
@@ -1432,8 +2227,16 @@ function buildLevel(levelNumber, resetPlayerLives = false) {
         gameArea.classList.remove("emergency-mode");
     }
 
+    if (levelNumber >= 5 && state.selectedHackademyId === "standard") {
+        gameArea.classList.add("city-mode");
+    } else {
+        gameArea.classList.remove("city-mode");
+    }
+
+    gameArea.classList.remove("roadtrip-mode");
+
     // Usa la mappa personalizzata dell'editor se disponibile, altrimenti usa il default
-    const customObstacles = (typeof MapEditor !== "undefined")
+    const customObstacles = (typeof MapEditor !== "undefined" && level.mode !== "roadTrip")
         ? MapEditor.getObstaclesForLevel(levelNumber)
         : null;
     createObstacles(customObstacles || level.obstacles);
@@ -1446,6 +2249,17 @@ function buildLevel(levelNumber, resetPlayerLives = false) {
             state.player.lives = GAME.spawnLives;
             state.player.invulnerableUntil = 0;
         }
+    }
+
+    applyPlayerWeaponAppearance(state.player);
+    updateAttackButtonAppearance();
+
+    if (level.mode === "roadTrip" && state.selectedHackademyId === "standard") {
+        state.students = [];
+        state.projectiles = [];
+        state.teacherProjectiles = [];
+        setupRoadTripLevel();
+        return;
     }
 
     if (state.selectedHackademyId !== "standard") {
@@ -1461,51 +2275,49 @@ function buildLevel(levelNumber, resetPlayerLives = false) {
         state.students = buildStudentsFromSpawns(studentSpawns);
     } else {
         state.students = buildStudentsFromSpawns(level.studentSpawns);
-        
-        if (levelNumber === 3) {
-            spawnCampfire();
-            state.students.forEach((student) => {
-                student.isChanting = true;
-                student.element.classList.add("student-chanting");
-            });
-            state.summoningActive = true;
-            state.summoningTimer = 5000;
-            state.lastRumbleAt = 0;
-            const banner = document.getElementById("summoningBanner");
-            if (banner) {
-                banner.classList.remove("d-none");
-            }
 
-            // Mostra notifica dell'arma STUDIA
-            setTimeout(() => {
-                showToast("🎯 NUOVA ARMA DISPONIBILE! Cerca i power-up 'STUDIA' per ottenere l'arma a distanza che insegue il boss!");
-            }, 1000);
+        if (level.bossKind) {
+            setupSummoningSequence(levelNumber, level);
         }
     }
 }
 
-function spawnCampfire() {
-    const campfire = document.createElement("div");
-    campfire.className = "campfire";
-    campfire.style.left = "600px";
-    campfire.style.top = "320px";
-    
-    const logs = document.createElement("div");
-    logs.className = "campfire-logs";
-    
-    const flame = document.createElement("div");
-    flame.className = "campfire-flame";
-    
+function spawnSummoningFocus(kind = "greatSlacker") {
+    const focus = document.createElement("div");
     const portal = document.createElement("div");
     portal.className = "summoning-portal";
-    
-    campfire.append(logs, flame, portal);
-    gameArea.appendChild(campfire);
-    
-    state.campfireElement = campfire;
-    
-    setTimeout(() => {
-        if (portal) portal.classList.add("active");
+
+    if (kind === "spidOverlord") {
+        focus.className = "spid-beacon";
+        focus.style.left = "594px";
+        focus.style.top = "302px";
+        focus.dataset.rectWidth = "92";
+        focus.dataset.rectHeight = "92";
+
+        const screen = document.createElement("div");
+        screen.className = "spid-beacon-screen";
+        const ring = document.createElement("div");
+        ring.className = "spid-beacon-ring";
+        focus.append(screen, ring, portal);
+    } else {
+        focus.className = "campfire";
+        focus.style.left = "600px";
+        focus.style.top = "320px";
+        focus.dataset.rectWidth = "80";
+        focus.dataset.rectHeight = "80";
+
+        const logs = document.createElement("div");
+        logs.className = "campfire-logs";
+        const flame = document.createElement("div");
+        flame.className = "campfire-flame";
+        focus.append(logs, flame, portal);
+    }
+
+    gameArea.appendChild(focus);
+    state.campfireElement = focus;
+
+    window.setTimeout(() => {
+        portal.classList.add("active");
     }, 100);
 }
 
@@ -1520,6 +2332,7 @@ function createPlayer(spawn, resetPlayerLives = false) {
     const legRight = document.createElement("span");
     const hammer = document.createElement("span");
     const hammerHead = document.createElement("span");
+    const roadTripCar = document.createElement("div");
 
     figure.className = "player-figure";
     face.className = "player-face";
@@ -1537,12 +2350,20 @@ function createPlayer(spawn, resetPlayerLives = false) {
     legRight.className = "player-leg leg-right";
     
     // Applica lo stile grafico dell'arma associata al docente
-    hammer.className = `player-hammer tool-${selectedTeacher.toolStyle}`;
+    hammer.className = `player-hammer tool-${getPlayerWeaponToolStyle()}`;
     hammerHead.className = "player-hammer-head";
+    roadTripCar.className = "roadtrip-car";
+    roadTripCar.innerHTML = `
+        <span class="roadtrip-car-body"></span>
+        <span class="roadtrip-car-window"></span>
+        <span class="roadtrip-car-wheel front"></span>
+        <span class="roadtrip-car-wheel rear"></span>
+    `;
 
     hammer.appendChild(hammerHead);
     figure.append(face, torso, armLeft, armRight, legLeft, legRight, hammer);
     element.appendChild(figure);
+    element.appendChild(roadTripCar);
 
     const shieldBubble = document.createElement("div");
     shieldBubble.className = "player-shield-bubble";
@@ -1583,6 +2404,7 @@ function createPlayer(spawn, resetPlayerLives = false) {
 
 function repositionPlayer(spawn) {
     deactivateRageMode();
+    teardownRoadTripPlayerState();
     state.player.x = spawn.x;
     state.player.y = spawn.y;
     state.player.direction = "right";
@@ -1621,8 +2443,10 @@ function createStudent(spawn, index) {
     figure.append(head, body, armLeft, armRight, legLeft, legRight, stone);
     element.appendChild(figure);
 
-    let types = ["fast", "shooter", "dodger", "cheater"];
-    let type = types[index % types.length];
+    const types = ["fast", "shooter", "dodger", "cheater"];
+    const type = spawn.studentType || types[index % types.length];
+    const speechType = spawn.speechType || type;
+    const roleLabel = spawn.roleLabel || "";
 
     if (type === "cheater") {
         const copyUI = document.createElement("div");
@@ -1653,6 +2477,8 @@ function createStudent(spawn, index) {
         throwReleaseAt: 0,
         speechTimeoutId: null,
         studentType: type,
+        speechType,
+        roleLabel,
         dodgeCooldown: 0,
         dashTimer: 0,
         dashVector: null,
@@ -1672,7 +2498,17 @@ function createStudent(spawn, index) {
     placeEntityInFreeSpot(student);
     student.lastSafeX = student.x;
     student.lastSafeY = student.y;
-    student.element.className = `entity student type-${type}`;
+    student.element.className = `entity student type-${type} role-${speechType}`;
+
+    if (speechType === "vocal") {
+        student.shotTimer = 8 + Math.random() * 18;
+        student.talkTimer = randomBetween(1800, 3600);
+    } else if (speechType === "panicked") {
+        student.talkTimer = randomBetween(2200, 4200);
+    } else if (speechType === "caf") {
+        student.talkTimer = randomBetween(2600, 4600);
+    }
+
     gameArea.appendChild(student.element);
     updateStudentVisual(student, false);
     syncEntity(student);
@@ -1685,9 +2521,17 @@ function startGame() {
         return;
     }
 
+    const devStartLevel = getDevelopmentStartLevelOverride();
+
     unlockAudio();
     primeSpeechSynthesis();
+    attemptImmersiveMode();
     localStorage.removeItem("aulab_rage_saved_level");
+    if (devStartLevel && devStartLevel !== state.currentLevel) {
+        buildLevel(devStartLevel, true);
+    } else if (!devStartLevel && state.currentLevel !== 1) {
+        buildLevel(1, true);
+    }
     state.running = true;
     state.gameOver = false;
     state.victory = false;
@@ -1702,6 +2546,7 @@ function startGame() {
 function selectContentMode(mode) {
     unlockAudio();
     primeSpeechSynthesis();
+    attemptImmersiveMode();
     state.contentMode = mode;
     document.body.dataset.contentMode = mode;
     closeModeOverlay();
@@ -1734,6 +2579,19 @@ function getActiveSpeechProfile() {
     return speechProfiles[state.contentMode] || speechProfiles["politically-correct"];
 }
 
+function getTeacherHitMessagePool() {
+    const profile = getActiveSpeechProfile();
+    const levelSpecificMessages = profile.teacherHitMessagesByLevel?.[state.currentLevel];
+    if (Array.isArray(levelSpecificMessages) && levelSpecificMessages.length > 0) {
+        return levelSpecificMessages;
+    }
+    return profile.teacherHitMessages;
+}
+
+function getCurrentBossKind() {
+    return state.boss?.kind || getCurrentLevelConfig().bossKind || "greatSlacker";
+}
+
 function pickRandomLine(lines, fallback = "") {
     if (!Array.isArray(lines) || lines.length === 0) {
         return fallback;
@@ -1742,9 +2600,27 @@ function pickRandomLine(lines, fallback = "") {
     return lines[Math.floor(Math.random() * lines.length)] || fallback;
 }
 
-function getStudentLinePool(studentType) {
+function getProfileSectionLines(sectionName, variantKey) {
     const profile = getActiveSpeechProfile();
-    return profile.typeMessages[studentType] || profile.studentMessages;
+    const section = profile[sectionName];
+    if (Array.isArray(section)) {
+        return section;
+    }
+    if (section && Array.isArray(section[variantKey])) {
+        return section[variantKey];
+    }
+    if (section && Array.isArray(section.default)) {
+        return section.default;
+    }
+    return [];
+}
+
+function getStudentLinePool(studentOrType) {
+    const profile = getActiveSpeechProfile();
+    const messageKey = typeof studentOrType === "string"
+        ? studentOrType
+        : studentOrType?.speechType || studentOrType?.studentType;
+    return profile.typeMessages[messageKey] || profile.studentMessages;
 }
 
 function hasQueuedOrActiveStudentSpeech(student) {
@@ -1853,7 +2729,7 @@ function queueStudentSpeech(student, message, options = {}) {
 }
 
 function getTeacherHitLine() {
-    return pickRandomLine(getActiveSpeechProfile().teacherHitMessages, "Torna a studiare!");
+    return pickRandomLine(getTeacherHitMessagePool(), "Torna a studiare!");
 }
 
 function getTeacherContextLine(key, fallback = "") {
@@ -1861,11 +2737,11 @@ function getTeacherContextLine(key, fallback = "") {
 }
 
 function getChantLine() {
-    return pickRandomLine(getActiveSpeechProfile().chantMessages, "Evocalo!");
+    return pickRandomLine(getProfileSectionLines("chantMessages", getCurrentBossKind()), "Evocalo!");
 }
 
 function getBossSpeechLine() {
-    return pickRandomLine(getActiveSpeechProfile().bossMessages, "SKIBIDIBOPPI");
+    return pickRandomLine(getProfileSectionLines("bossMessages", getCurrentBossKind()), "SKIBIDIBOPPI");
 }
 
 function getSpeechTtsProfile(role) {
@@ -1889,6 +2765,14 @@ function gameLoop(timestamp) {
 
     if (state.running) {
         state.gameTimeMs += Math.min(frameDeltaMs, 50);
+
+        if (isRoadTripActive()) {
+            updateRoadTripLevel(delta, timestamp);
+            updateHud();
+            applyGameAreaTransform();
+            requestAnimationFrame(gameLoop);
+            return;
+        }
 
         // --- GESTIONE EVOCAZIONE BOSS ---
         if (state.summoningActive) {
@@ -1956,6 +2840,7 @@ function gameLoop(timestamp) {
         updateHud();
     }
 
+    applyGameAreaTransform();
     requestAnimationFrame(gameLoop);
 }
 
@@ -2009,6 +2894,10 @@ function updatePlayer(delta, timestamp) {
     if (state.player.attackEndsAt && timestamp >= state.player.attackEndsAt) {
         state.player.attackEndsAt = 0;
         state.player.element.classList.remove("attacking");
+    }
+
+    if (isLevelSixMachineGunActive() && state.keys.has("attack") && !state.player.isDodging) {
+        attack();
     }
 }
 
@@ -2384,6 +3273,13 @@ function updateStudents(delta, timestamp) {
                 } else if (student.studentType === "shooter") {
                     speedMult = 0.15;
                 }
+                if (student.speechType === "panicked") {
+                    speedMult *= 1.12;
+                } else if (student.speechType === "spid") {
+                    speedMult *= 0.88;
+                } else if (student.speechType === "vocal") {
+                    speedMult *= 0.82;
+                }
                 if (student.codeCopied) {
                     speedMult *= 2.0;
                 }
@@ -2393,7 +3289,13 @@ function updateStudents(delta, timestamp) {
         }
 
         student.fleeTimer -= delta;
-        student.shotTimer -= student.codeCopied ? delta * 2.2 : delta;
+        let shotDelta = student.codeCopied ? delta * 2.2 : delta;
+        if (student.speechType === "vocal") {
+            shotDelta *= 1.55;
+        } else if (student.speechType === "passacarte") {
+            shotDelta *= 1.15;
+        }
+        student.shotTimer -= shotDelta;
         student.talkTimer -= delta * 16.67;
 
         if (student.isThrowing && now >= student.throwReleaseAt) {
@@ -2418,7 +3320,13 @@ function updateStudents(delta, timestamp) {
         }
 
         if (student.talkTimer <= 0) {
-            student.talkTimer = randomBetween(GAME.studentTalkMin, GAME.studentTalkMax);
+            if (student.speechType === "vocal") {
+                student.talkTimer = randomBetween(1500, 3200);
+            } else if (student.speechType === "panicked") {
+                student.talkTimer = randomBetween(2200, 4200);
+            } else {
+                student.talkTimer = randomBetween(GAME.studentTalkMin, GAME.studentTalkMax);
+            }
             speakStudent(student);
         }
 
@@ -2522,6 +3430,11 @@ function updateProjectiles(delta, timestamp) {
 }
 
 function updateTeacherProjectiles(delta, timestamp) {
+    if (isRoadTripActive()) {
+        updateRoadTripTeacherProjectiles(delta, timestamp);
+        return;
+    }
+
     const nextTeacherProjectiles = [];
 
     state.teacherProjectiles.forEach((projectile) => {
@@ -2537,6 +3450,14 @@ function updateTeacherProjectiles(delta, timestamp) {
         const survivors = [];
         state.students.forEach((student) => {
             if (rectsIntersect(projectile, student)) {
+                if (student.isChanting) {
+                    createHitEffect(student.x - 18, student.y - 18);
+                    playShieldSound();
+                    hitStudent = true;
+                    survivors.push(student);
+                    return;
+                }
+
                 // Colpito studente
                 createHitEffect(student.x - 18, student.y - 18);
                 student.element.remove();
@@ -2566,6 +3487,159 @@ function updateTeacherProjectiles(delta, timestamp) {
     });
 
     state.teacherProjectiles = nextTeacherProjectiles;
+}
+
+function updateRoadTripTeacherProjectiles(delta) {
+    const survivors = [];
+
+    state.teacherProjectiles.forEach((projectile) => {
+        projectile.x += projectile.velocityX * delta;
+        syncEntity(projectile);
+
+        if (projectile.x > GAME.width + 40) {
+            projectile.element.remove();
+            return;
+        }
+
+        let removed = false;
+        state.bonusRoad.entities = state.bonusRoad.entities.filter((entity) => {
+            if (removed || !entity.removable) {
+                return true;
+            }
+
+            if (rectsIntersect(projectile, entity)) {
+                createHitEffect(entity.x + entity.width / 2 - 18, entity.y + entity.height / 2 - 18);
+                entity.element.remove();
+                removed = true;
+                projectile.element.remove();
+                increaseRage(10);
+                return false;
+            }
+
+            return true;
+        });
+
+        if (!removed) {
+            survivors.push(projectile);
+        }
+    });
+
+    state.teacherProjectiles = survivors;
+}
+
+function updateRoadTripLevel(delta, timestamp) {
+    if (!state.bonusRoad || !state.player) {
+        return;
+    }
+
+    state.bonusRoad.distance += state.bonusRoad.scrollSpeed * delta * 1.18;
+    gameArea.style.setProperty("--road-shift", `${-(state.bonusRoad.distance * 1.25)}px`);
+
+    const wantsJumpFromMovement = state.keys.has("up") || state.keys.has("down");
+    if (wantsJumpFromMovement && !state.bonusRoad.jumpInputLatched) {
+        triggerRoadTripJump();
+        state.bonusRoad.jumpInputLatched = true;
+    } else if (!wantsJumpFromMovement) {
+        state.bonusRoad.jumpInputLatched = false;
+    }
+
+    if (timestamp >= state.bonusRoad.jumpEndsAt) {
+        state.player.element.classList.remove("bonus-jumping");
+    }
+    syncRoadTripPlayer();
+
+    if (state.keys.has("attack")) {
+        attack();
+    }
+
+    state.bonusRoad.spawnTimer -= delta * 16.67;
+    if (state.bonusRoad.spawnTimer <= 0) {
+        spawnRoadTripEntity();
+        const baseDelay = Math.max(420, 920 - state.bonusRoad.distance * 0.012);
+        state.bonusRoad.spawnTimer = randomBetween(baseDelay, baseDelay + 420);
+    }
+
+    const canTakeHit = timestamp >= state.player.invulnerableUntil;
+    const jumpOffset = getRoadTripJumpOffset();
+    const roadPlayerRect = {
+        x: state.player.x + 12,
+        y: state.player.y + 26,
+        width: state.player.width - 26,
+        height: state.player.height - 34
+    };
+
+    const remainingEntities = [];
+    state.bonusRoad.entities.forEach((entity) => {
+        entity.x -= entity.speed * delta * 6.2;
+        entity.element.style.transform = `translate(${entity.x}px, ${entity.y}px)`;
+
+        if (entity.x + entity.width < -60) {
+            entity.element.remove();
+            return;
+        }
+
+        const clearsEntity = jumpOffset >= (entity.jumpClearance || 999);
+        if (canTakeHit && !clearsEntity && rectsIntersect(roadPlayerRect, entity)) {
+            damagePlayer();
+            createHitEffect(entity.x + entity.width / 2 - 18, entity.y + entity.height / 2 - 18);
+            if (entity.removable) {
+                entity.element.remove();
+                return;
+            }
+        }
+
+        remainingEntities.push(entity);
+    });
+    state.bonusRoad.entities = remainingEntities;
+
+    updateRoadTripTeacherProjectiles(delta);
+    updateHud();
+
+    if (state.player.lives <= 0) {
+        finishGame(false);
+        return;
+    }
+
+    if (state.bonusRoad.distance >= state.bonusRoad.goalDistance) {
+        state.bonusRoad.distance = state.bonusRoad.goalDistance;
+        localStorage.setItem("aulab_rage_saved_level", state.currentLevel);
+        advanceToNextLevel();
+    }
+}
+
+function getPlayerAimVector() {
+    const movement = getInputVector();
+    if (movement.x !== 0 || movement.y !== 0) {
+        return movement;
+    }
+    return getPreferredDodgeVector();
+}
+
+function fireMachineGun() {
+    const aim = getPlayerAimVector();
+    const muzzle = centerOf(state.player);
+    const spreadAngle = (Math.random() - 0.5) * 0.12;
+    const baseAngle = Math.atan2(aim.y, aim.x) + spreadAngle;
+    const speed = GAME.projectileSpeed * 2.35;
+
+    const projectile = {
+        x: muzzle.x - 10,
+        y: muzzle.y - 4,
+        width: 20,
+        height: 8,
+        velocityX: Math.cos(baseAngle) * speed,
+        velocityY: Math.sin(baseAngle) * speed,
+        ownerId: "player-machinegun",
+        element: document.createElement("div")
+    };
+
+    projectile.element.className = "teacher-projectile machinegun-projectile";
+    gameArea.appendChild(projectile.element);
+    syncEntity(projectile);
+    state.teacherProjectiles.push(projectile);
+
+    playTeacherRangedSound();
+    playPlayerRangedAttackAnimation();
 }
 
 function advanceProjectile(projectile, delta) {
@@ -2650,7 +3724,21 @@ function updatePowerUps(delta) {
 
 function attack() {
     const now = performance.now();
-    if (!state.running || now - state.lastAttackAt < GAME.attackCooldown) {
+    if (!state.running || now - state.lastAttackAt < getPlayerAttackCooldown()) {
+        return;
+    }
+
+    if (isRoadTripActive()) {
+        state.lastAttackAt = now;
+        fireRoadTripHammer();
+        return;
+    }
+
+    if (isLevelSixMachineGunActive()) {
+        state.lastAttackAt = now;
+        state.player.attackEndsAt = 0;
+        state.player.element.classList.remove("attacking");
+        fireMachineGun();
         return;
     }
 
@@ -2746,8 +3834,16 @@ function attack() {
                     type = "speed";
                 } else if (state.currentLevel === 2) {
                     type = "shield";
-                } else {
+                } else if (state.currentLevel === 3) {
                     type = "super_hammer";
+                } else if (state.currentLevel === 4) {
+                    type = "coffee";
+                } else if (state.currentLevel === 5) {
+                    type = "coffee";
+                } else if (state.currentLevel === 6) {
+                    type = "speed";
+                } else {
+                    type = "studia";
                 }
             } else {
                 const types = ["coffee", "shield", "speed", "super_hammer"];
@@ -3227,12 +4323,14 @@ function getCampfireRect() {
 
     const left = parseFloat(state.campfireElement.style.left || "0");
     const top = parseFloat(state.campfireElement.style.top || "0");
+    const width = parseFloat(state.campfireElement.dataset.rectWidth || "80");
+    const height = parseFloat(state.campfireElement.dataset.rectHeight || "80");
 
     return {
         x: left,
         y: top,
-        width: 80,
-        height: 80
+        width,
+        height
     };
 }
 
@@ -3274,11 +4372,12 @@ function getCollisionRect(entity) {
             height: 20
         };
     } else if (entity === state.boss) {
-        // Boss: visual 104x120. Shrink physics to bottom 30px, 60px width (centered)
+        // Boss: use a dynamic feet hitbox so both boss variants collide consistently.
+        const hitboxWidth = Math.round(entity.width * 0.58);
         return {
-            x: entity.x + 22,
-            y: entity.y + 90,
-            width: 60,
+            x: entity.x + (entity.width - hitboxWidth) / 2,
+            y: entity.y + entity.height - 30,
+            width: hitboxWidth,
             height: 30
         };
     } else if (entity && entity.studentType !== undefined) {
@@ -3304,19 +4403,16 @@ function hitsObstacle(entity) {
     });
 }
 
-// Ritorna il delay (ms) tra un power-up e il successivo, scalato per livello:
-// Livello 1 → 10 s, Livello 2 → 6 s, Livello 3 → 4 s
-function getPowerUpRespawnDelay() {
-    if (state.currentLevel >= 3) return 4000;
-    if (state.currentLevel >= 2) return 6000;
-    return GAME.powerUpRespawnDelay; // 10000 ms
+function getPowerUpSpawnWindowDelay() {
+    return randomBetween(5000, 10000);
 }
 
-// Ritardo cuore scalato: Livello 1 → 10 s, Livello 2 → 7 s, Livello 3 → 5 s
+function getPowerUpRespawnDelay() {
+    return getPowerUpSpawnWindowDelay();
+}
+
 function getHeartPowerUpRespawnDelay() {
-    if (state.currentLevel >= 3) return 5000;
-    if (state.currentLevel >= 2) return 7000;
-    return GAME.heartPowerUpRespawnDelay; // 10000 ms
+    return getPowerUpSpawnWindowDelay();
 }
 
 function checkEndConditions() {
@@ -3327,7 +4423,7 @@ function checkEndConditions() {
 
     if (state.students.length === 0) {
         if (state.selectedHackademyId === "standard") {
-            if (state.currentLevel === 3 && (state.boss || state.summoningActive)) {
+            if (getCurrentLevelConfig().bossKind && (state.boss || state.summoningActive)) {
                 return;
             }
             
@@ -3349,8 +4445,8 @@ function advanceToNextLevel() {
     stopStudentSpeech();
     state.lastAttackAt = 0;
     state.gameTimeMs = 0;
-    state.nextPowerUpAt = GAME.firstPowerUpDelay;
-    state.nextHeartPowerUpAt = GAME.firstHeartPowerUpDelay;
+    state.nextPowerUpAt = getPowerUpSpawnWindowDelay();
+    state.nextHeartPowerUpAt = getHeartPowerUpRespawnDelay();
     
     state.running = false;
     
@@ -3366,6 +4462,30 @@ function advanceToNextLevel() {
             intermissionMessage.textContent = "Attento! Nel Livello 3 gli studenti si raduneranno attorno al fuoco per evocare qualcosa di spaventoso. Per fermarli e colpire anche da lontano, comparira un nuovo power-up: STUDIA.";
             if (intermissionButton) {
                 intermissionButton.textContent = "Affronta il Livello 3 (Boss Battle)";
+            }
+        } else if (state.currentLevel === 3) {
+            intermissionTitle.textContent = "Transizione di Mondo! 🚗";
+            intermissionMessage.textContent = "Il boss e' crollato, ma la missione continua fuori da Aulab. Nel livello bonus entri in un runner 2D laterale: la macchina corre da sola verso la piazza, tu salti buche e ostacoli con Space o col tasto salto e lanci il martello contro studenti e scooter con Ctrl o col tasto attacco.";
+            if (intermissionButton) {
+                intermissionButton.textContent = "Parti per il Livello Bonus";
+            }
+        } else if (state.currentLevel === 4) {
+            intermissionTitle.textContent = "Arrivo in Piazza! 📣";
+            intermissionMessage.textContent = "Hai raggiunto il centro citta'. Adesso inizia il vero caos digitale: stand Aulab, richieste di SPID e folla in panico.";
+            if (intermissionButton) {
+                intermissionButton.textContent = "Entra nel Livello 5: Piazza Digitale";
+            }
+        } else if (state.currentLevel === 5) {
+            intermissionTitle.textContent = "Piazza Ripulita! 📢";
+            intermissionMessage.textContent = "Il gazebo ha resistito, ma la folla cresce. Nel Livello 6 l'assedio all'evento sara' ancora piu' feroce e le note vocali inizieranno a volare.";
+            if (intermissionButton) {
+                intermissionButton.textContent = "Difendi il Livello 6";
+            }
+        } else if (state.currentLevel === 6) {
+            intermissionTitle.textContent = "Gazebo Salvo... per ora. 📲";
+            intermissionMessage.textContent = "Hai contenuto il caos, ma dietro tutto questo c'e' un'entita' digitale ancora peggiore. Nel Livello 7 verra' evocato il Signore dello SPID e partirai subito con una mitraglietta speciale.";
+            if (intermissionButton) {
+                intermissionButton.textContent = "Entra nel Livello 7 (Boss Finale)";
             }
         } else {
             intermissionTitle.textContent = `Livello ${state.currentLevel} Completato!`;
@@ -3395,6 +4515,10 @@ function spawnPowerUp() {
     // Nel livello 3, aumenta molto la probabilita' del power-up "studia" solo quando il boss e' presente.
     if (state.currentLevel === 3 && state.boss) {
         types = ["coffee", "shield", "speed", "super_hammer", "studia", "studia", "studia", "studia", "studia", "studia"];
+    } else if (state.currentLevel >= 7 && (state.boss || state.summoningActive)) {
+        types = ["coffee", "shield", "speed", "super_hammer", "studia", "studia", "studia", "studia"];
+    } else if (state.currentLevel >= 5) {
+        types = ["coffee", "shield", "speed", "super_hammer", "coffee", "speed"];
     }
 
     const type = types[Math.floor(Math.random() * types.length)];
@@ -3750,7 +4874,7 @@ function speakStudent(student) {
     if (!student || student.element.classList.contains("burning")) {
         return;
     }
-    const message = pickRandomLine(getStudentLinePool(student.studentType), "non studio!");
+    const message = pickRandomLine(getStudentLinePool(student), "non studio!");
     queueStudentSpeech(student, message, {
         bubbleClass: "speech-bubble",
         minimumMs: 1700,
@@ -3812,7 +4936,13 @@ function finishGame(isVictory) {
         // Reset alla modalità Standard in caso di vittoria del docente per evitare di rimanere bloccati in Sandbox
         selectHackademy("standard", false);
     } else {
-        endMessage.textContent = `Le pietre hanno fermato ${teacher.name}. Riprova e libera l'ufficio dagli studenti svogliati.`;
+        if (state.currentLevel === 4) {
+            endMessage.textContent = `${teacher.name} non e' riuscito ad arrivare in piazza. Riprova il tragitto e schiva il caos sulla strada.`;
+        } else {
+            endMessage.textContent = state.currentLevel >= 5
+            ? `Il caos digitale ha travolto ${teacher.name}. Riprova e salva l'evento Aulab dalla folla in panico.`
+            : `Le pietre hanno fermato ${teacher.name}. Riprova e libera l'ufficio dagli studenti svogliati.`;
+        }
     }
 }
 
@@ -3838,7 +4968,12 @@ function updateHud() {
         renderLives(state.player.lives);
         updateStaminaHud();
     }
-    studentsValue.textContent = state.students.length;
+    if (isRoadTripActive()) {
+        const remaining = Math.max(0, Math.ceil((state.bonusRoad.goalDistance - state.bonusRoad.distance) / 100));
+        studentsValue.textContent = `${remaining}m`;
+    } else {
+        studentsValue.textContent = state.students.length;
+    }
     if (levelValue) {
         levelValue.textContent = state.selectedHackademyId === "standard" ? state.currentLevel : "Sandbox";
     }
@@ -3870,10 +5005,11 @@ function renderLives(currentLives) {
 }
 
 function updateGameScale() {
-    const viewportWidth = gameViewport.clientWidth;
-    const viewportHeight = gameViewport.clientHeight;
-    const horizontalPadding = 12;
-    const verticalPadding = 12;
+    const viewportWidth = Math.max(1, gameViewport.clientWidth || getViewportMetrics().width);
+    const viewportHeight = Math.max(1, gameViewport.clientHeight || getViewportMetrics().height);
+    const compactMobile = isCompactMobileViewport();
+    const horizontalPadding = compactMobile ? 0 : 12;
+    const verticalPadding = compactMobile ? 0 : 12;
     const scale = Math.min(
         (viewportWidth - horizontalPadding) / GAME.width,
         (viewportHeight - verticalPadding) / GAME.height,
@@ -3884,7 +5020,7 @@ function updateGameScale() {
 
     gameStage.style.width = `${GAME.width * safeScale}px`;
     gameStage.style.height = `${GAME.height * safeScale}px`;
-    gameArea.style.transform = `scale(${safeScale})`;
+    applyGameAreaTransform();
 }
 
 function syncEntity(entity) {
@@ -4060,6 +5196,11 @@ function scheduleMusicChunk() {
     const ctx = audioState.context;
     const lookAhead = 1.6;
 
+    if (isRoadTripActive()) {
+        scheduleRoadTripMusicChunk(ctx, lookAhead);
+        return;
+    }
+
     const stepDuration = state.rageActive ? 0.22 : 0.34;
     const freqMult = state.rageActive ? 1.5 : 1.0;
     let stepIndex = Math.floor(audioState.nextMusicTime / stepDuration) % musicLeadPattern.length;
@@ -4069,6 +5210,27 @@ function scheduleMusicChunk() {
         scheduleBassNote(audioState.nextMusicTime, musicBassPattern[stepIndex] * freqMult);
         audioState.nextMusicTime += stepDuration;
         stepIndex = (stepIndex + 1) % musicLeadPattern.length;
+    }
+}
+
+function scheduleRoadTripMusicChunk(ctx, lookAhead) {
+    const stepDuration = 0.17;
+    let stepIndex = Math.floor(audioState.nextMusicTime / stepDuration) % roadTripLeadPattern.length;
+
+    while (audioState.nextMusicTime < ctx.currentTime + lookAhead) {
+        scheduleRoadTripLeadNote(audioState.nextMusicTime, roadTripLeadPattern[stepIndex]);
+
+        if (stepIndex % 2 === 0) {
+            scheduleRoadTripBassNote(audioState.nextMusicTime, roadTripBassPattern[stepIndex]);
+        }
+
+        scheduleRoadTripHiHat(audioState.nextMusicTime + 0.01);
+        if (stepIndex % 4 === 0) {
+            scheduleRoadTripPad(audioState.nextMusicTime, roadTripBassPattern[stepIndex] * 2);
+        }
+
+        audioState.nextMusicTime += stepDuration;
+        stepIndex = (stepIndex + 1) % roadTripLeadPattern.length;
     }
 }
 
@@ -4098,6 +5260,62 @@ function scheduleBassNote(time, frequency) {
     gain.connect(audioState.musicGain);
     osc.start(time);
     osc.stop(time + 0.34);
+}
+
+function scheduleRoadTripLeadNote(time, frequency) {
+    const osc = audioState.context.createOscillator();
+    const gain = audioState.context.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(frequency, time);
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(0.075, time + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.145);
+    osc.connect(gain);
+    gain.connect(audioState.musicGain);
+    osc.start(time);
+    osc.stop(time + 0.16);
+}
+
+function scheduleRoadTripBassNote(time, frequency) {
+    const osc = audioState.context.createOscillator();
+    const gain = audioState.context.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(frequency, time);
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(0.065, time + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.18);
+    osc.connect(gain);
+    gain.connect(audioState.musicGain);
+    osc.start(time);
+    osc.stop(time + 0.2);
+}
+
+function scheduleRoadTripPad(time, frequency) {
+    const osc = audioState.context.createOscillator();
+    const gain = audioState.context.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(frequency, time);
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(0.018, time + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.32);
+    osc.connect(gain);
+    gain.connect(audioState.musicGain);
+    osc.start(time);
+    osc.stop(time + 0.34);
+}
+
+function scheduleRoadTripHiHat(time) {
+    const osc = audioState.context.createOscillator();
+    const gain = audioState.context.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(2600, time);
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(0.012, time + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.03);
+    osc.connect(gain);
+    gain.connect(audioState.musicGain);
+    osc.start(time);
+    osc.stop(time + 0.04);
 }
 
 function scheduleHeartbeatMusic(ctx, lookAhead) {
@@ -4434,18 +5652,25 @@ function speakChant(student) {
 }
 
 function triggerScreenShake(durationMs, intensity) {
+    const compactMobile = isCompactMobileViewport();
+    const effectiveDuration = compactMobile ? durationMs * 0.75 : durationMs;
+    const effectiveIntensity = compactMobile ? intensity * 0.55 : intensity;
     const startTime = performance.now();
+
     function shake() {
         const elapsed = performance.now() - startTime;
-        if (elapsed < durationMs && state.running) {
-            const dx = (Math.random() - 0.5) * intensity;
-            const dy = (Math.random() - 0.5) * intensity;
-            gameArea.style.transform = `scale(${state.currentScale}) translate(${dx}px, ${dy}px)`;
+        if (elapsed < effectiveDuration && state.running) {
+            state.shakeOffsetX = (Math.random() - 0.5) * effectiveIntensity;
+            state.shakeOffsetY = (Math.random() - 0.5) * effectiveIntensity;
+            applyGameAreaTransform();
             requestAnimationFrame(shake);
         } else {
-            gameArea.style.transform = `scale(${state.currentScale})`;
+            state.shakeOffsetX = 0;
+            state.shakeOffsetY = 0;
+            applyGameAreaTransform();
         }
     }
+
     shake();
 }
 
@@ -4523,9 +5748,87 @@ function playTeacherRangedSound() {
     });
 }
 
+function getBossConfig(kind = getCurrentBossKind()) {
+    const introSubtitle = state.contentMode === "explicit-content"
+        ? '"DOV\'E\' IL CAZZO DI CODICE?!"'
+        : '"MI SERVE IL CODICE DI VERIFICA!"';
+
+    const bossConfigs = {
+        greatSlacker: {
+            kind: "greatSlacker",
+            className: "boss-giant-student",
+            introWarning: "⚠️ EMERGENCY: BOSS DETECTED ⚠️",
+            introTitle: "STUDENTE GIGANTE SVOGLIATO",
+            introSubtitle: '"SKIBIDIBOPPI!!!"',
+            displayName: "Studente Gigante Svogliato",
+            spawn: { x: 590, y: 300 },
+            width: 104,
+            height: 120,
+            lives: 15,
+            maxLives: 15,
+            speed: 1.1,
+            shootCooldown: 2200,
+            speechCooldown: 3500,
+            summonCooldown: 0,
+            summonCharges: 0
+        },
+        spidOverlord: {
+            kind: "spidOverlord",
+            className: "boss-giant-student boss-spid-overlord",
+            introWarning: "⚠️ ALLERTA DIGITALE TOTALE ⚠️",
+            introTitle: "IL SIGNORE DELLO SPID",
+            introSubtitle,
+            displayName: "Il Signore dello SPID",
+            spawn: { x: 582, y: 292 },
+            width: 118,
+            height: 132,
+            lives: 20,
+            maxLives: 20,
+            speed: 0.95,
+            shootCooldown: 1800,
+            speechCooldown: 3000,
+            summonCooldown: 9000,
+            summonCharges: 2
+        }
+    };
+
+    return bossConfigs[kind] || bossConfigs.greatSlacker;
+}
+
+function syncBossFigureVariant(rootElement, kind) {
+    if (!rootElement) {
+        return;
+    }
+
+    if (rootElement.classList.contains("entity")) {
+        rootElement.classList.add("boss-giant-student");
+        rootElement.classList.toggle("boss-spid-overlord", kind === "spidOverlord");
+    } else {
+        rootElement.className = kind === "spidOverlord"
+            ? "boss-giant-student boss-spid-overlord"
+            : "boss-giant-student";
+    }
+
+    const figure = rootElement.querySelector(".student-figure");
+    if (!figure) {
+        return;
+    }
+
+    figure.querySelectorAll(".boss-phone, .boss-lanyard").forEach((node) => node.remove());
+
+    if (kind === "spidOverlord") {
+        const lanyard = document.createElement("span");
+        lanyard.className = "boss-lanyard";
+        const phone = document.createElement("span");
+        phone.className = "boss-phone";
+        figure.append(lanyard, phone);
+    }
+}
+
 function spawnBoss() {
+    const config = getBossConfig();
     const element = document.createElement("div");
-    element.className = "entity boss boss-giant-student student";
+    element.className = `entity boss ${config.className} student`;
     
     const wrapper = document.createElement("div");
     wrapper.className = "boss-wrapper";
@@ -4560,22 +5863,28 @@ function spawnBoss() {
     figure.append(head, body, armLeft, armRight, legLeft, legRight, stone);
     wrapper.appendChild(figure);
     element.appendChild(wrapper);
+    syncBossFigureVariant(element, config.kind);
     
     gameArea.appendChild(element);
     
     state.boss = {
-        x: 590,
-        y: 300,
-        width: 104,
-        height: 120,
-        lives: 15,
-        maxLives: 15,
-        speed: 1.1,
+        kind: config.kind,
+        x: config.spawn.x,
+        y: config.spawn.y,
+        width: config.width,
+        height: config.height,
+        lives: config.lives,
+        maxLives: config.maxLives,
+        speed: config.speed,
         direction: "right",
         lastShotAt: 0,
         lastSpeechAt: 0,
+        lastSummonAt: 0,
+        summonCharges: config.summonCharges,
         speechTimeoutId: null,
-        shootCooldown: 2200,
+        shootCooldown: config.shootCooldown,
+        speechCooldown: config.speechCooldown,
+        summonCooldown: config.summonCooldown,
         element
     };
     
@@ -4585,7 +5894,7 @@ function spawnBoss() {
         healthContainer.classList.remove("d-none");
         const bossNameEl = document.getElementById("bossName");
         if (bossNameEl) {
-            bossNameEl.textContent = "Studente Gigante Svogliato";
+            bossNameEl.textContent = config.displayName;
         }
     }
     updateBossHealthBar();
@@ -4595,20 +5904,156 @@ function spawnBoss() {
     tryLaunchStudiaStrike();
 }
 
-function triggerBossIntro() {
-    state.running = false;
-    state.keys.clear();
+function playCelestialWeaponBlessingSound() {
+    playToneBurst({
+        frequencies: [262, 392, 523, 784],
+        duration: 0.75,
+        type: "sine",
+        peakGain: 0.11,
+        slideTo: 1046,
+        stagger: 0.05
+    });
+}
+
+function formatCutsceneTimecode(elapsedMs) {
+    const framesPerSecond = 25;
+    const totalFrames = Math.floor(elapsedMs / (1000 / framesPerSecond));
+    const seconds = Math.floor(totalFrames / framesPerSecond) % 60;
+    const frames = totalFrames % framesPerSecond;
+    return `TC 00:00:${String(seconds).padStart(2, "0")}:${String(frames).padStart(2, "0")}`;
+}
+
+function triggerSecondBossWeaponVision(onComplete) {
+    if (!weaponVisionOverlay) {
+        onComplete();
+        return;
+    }
+
+    clearCutsceneTimers();
+
+    const teacher = getSelectedTeacher();
+    const teacherName = teacher?.name || "Il docente";
+    let finished = false;
+
+    if (weaponVisionTeacherFace) {
+        weaponVisionTeacherFace.style.backgroundImage = teacher?.image ? `url(${teacher.image})` : "";
+    }
+    if (weaponVisionCaption) {
+        weaponVisionCaption.textContent = "Segnale dal cloud... upgrade in arrivo.";
+    }
+    if (weaponVisionProgress) {
+        weaponVisionProgress.style.width = "8%";
+    }
+    if (weaponVisionTc) {
+        weaponVisionTc.textContent = "TC 00:00:00:00";
+    }
+
+    weaponVisionOverlay.classList.remove("d-none");
+    weaponVisionOverlay.classList.remove("playing");
+    void weaponVisionOverlay.offsetWidth;
+    weaponVisionOverlay.classList.add("playing");
+
+    playCelestialWeaponBlessingSound();
+
+    const finishSequence = () => {
+        if (finished) {
+            return;
+        }
+
+        finished = true;
+        clearCutsceneTimers();
+        state.activeCutsceneSkipHandler = null;
+
+        weaponVisionOverlay.classList.add("d-none");
+        weaponVisionOverlay.classList.remove("playing");
+
+        if (weaponVisionProgress) {
+            weaponVisionProgress.style.width = "0%";
+        }
+        if (weaponVisionTc) {
+            weaponVisionTc.textContent = "TC 00:00:00:00";
+        }
+
+        onComplete();
+    };
+
+    state.activeCutsceneSkipHandler = finishSequence;
+
+    const startedAt = performance.now();
+    registerCutsceneInterval(() => {
+        if (weaponVisionTc) {
+            weaponVisionTc.textContent = formatCutsceneTimecode(performance.now() - startedAt);
+        }
+    }, 80);
+
+    registerCutsceneTimeout(() => {
+        if (weaponVisionCaption) {
+            weaponVisionCaption.textContent = "Una figura celestiale attraversa le nuvole sopra l'arena.";
+        }
+        if (weaponVisionProgress) {
+            weaponVisionProgress.style.width = "28%";
+        }
+    }, 600);
+
+    registerCutsceneTimeout(() => {
+        if (weaponVisionCaption) {
+            weaponVisionCaption.textContent = `${teacherName} viene chiamato al centro del campo di battaglia.`;
+        }
+        if (weaponVisionProgress) {
+            weaponVisionProgress.style.width = "54%";
+        }
+        triggerScreenShake(260, 2);
+    }, 1600);
+
+    registerCutsceneTimeout(() => {
+        if (weaponVisionCaption) {
+            weaponVisionCaption.textContent = "Nuova arma ricevuta: pistola mitragliatrice anti-SPID.";
+        }
+        if (weaponVisionProgress) {
+            weaponVisionProgress.style.width = "82%";
+        }
+        playTeacherRangedSound();
+        triggerScreenShake(420, 4);
+    }, 2550);
+
+    registerCutsceneTimeout(() => {
+        if (weaponVisionCaption) {
+            weaponVisionCaption.textContent = `${teacherName} e' pronto per lo scontro finale.`;
+        }
+        if (weaponVisionProgress) {
+            weaponVisionProgress.style.width = "100%";
+        }
+    }, 3350);
+
+    registerCutsceneTimeout(finishSequence, 4300);
+}
+
+function playBossIntroOverlay() {
+    const bossConfig = getBossConfig();
 
     const introOverlay = document.getElementById("bossIntroOverlay");
     if (introOverlay) {
         introOverlay.classList.remove("d-none");
     }
 
+    const warningEl = document.querySelector(".boss-warning-badge");
+    if (warningEl) {
+        warningEl.textContent = bossConfig.introWarning;
+    }
+    const titleEl = document.querySelector(".boss-intro-title");
+    if (titleEl) {
+        titleEl.textContent = bossConfig.introTitle;
+    }
+    const subtitleEl = document.querySelector(".boss-intro-subtitles");
+    if (subtitleEl) {
+        subtitleEl.textContent = bossConfig.introSubtitle;
+    }
+    syncBossFigureVariant(document.querySelector(".boss-intro-avatar-container .boss-giant-student"), bossConfig.kind);
+
     const progressEl = document.getElementById("bossIntroProgress");
     if (progressEl) {
         progressEl.style.transition = "none";
         progressEl.style.width = "0%";
-        // Force reflow
         progressEl.offsetHeight;
         progressEl.style.transition = "width 3.5s linear";
         progressEl.style.width = "100%";
@@ -4620,7 +6065,7 @@ function triggerBossIntro() {
     let tcHours = 0;
     const tcEl = document.getElementById("bossVideoTc");
 
-    const tcInterval = setInterval(() => {
+    const tcInterval = registerCutsceneInterval(() => {
         tcFrames++;
         if (tcFrames >= 30) {
             tcFrames = 0;
@@ -4642,14 +6087,31 @@ function triggerBossIntro() {
 
     speakBossSkibidiboppi(true);
 
-    setTimeout(() => {
-        clearInterval(tcInterval);
+    registerCutsceneTimeout(() => {
+        window.clearInterval(tcInterval);
+        state.cutsceneIntervalIds = state.cutsceneIntervalIds.filter((id) => id !== tcInterval);
         if (introOverlay) {
             introOverlay.classList.add("d-none");
         }
+        clearCutsceneTimers();
         spawnBoss();
         state.running = true;
     }, 3500);
+}
+
+function triggerBossIntro() {
+    state.running = false;
+    state.keys.clear();
+    clearActiveCutscenes();
+
+    if (getCurrentBossKind() === "spidOverlord") {
+        triggerSecondBossWeaponVision(() => {
+            playBossIntroOverlay();
+        });
+        return;
+    }
+
+    playBossIntroOverlay();
 }
 
 function speakBossSkibidiboppi(bypassRunning = false) {
@@ -4712,7 +6174,14 @@ function updateBoss(delta, timestamp) {
     const playerCenter = centerOf(state.player);
     const dx = playerCenter.x - bossCenter.x;
     const dy = playerCenter.y - bossCenter.y;
-    const vector = normalizeVector(dx, dy);
+    let vector = normalizeVector(dx, dy);
+
+    if (state.boss.kind === "spidOverlord") {
+        vector = normalizeVector(
+            dx + Math.sin(timestamp / 420) * 70,
+            dy + Math.cos(timestamp / 520) * 55
+        );
+    }
     
     const stepX = vector.x * state.boss.speed * delta;
     const stepY = vector.y * state.boss.speed * delta;
@@ -4736,13 +6205,22 @@ function updateBoss(delta, timestamp) {
     if (timestamp - state.boss.lastShotAt > state.boss.shootCooldown) {
         bossShoot(timestamp);
     }
+
+    if (
+        state.boss.kind === "spidOverlord" &&
+        state.boss.summonCharges > 0 &&
+        state.students.length < 5 &&
+        timestamp - state.boss.lastSummonAt > state.boss.summonCooldown
+    ) {
+        bossSummonStudent(timestamp);
+    }
     
     // Ripetizione frase "SKIBIDIBOPPI" a video e audio
     if (!state.boss.lastSpeechAt) {
         state.boss.lastSpeechAt = timestamp;
         speakBossSkibidiboppi();
     }
-    if (timestamp - state.boss.lastSpeechAt > 3500) {
+    if (timestamp - state.boss.lastSpeechAt > state.boss.speechCooldown) {
         state.boss.lastSpeechAt = timestamp;
         speakBossSkibidiboppi();
     }
@@ -4752,13 +6230,57 @@ function bossShoot(timestamp) {
     if (!state.boss) return;
     state.boss.lastShotAt = timestamp;
     
-    const isGiant = Math.random() < 0.35;
-    playBossShotSound(isGiant);
-    
     const source = centerOf(state.boss);
     const target = centerOf(state.player);
     const vector = normalizeVector(target.x - source.x, target.y - source.y);
-    
+
+    if (state.boss.kind === "spidOverlord") {
+        const isQrBurst = Math.random() < 0.42;
+        playBossShotSound(isQrBurst);
+
+        if (isQrBurst) {
+            const projectile = {
+                x: source.x - 22,
+                y: source.y - 22,
+                width: 44,
+                height: 44,
+                velocityX: vector.x * GAME.projectileSpeed * 1.1,
+                velocityY: vector.y * GAME.projectileSpeed * 1.1,
+                ownerId: "boss",
+                isGiant: true,
+                element: document.createElement("div")
+            };
+            projectile.element.className = "projectile boss-projectile giant-fireball giant-qr";
+            gameArea.appendChild(projectile.element);
+            syncEntity(projectile);
+            state.projectiles.push(projectile);
+            return;
+        }
+
+        const baseAngle = Math.atan2(vector.y, vector.x);
+        const angles = [baseAngle - 0.42, baseAngle - 0.18, baseAngle, baseAngle + 0.18, baseAngle + 0.42];
+        angles.forEach((angle) => {
+            const projectile = {
+                x: source.x - 11,
+                y: source.y - 11,
+                width: 22,
+                height: 22,
+                velocityX: Math.cos(angle) * GAME.projectileSpeed * 1.18,
+                velocityY: Math.sin(angle) * GAME.projectileSpeed * 1.18,
+                ownerId: "boss",
+                element: document.createElement("div")
+            };
+            projectile.element.className = "projectile boss-projectile spid-ping";
+            gameArea.appendChild(projectile.element);
+            syncEntity(projectile);
+            state.projectiles.push(projectile);
+        });
+        return;
+    }
+
+    const isGiant = Math.random() < 0.35;
+    playBossShotSound(isGiant);
+
     if (isGiant) {
         const projectile = {
             x: source.x - 24,
@@ -4802,18 +6324,26 @@ function bossShoot(timestamp) {
 }
 
 function bossSummonStudent(timestamp) {
-    if (!state.boss) return;
-    state.boss.lastSummonAt = timestamp;
-    
+    if (!state.boss || state.boss.kind !== "spidOverlord") return;
     if (state.students.length >= 6) return;
+
+    state.boss.lastSummonAt = timestamp;
+    state.boss.summonCharges -= 1;
     
     const range = 180;
     const angle = Math.random() * Math.PI * 2;
     const targetX = clamp(state.boss.x + state.boss.width / 2 + Math.cos(angle) * range - 26, 40, GAME.width - 92);
     const targetY = clamp(state.boss.y + state.boss.height / 2 + Math.sin(angle) * range - 30, 40, GAME.height - 110);
     
-    const index = Math.floor(Math.random() * 100);
-    const student = createStudent({ x: targetX, y: targetY }, index);
+    const summons = [
+        { studentType: "fast", speechType: "panicked", roleLabel: "AIUTO" },
+        { studentType: "shooter", speechType: "boomer", roleLabel: "PIN" },
+        { studentType: "shooter", speechType: "passacarte", roleLabel: "MODULI" },
+        { studentType: "cheater", speechType: "caf", roleLabel: "CAF" }
+    ];
+    const summonConfig = summons[Math.floor(Math.random() * summons.length)];
+    const index = Math.floor(Math.random() * 1000);
+    const student = createStudent({ x: targetX, y: targetY, ...summonConfig }, index);
     state.students.push(student);
     
     const effectEl = document.createElement("div");
@@ -4847,6 +6377,12 @@ function damageBoss() {
     }, 150);
     
     updateBossHealthBar();
+
+    if (state.boss.kind === "spidOverlord" && state.boss.lives === Math.floor(state.boss.maxLives / 2)) {
+        state.boss.shootCooldown = Math.max(1250, state.boss.shootCooldown - 350);
+        state.boss.speed += 0.12;
+        showToast("⚠️ Il Signore dello SPID e' entrato in modalita' escalation: OTP e note vocali piovono ovunque!");
+    }
     
     if (state.boss.lives <= 0) {
         killBoss();
