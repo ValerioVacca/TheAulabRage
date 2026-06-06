@@ -6,9 +6,6 @@
     "dev": "http-server -p 5502",
     "start": "http-server -p 5502"
   },
-  "dependencies": {
-    "puppeteer": "^25.0.4"
-  },
   "devDependencies": {
     "http-server": "^14.1.1"
   }

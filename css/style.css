@@ -80,7 +80,7 @@ kbd {
     display: grid;
     place-items: center;
     padding: 0;
-    background: radial-gradient(circle at top, rgba(255, 234, 0, 0.08), transparent 35%);
+    background: transparent;
     overflow: hidden;
     overscroll-behavior: none;
 }
@@ -97,6 +97,9 @@ kbd {
 
 .game-stage {
     position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
 }
 
 .game-area {
@@ -106,45 +109,48 @@ kbd {
     width: 1280px;
     height: 720px;
     overflow: hidden;
-    border-radius: 20px;
-    border: 6px solid rgba(9, 11, 20, 0.16);
+    border-radius: 0;
+    border: none;
     transform-origin: top left;
     will-change: transform;
     background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(9, 11, 20, 0.08)),
         repeating-linear-gradient(
             0deg,
-            rgba(255, 255, 255, 0.08),
-            rgba(255, 255, 255, 0.08) 48px,
-            rgba(9, 11, 20, 0.05) 48px,
-            rgba(9, 11, 20, 0.05) 49px
-        ),
-        repeating-linear-gradient(
-            90deg,
-            rgba(255, 255, 255, 0.06),
-            rgba(255, 255, 255, 0.06) 48px,
+            rgba(255, 255, 255, 0.03),
+            rgba(255, 255, 255, 0.03) 48px,
             rgba(9, 11, 20, 0.04) 48px,
             rgba(9, 11, 20, 0.04) 49px
         ),
+        repeating-linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.025),
+            rgba(255, 255, 255, 0.025) 48px,
+            rgba(9, 11, 20, 0.035) 48px,
+            rgba(9, 11, 20, 0.035) 49px
+        ),
+        url("../assets/ufficio.png") center center / cover no-repeat,
         var(--arena-floor);
 }
 
 .game-area.city-mode {
     background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(8, 12, 22, 0.08)),
         repeating-linear-gradient(
             0deg,
-            rgba(96, 106, 120, 0.14),
-            rgba(96, 106, 120, 0.14) 92px,
-            rgba(255, 255, 255, 0.08) 92px,
-            rgba(255, 255, 255, 0.08) 96px
+            rgba(255, 255, 255, 0.03),
+            rgba(255, 255, 255, 0.03) 92px,
+            rgba(15, 23, 42, 0.035) 92px,
+            rgba(15, 23, 42, 0.035) 96px
         ),
         repeating-linear-gradient(
             90deg,
-            rgba(104, 114, 128, 0.12),
-            rgba(104, 114, 128, 0.12) 92px,
-            rgba(255, 255, 255, 0.07) 92px,
-            rgba(255, 255, 255, 0.07) 96px
+            rgba(255, 255, 255, 0.025),
+            rgba(255, 255, 255, 0.025) 92px,
+            rgba(15, 23, 42, 0.03) 92px,
+            rgba(15, 23, 42, 0.03) 96px
         ),
-        radial-gradient(circle at 50% 50%, rgba(255, 248, 214, 0.12) 0, rgba(255, 248, 214, 0.04) 150px, transparent 260px),
+        url("../assets/piazza.png") center center / cover no-repeat,
         linear-gradient(135deg, #d8dbe0 0%, #c4cad3 56%, #afb7c3 100%);
 }
 
@@ -154,37 +160,30 @@ kbd {
     inset: 0;
     pointer-events: none;
     z-index: 0;
-    opacity: 0.68;
+    opacity: 0.42;
     background:
         linear-gradient(
             180deg,
-            transparent 0 88px,
-            rgba(121, 129, 142, 0.2) 88px 106px,
+            rgba(255, 255, 255, 0.03) 0 88px,
+            rgba(121, 129, 142, 0.12) 88px 106px,
             transparent 106px 612px,
-            rgba(121, 129, 142, 0.2) 612px 630px,
+            rgba(121, 129, 142, 0.14) 612px 630px,
             transparent 630px
         ),
         linear-gradient(
             90deg,
             transparent 0 118px,
-            rgba(255, 255, 255, 0.2) 118px 142px,
+            rgba(255, 255, 255, 0.12) 118px 142px,
             transparent 142px 1138px,
-            rgba(255, 255, 255, 0.18) 1138px 1162px,
+            rgba(255, 255, 255, 0.1) 1138px 1162px,
             transparent 1162px
         );
 }
 
 .game-area.roadtrip-mode {
     background:
-        radial-gradient(circle at 18% 20%, rgba(255, 242, 153, 0.92) 0 42px, transparent 43px),
-        linear-gradient(
-            180deg,
-            #5ec5ff 0 12%,
-            #9ddcff 12% 34%,
-            #d9f0ff 34% 56%,
-            #5a7a62 56% 64%,
-            #454b58 64% 100%
-        );
+        linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.04)),
+        url("../assets/lungomare.png") center 26% / cover no-repeat;
 }
 
 .game-area.roadtrip-mode::before {
@@ -194,14 +193,9 @@ kbd {
     pointer-events: none;
     z-index: 0;
     background:
-        linear-gradient(180deg, transparent 0 58%, rgba(22, 28, 38, 0.2) 58% 100%),
-        repeating-linear-gradient(
-            90deg,
-            rgba(28, 38, 52, 0.92) 0 46px,
-            rgba(28, 38, 52, 0.92) 46px 92px,
-            transparent 92px 124px
-        ) calc(var(--road-shift, 0px) * 0.18) 52% / 124px 120px repeat-x;
-    opacity: 0.72;
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.015) 18%, rgba(15, 23, 42, 0.04) 52%, rgba(8, 12, 22, 0.18) 100%),
+        linear-gradient(90deg, rgba(6, 10, 18, 0.05), transparent 16%, transparent 84%, rgba(6, 10, 18, 0.12));
+    opacity: 1;
 }
 
 .game-area.roadtrip-mode::after {
@@ -213,16 +207,37 @@ kbd {
     background:
         repeating-linear-gradient(
             90deg,
-            rgba(255, 255, 255, 0.96) 0 42px,
-            transparent 42px 156px
-        ) calc(var(--road-shift, 0px) * 1.35) 78.5% / 198px 10px repeat-x,
+            rgba(255, 255, 255, 0.95) 0 38px,
+            transparent 38px 152px
+        ) calc(var(--road-shift, 0px) * 1.35) 74.2% / 190px 8px repeat-x,
+        repeating-linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.95) 0 38px,
+            transparent 38px 152px
+        ) calc(var(--road-shift, 0px) * 1.35) 83.8% / 190px 8px repeat-x,
         linear-gradient(
             180deg,
-            transparent 0 63%,
-            #4b5563 63% 66%,
-            #2a2f3a 66% 92%,
-            #1f2430 92% 100%
+            transparent 0 62.5%,
+            #8b8b86 62.5% 64.4%,
+            #66686d 64.4% 66.8%,
+            #3a3d44 66.8% 80%,
+            #2e333b 80% 89.5%,
+            #232831 89.5% 100%
+        ),
+        linear-gradient(
+            180deg,
+            transparent 0 80%,
+            rgba(35, 40, 49, 0.98) 80% 100%
         );
+}
+
+.game-area.roadtrip-mode.roadtrip-finale::before {
+    opacity: 1;
+    filter: saturate(1.08) brightness(1.04) contrast(1.02);
+}
+
+.game-area.roadtrip-mode.roadtrip-finale::after {
+    box-shadow: inset 0 0 120px rgba(248, 211, 118, 0.18);
 }
 
 .hud-overlay {
@@ -312,6 +327,24 @@ kbd {
     font-weight: 700;
 }
 
+.hud-chip.roadtrip-chip {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0.08rem;
+    border-radius: 18px;
+    min-width: 132px;
+}
+
+.hud-chip.roadtrip-chip::after {
+    content: attr(data-roadtrip-warning);
+    font-size: 0.58rem;
+    line-height: 1.15;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(226, 232, 240, 0.84);
+}
+
 .controls-inline {
     display: flex;
     gap: 1rem;
@@ -374,6 +407,172 @@ kbd {
     z-index: 1;
 }
 
+.destructible-obstacle {
+    isolation: isolate;
+}
+
+.obstacle-damage-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 4;
+    background:
+        linear-gradient(128deg, transparent 0 28%, rgba(255, 251, 235, 0.52) 28% 31%, transparent 31% 100%),
+        linear-gradient(58deg, transparent 0 36%, rgba(255, 248, 220, 0.45) 36% 39%, transparent 39% 100%),
+        linear-gradient(168deg, transparent 0 54%, rgba(17, 24, 39, 0.34) 54% 58%, transparent 58% 100%),
+        radial-gradient(circle at 30% 72%, rgba(15, 23, 42, 0.24) 0 10%, transparent 11%),
+        radial-gradient(circle at 72% 26%, rgba(15, 23, 42, 0.22) 0 9%, transparent 10%);
+    mix-blend-mode: screen;
+    transition: opacity 140ms ease;
+}
+
+.destructible-obstacle.damaged .obstacle-damage-overlay {
+    opacity: 1;
+}
+
+.destructible-obstacle.damaged {
+    filter: saturate(0.88) brightness(0.94);
+    box-shadow: inset 0 0 0 2px rgba(255, 239, 179, 0.18), 0 8px 14px rgba(0, 0, 0, 0.18);
+}
+
+.environment-debris {
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.96;
+    filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.22));
+}
+
+.environment-debris::before {
+    content: "";
+    position: absolute;
+    left: 12%;
+    right: 12%;
+    bottom: 4px;
+    height: 16px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(15, 23, 42, 0.28) 0%, rgba(15, 23, 42, 0.12) 55%, transparent 100%);
+}
+
+.debris-chunk {
+    position: absolute;
+    display: block;
+    border-radius: 5px;
+    transform: rotate(var(--chunk-rot, 0deg));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 4px rgba(0, 0, 0, 0.16);
+}
+
+.environment-burst {
+    position: absolute;
+    width: 56px;
+    height: 56px;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.environment-burst::before {
+    content: "";
+    position: absolute;
+    inset: 10px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 248, 196, 0.9) 0%, rgba(250, 204, 21, 0.42) 36%, transparent 72%);
+    animation: environment-burst-core 380ms ease-out forwards;
+}
+
+.environment-burst-shard {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 10px;
+    height: 6px;
+    margin-left: -5px;
+    margin-top: -3px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0) 35%), #94a3b8;
+    animation: environment-burst-shard 420ms ease-out forwards;
+    animation-delay: var(--burst-delay, 0ms);
+}
+
+@keyframes environment-burst-core {
+    from {
+        transform: scale(0.4);
+        opacity: 0.9;
+    }
+    to {
+        transform: scale(1.18);
+        opacity: 0;
+    }
+}
+
+@keyframes environment-burst-shard {
+    0% {
+        transform: rotate(var(--burst-angle, 0deg)) translateX(0) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: rotate(var(--burst-angle, 0deg)) translateX(var(--burst-distance, 26px)) scale(0.55);
+        opacity: 0;
+    }
+}
+
+.debris-desk .debris-chunk,
+.debris-bench .debris-chunk,
+.debris-kiosk .debris-chunk {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 40%),
+        linear-gradient(180deg, #8b5a2b, #5a3417);
+}
+
+.debris-computer .debris-chunk,
+.debris-server .debris-chunk,
+.debris-speaker .debris-chunk,
+.debris-terminal .debris-chunk {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 40%),
+        linear-gradient(180deg, #64748b, #1e293b);
+}
+
+.debris-board .debris-chunk,
+.debris-sign .debris-chunk,
+.debris-barrier .debris-chunk {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 40%),
+        linear-gradient(180deg, #fde68a, #f59e0b);
+}
+
+.debris-plant .debris-chunk,
+.debris-planter .debris-chunk {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 40%),
+        linear-gradient(180deg, #65a30d, #3f6212);
+}
+
+.burst-desk .environment-burst-shard,
+.burst-bench .environment-burst-shard,
+.burst-kiosk .environment-burst-shard {
+    background: linear-gradient(180deg, #d6a46d, #6d4020);
+}
+
+.burst-computer .environment-burst-shard,
+.burst-server .environment-burst-shard,
+.burst-speaker .environment-burst-shard,
+.burst-terminal .environment-burst-shard {
+    background: linear-gradient(180deg, #cbd5e1, #334155);
+}
+
+.burst-board .environment-burst-shard,
+.burst-sign .environment-burst-shard,
+.burst-barrier .environment-burst-shard {
+    background: linear-gradient(180deg, #fef08a, #f59e0b);
+}
+
+.burst-plant .environment-burst-shard,
+.burst-planter .environment-burst-shard {
+    background: linear-gradient(180deg, #86efac, #3f6212);
+}
+
 .wall {
     background: linear-gradient(180deg, #171c31, var(--wall));
 }
@@ -387,6 +586,57 @@ kbd {
 .chair {
     border-radius: 10px;
     background: linear-gradient(180deg, #fff171, var(--chair));
+}
+
+.scooter {
+    overflow: visible;
+    background: transparent;
+}
+
+.scooter::before {
+    content: "";
+    position: absolute;
+    left: 10px;
+    top: 17px;
+    width: 34px;
+    height: 5px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #0f172a, #38bdf8);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.scooter::after {
+    content: "";
+    position: absolute;
+    left: 38px;
+    top: 3px;
+    width: 4px;
+    height: 18px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #cbd5e1, #64748b);
+    box-shadow: 5px -1px 0 0 #0f172a;
+}
+
+.obstacle.scooter .roadtrip-scooter-seat {
+    left: 28px;
+    top: 6px;
+    width: 12px;
+    height: 11px;
+    border-radius: 6px 6px 4px 4px;
+}
+
+.obstacle.scooter .roadtrip-scooter-wheel {
+    top: 17px;
+    width: 12px;
+    height: 12px;
+}
+
+.obstacle.scooter .roadtrip-scooter-wheel.front {
+    left: 42px;
+}
+
+.obstacle.scooter .roadtrip-scooter-wheel.rear {
+    left: 8px;
 }
 
 .computer {
@@ -691,6 +941,31 @@ kbd {
     border-radius: 10px 10px 7px 7px;
     background: linear-gradient(180deg, #ffe96a, var(--player-trim));
     border: 2px solid rgba(11, 13, 26, 0.16);
+}
+
+.player-body::after {
+    content: "";
+    position: absolute;
+    right: -10px;
+    top: -18px;
+    width: 22px;
+    height: 28px;
+    border-radius: 10px 10px 12px 12px;
+    background:
+        radial-gradient(circle at 50% 78%, rgba(91, 58, 35, 0.95) 0 22%, transparent 23%),
+        radial-gradient(circle at 28% 40%, #6fbe56 0 22%, transparent 23%),
+        radial-gradient(circle at 72% 42%, #4f9a42 0 22%, transparent 23%),
+        radial-gradient(circle at 50% 18%, #84d669 0 24%, transparent 25%);
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
+    opacity: 0;
+    transform: scale(0.75) rotate(-14deg);
+    transform-origin: 50% 100%;
+    transition: opacity 120ms ease, transform 140ms ease;
+}
+
+.player.carrying-plant .player-body::after {
+    opacity: 1;
+    transform: scale(1) rotate(-8deg);
 }
 
 .player-arm {
@@ -1038,7 +1313,7 @@ kbd {
 
 .player.bonus-driving {
     z-index: 6;
-    filter: drop-shadow(0 12px 14px rgba(5, 8, 20, 0.28));
+    filter: none;
 }
 
 .player.bonus-driving .player-figure {
@@ -1047,6 +1322,14 @@ kbd {
 
 .player.bonus-driving .roadtrip-car {
     display: block;
+    overflow: visible;
+    transform:
+        translate3d(0, 0, 0)
+        rotate(var(--roadtrip-car-tilt, 0deg))
+        scaleX(var(--roadtrip-car-scale-x, 1))
+        scaleY(var(--roadtrip-car-scale-y, 1));
+    transform-origin: 54% 72%;
+    transition: filter 120ms linear;
 }
 
 .player.bonus-driving .roadtrip-car-body {
@@ -1058,18 +1341,79 @@ kbd {
     border-radius: 20px 26px 12px 16px;
     background: linear-gradient(135deg, #ffcf2f, #f97316 62%, #dc2626 100%);
     border: 3px solid rgba(15, 23, 42, 0.24);
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35);
+    box-shadow:
+        0 10px 14px rgba(5, 8, 20, 0.18),
+        inset 0 2px 0 rgba(255, 255, 255, 0.35);
+    z-index: 2;
 }
 
 .player.bonus-driving .roadtrip-car-window {
     position: absolute;
-    left: 46px;
+    left: 44px;
+    top: 18px;
+    width: 44px;
+    height: 22px;
+    border-radius: 12px 12px 7px 7px;
+    background: linear-gradient(180deg, rgba(224, 247, 255, 0.92) 0 24%, rgba(125, 211, 252, 0.22) 24% 48%, rgba(255, 255, 255, 0) 48% 100%);
+    border: 2px solid rgba(15, 23, 42, 0.2);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    z-index: 5;
+}
+
+.player.bonus-driving .roadtrip-car-driver {
+    position: absolute;
+    left: 50px;
     top: 20px;
-    width: 40px;
-    height: 18px;
-    border-radius: 10px 10px 6px 6px;
-    background: linear-gradient(180deg, #dff7ff, #7dd3fc);
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background-color: #fde68a;
     border: 2px solid rgba(15, 23, 42, 0.16);
+    box-shadow: 0 5px 10px rgba(15, 23, 42, 0.2);
+    z-index: 4;
+}
+
+.player.bonus-driving .roadtrip-car-exhaust {
+    position: absolute;
+    left: -10px;
+    top: 40px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 45% 45%, rgba(255, 255, 255, 0.78), rgba(203, 213, 225, 0.4) 45%, rgba(148, 163, 184, 0) 72%);
+    filter: blur(0.2px);
+    opacity: 0;
+    transform-origin: center;
+    z-index: 1;
+    animation: roadtrip-exhaust-puff 1.25s ease-out infinite;
+}
+
+.player.bonus-driving .roadtrip-car-exhaust.exhaust-front {
+    left: -2px;
+    top: 34px;
+    width: 16px;
+    height: 16px;
+    animation-delay: 0.42s;
+}
+
+.player.bonus-driving.speed-boosted .roadtrip-car-exhaust {
+    background: radial-gradient(circle at 45% 45%, rgba(255, 255, 255, 0.96), rgba(125, 211, 252, 0.9) 34%, rgba(59, 130, 246, 0.42) 56%, rgba(37, 99, 235, 0) 78%);
+    filter: blur(0.1px) saturate(1.2);
+    animation-duration: 0.46s;
+}
+
+.player.bonus-driving.speed-boosted .roadtrip-car-exhaust.exhaust-back {
+    width: 30px;
+    height: 30px;
+    left: -16px;
+    top: 36px;
+}
+
+.player.bonus-driving.speed-boosted .roadtrip-car-exhaust.exhaust-front {
+    width: 22px;
+    height: 22px;
+    left: -6px;
+    top: 31px;
 }
 
 .player.bonus-driving .roadtrip-car-wheel {
@@ -1080,6 +1424,8 @@ kbd {
     border-radius: 50%;
     background: radial-gradient(circle at 50% 50%, #94a3b8 0 20%, #0f172a 21% 100%);
     box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+    z-index: 3;
+    transform: translateY(var(--roadtrip-wheel-lift, 0px));
 }
 
 .player.bonus-driving .roadtrip-car-wheel.front {
@@ -1091,7 +1437,72 @@ kbd {
 }
 
 .player.bonus-driving.bonus-jumping .roadtrip-car {
-    filter: drop-shadow(0 0 16px rgba(250, 204, 21, 0.45));
+    filter: brightness(1.05) saturate(1.04);
+}
+
+.player.bonus-driving.bonus-jumping .roadtrip-car-exhaust {
+    animation-duration: 0.78s;
+}
+
+.player.bonus-driving.roadtrip-rage-truck .roadtrip-car {
+    filter: brightness(1.08) saturate(1.12) drop-shadow(0 10px 14px rgba(15, 23, 42, 0.26));
+}
+
+.player.bonus-driving.roadtrip-rage-truck .roadtrip-car-body {
+    left: 6px;
+    top: 8px;
+    width: 122px;
+    height: 40px;
+    border-radius: 22px 28px 14px 18px;
+    background: linear-gradient(135deg, #facc15, #f97316 54%, #b91c1c 100%);
+}
+
+.player.bonus-driving.roadtrip-rage-truck .roadtrip-car-window {
+    left: 46px;
+    top: 6px;
+    width: 46px;
+    height: 24px;
+}
+
+.player.bonus-driving.roadtrip-rage-truck .roadtrip-car-driver {
+    left: 52px;
+    top: 10px;
+}
+
+.player.bonus-driving.roadtrip-rage-truck .roadtrip-car-wheel {
+    top: 42px;
+    width: 40px;
+    height: 40px;
+    background: radial-gradient(circle at 50% 50%, #94a3b8 0 16%, #1e293b 17% 44%, #020617 45% 100%);
+    box-shadow:
+        inset 0 0 0 3px rgba(255, 255, 255, 0.12),
+        0 6px 10px rgba(15, 23, 42, 0.28);
+}
+
+.player.bonus-driving.roadtrip-rage-truck .roadtrip-car-wheel.front {
+    left: 82px;
+}
+
+.player.bonus-driving.roadtrip-rage-truck .roadtrip-car-wheel.rear {
+    left: 10px;
+}
+
+.player.bonus-driving.roadtrip-rage-truck .roadtrip-car-exhaust {
+    animation-duration: 0.38s;
+}
+
+@keyframes roadtrip-exhaust-puff {
+    0% {
+        opacity: 0;
+        transform: translate(4px, 1px) scale(0.4);
+    }
+    18% {
+        opacity: 0.48;
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-34px, -12px) scale(1.45);
+    }
 }
 
 .player.attacking .player-arm.arm-right {
@@ -1128,6 +1539,17 @@ kbd {
     border-radius: 50%;
     background: radial-gradient(circle at 30% 30%, #d9d9d9, var(--stone) 65%);
     box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+.projectile.roadtrip-beer-projectile {
+    z-index: 5;
+    width: 28px;
+    height: 40px;
+    border: none;
+    border-radius: 0;
+    background: url("../assets/peroni.png") center center / contain no-repeat;
+    box-shadow: none;
+    filter: drop-shadow(0 5px 7px rgba(15, 23, 42, 0.32));
 }
 
 .coffee-powerup {
@@ -2141,6 +2563,11 @@ kbd {
     overflow: visible;
 }
 
+.game-powerup.bin-powerup-emerge {
+    animation: bin-powerup-emerge 620ms cubic-bezier(0.22, 0.84, 0.24, 1) forwards;
+    pointer-events: none;
+}
+
 .powerup-counter {
     position: absolute;
     left: 50%;
@@ -2167,6 +2594,34 @@ kbd {
     position: absolute;
     inset: 0;
     animation: powerup-float 900ms ease-in-out infinite alternate;
+}
+
+@keyframes bin-powerup-emerge {
+    0% {
+        transform: translate(
+            calc(var(--pickup-base-x, 0px) + var(--pickup-emerge-x, 0px)),
+            calc(var(--pickup-base-y, 0px) + var(--pickup-emerge-y, 0px))
+        ) scale(0.72);
+        opacity: 0.35;
+    }
+    38% {
+        transform: translate(
+            calc(var(--pickup-base-x, 0px) + (var(--pickup-emerge-x, 0px) * 0.3)),
+            calc(var(--pickup-base-y, 0px) + var(--pickup-emerge-y, 0px) - 30px)
+        ) scale(1.05);
+        opacity: 1;
+    }
+    68% {
+        transform: translate(
+            var(--pickup-base-x, 0px),
+            calc(var(--pickup-base-y, 0px) - 8px)
+        ) scale(1.02);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(var(--pickup-base-x, 0px), var(--pickup-base-y, 0px)) scale(1);
+        opacity: 1;
+    }
 }
 
 /* Coffee Cup Power-up styling */
@@ -2209,101 +2664,123 @@ kbd {
     opacity: 0.9;
 }
 
-/* Shield Power-up (Rulebook) styling */
+/* Shield Power-up styling */
 .game-powerup.type-shield .powerup-icon {
-    background: linear-gradient(135deg, #1e3c72, #2a5298);
-    border: 2px solid #52a8ff;
+    inset: 1px 2px 1px;
+    border-radius: 0;
+    clip-path: polygon(50% 2%, 82% 11%, 82% 44%, 74% 67%, 50% 98%, 26% 67%, 18% 44%, 18% 11%);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 22%),
+        linear-gradient(180deg, #dbeafe 0%, #93c5fd 18%, #3b82f6 52%, #1d4ed8 100%);
+    border: 2px solid rgba(226, 232, 240, 0.95);
     box-shadow: 
-        inset 0 2px 0 rgba(255, 255, 255, 0.4),
-        0 0 12px rgba(82, 168, 255, 0.7);
-    border-radius: 6px;
+        inset 0 2px 0 rgba(255, 255, 255, 0.52),
+        inset 0 -5px 0 rgba(30, 64, 175, 0.2),
+        0 0 12px rgba(59, 130, 246, 0.72),
+        0 8px 14px rgba(30, 64, 175, 0.26);
 }
 .game-powerup.type-shield .powerup-icon::before {
     content: "";
     position: absolute;
-    left: 6px;
-    top: 0;
-    width: 4px;
-    height: 16px;
-    background: #ff3366;
-    border-radius: 0 0 2px 2px;
+    left: 50%;
+    top: 7px;
+    width: 14px;
+    height: 18px;
+    transform: translateX(-50%);
+    clip-path: polygon(50% 0, 100% 28%, 84% 100%, 16% 100%, 0 28%);
+    background: linear-gradient(180deg, #fefefe, #e2e8f0 42%, #bfdbfe 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.92),
+        0 0 8px rgba(255, 255, 255, 0.34);
 }
 .game-powerup.type-shield .powerup-icon::after {
-    content: "V";
+    content: "";
     position: absolute;
-    right: 5px;
-    bottom: 3px;
-    font-size: 13px;
-    font-weight: 900;
-    color: #ffd700;
-    font-family: serif;
-    line-height: 1;
+    left: 50%;
+    top: 11px;
+    width: 18px;
+    height: 10px;
+    transform: translateX(-50%);
+    background:
+        linear-gradient(90deg, transparent 0 38%, rgba(255, 255, 255, 0.96) 38% 62%, transparent 62% 100%),
+        linear-gradient(180deg, transparent 0 38%, rgba(255, 255, 255, 0.96) 38% 62%, transparent 62% 100%);
+    opacity: 0.92;
 }
 
 /* Speed Power-up (Energy Drink Can) styling */
 .game-powerup.type-speed .powerup-icon {
-    background: linear-gradient(to right, #11998e, #38ef7d);
-    border: 2px solid #a8ffb2;
+    inset: 2px 5px 1px;
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.24) 0 14%, transparent 14% 28%, rgba(255, 255, 255, 0.16) 28% 40%, transparent 40% 100%),
+        linear-gradient(180deg, #d9f99d 0%, #84cc16 16%, #16a34a 60%, #166534 100%);
+    border: 2px solid #dcfce7;
     border-radius: 10px 10px 8px 8px;
     box-shadow: 
         inset 0 3px 0 rgba(255, 255, 255, 0.6),
-        0 0 12px rgba(56, 239, 125, 0.7);
+        inset 0 -4px 0 rgba(20, 83, 45, 0.22),
+        0 0 12px rgba(74, 222, 128, 0.7),
+        0 8px 16px rgba(20, 83, 45, 0.24);
 }
 .game-powerup.type-speed .powerup-icon::before {
     content: "";
     position: absolute;
     left: 50%;
-    top: -3px;
-    width: 10px;
-    height: 3px;
-    background: #c0c0c0;
-    border-radius: 2px;
+    top: -4px;
+    width: 14px;
+    height: 5px;
+    background: linear-gradient(180deg, #e2e8f0, #94a3b8);
+    border-radius: 3px 3px 1px 1px;
     transform: translateX(-50%);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 .game-powerup.type-speed .powerup-icon::after {
-    content: "⚡";
+    content: "";
     position: absolute;
     left: 50%;
     top: 50%;
+    width: 12px;
+    height: 18px;
     transform: translate(-50%, -50%);
-    font-size: 14px;
-    color: #fff;
-    text-shadow: 0 0 4px #000;
+    background: linear-gradient(180deg, #fef08a, #facc15 52%, #f97316 100%);
+    clip-path: polygon(44% 0, 100% 0, 66% 41%, 92% 41%, 30% 100%, 47% 57%, 16% 57%);
+    filter: drop-shadow(0 0 4px rgba(250, 204, 21, 0.92));
 }
 
 /* Super Hammer Power-up styling */
 .game-powerup.type-super_hammer .powerup-icon {
-    background: linear-gradient(135deg, #ffd700, #ff8c00);
-    border: 2px solid #fffb8f;
-    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 248, 196, 0.95) 0%, rgba(250, 204, 21, 0.52) 40%, rgba(249, 115, 22, 0.08) 72%, transparent 73%);
+    border: none;
+    border-radius: 0;
     box-shadow: 
-        inset 0 2px 0 rgba(255, 255, 255, 0.6),
-        0 0 12px rgba(255, 215, 0, 0.8);
+        0 0 12px rgba(255, 215, 0, 0.8),
+        0 8px 16px rgba(146, 64, 14, 0.22);
 }
 .game-powerup.type-super_hammer .powerup-icon::before {
     content: "";
     position: absolute;
-    left: 50%;
-    top: 13px;
-    width: 4px;
-    height: 13px;
-    background: #8e44ad;
-    border-radius: 2px;
-    transform: translateX(-50%) rotate(45deg);
-    transform-origin: top center;
+    left: 14px;
+    top: 10px;
+    width: 6px;
+    height: 19px;
+    background: linear-gradient(180deg, #d97706, #92400e);
+    border-radius: 999px;
+    transform: rotate(36deg);
+    box-shadow: inset 0 1px 0 rgba(255, 243, 199, 0.65);
 }
 .game-powerup.type-super_hammer .powerup-icon::after {
     content: "";
     position: absolute;
-    left: 50%;
+    left: 6px;
     top: 5px;
-    width: 14px;
-    height: 8px;
-    background: #34495e;
-    border: 1px solid #f1c40f;
-    border-radius: 2px;
-    transform: translateX(-50%) rotate(45deg);
-    transform-origin: top center;
+    width: 20px;
+    height: 13px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 30%),
+        linear-gradient(180deg, #cbd5e1, #64748b 56%, #334155 100%);
+    border: 2px solid rgba(241, 245, 249, 0.72);
+    border-radius: 6px 6px 4px 4px;
+    transform: rotate(36deg);
+    box-shadow: 0 0 8px rgba(148, 163, 184, 0.46);
 }
 
 .game-powerup.type-studia .powerup-icon {
@@ -2937,6 +3414,33 @@ kbd {
     box-shadow: 0 0 20px rgba(56, 189, 248, 0.8), 0 0 40px rgba(253, 224, 71, 0.45);
 }
 
+.boss-spid-overlord.boss-leaping {
+    filter: drop-shadow(0 18px 16px rgba(14, 165, 233, 0.28)) drop-shadow(0 0 18px rgba(250, 204, 21, 0.22));
+}
+
+.boss-stomp-impact {
+    position: absolute;
+    z-index: 6;
+    border-radius: 50%;
+    border: 4px solid rgba(250, 204, 21, 0.95);
+    background:
+        radial-gradient(circle, rgba(255, 255, 255, 0.8) 0 10%, rgba(250, 204, 21, 0.42) 24%, rgba(249, 115, 22, 0.16) 54%, transparent 72%);
+    box-shadow: 0 0 24px rgba(250, 204, 21, 0.55), 0 0 44px rgba(249, 115, 22, 0.28);
+    pointer-events: none;
+    animation: boss-stomp-impact 420ms ease-out forwards;
+}
+
+@keyframes boss-stomp-impact {
+    0% {
+        transform: scale(0.35);
+        opacity: 0.92;
+    }
+    100% {
+        transform: scale(1.12);
+        opacity: 0;
+    }
+}
+
 .teacher-projectile {
     position: absolute;
     z-index: 4;
@@ -2974,32 +3478,32 @@ kbd {
 }
 
 .teacher-projectile.machinegun-projectile {
-    width: 20px;
-    height: 8px;
-    border-radius: 999px;
+    width: 28px;
+    height: 10px;
+    border-radius: 999px 6px 6px 999px;
     border-width: 1px;
-    background: linear-gradient(90deg, #f8fafc, #facc15 42%, #f97316 100%);
+    background: linear-gradient(90deg, #f8fafc 0%, #e2e8f0 26%, #facc15 58%, #f97316 100%);
     box-shadow: 0 0 10px rgba(250, 204, 21, 0.9), 0 0 18px rgba(249, 115, 22, 0.45);
     animation: machinegun-projectile-glow 0.14s linear infinite alternate;
 }
 
 .teacher-projectile.machinegun-projectile::before {
-    left: -18px;
-    width: 16px;
-    height: 5px;
-    background: linear-gradient(90deg, rgba(250, 204, 21, 0), rgba(249, 115, 22, 0.8));
+    left: -20px;
+    width: 18px;
+    height: 6px;
+    background: linear-gradient(90deg, rgba(250, 204, 21, 0), rgba(249, 115, 22, 0.86));
 }
 
 .teacher-projectile.machinegun-projectile::after {
     content: "";
     position: absolute;
-    right: -5px;
+    right: -4px;
     top: 1px;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
+    width: 8px;
+    height: 8px;
+    border-radius: 2px 999px 999px 2px;
+    background: linear-gradient(90deg, #fff7ed, #fde68a);
+    box-shadow: 0 0 10px rgba(255, 247, 237, 0.95);
 }
 
 .teacher-projectile.roadtrip-hammer-projectile {
@@ -3035,39 +3539,609 @@ kbd {
 }
 
 .roadtrip-student {
-    width: 54px;
-    height: 70px;
-    filter: drop-shadow(0 8px 8px rgba(15, 23, 42, 0.24));
+    width: 62px;
+    height: 84px;
+    filter: drop-shadow(0 12px 12px rgba(15, 23, 42, 0.34));
+}
+
+.roadtrip-student-shadow {
+    position: absolute;
+    left: 6px;
+    bottom: 0;
+    width: 50px;
+    height: 12px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.24);
 }
 
 .roadtrip-student-head {
     position: absolute;
-    left: 14px;
-    top: 0;
-    width: 24px;
-    height: 24px;
+    left: 15px;
+    top: 6px;
+    width: 32px;
+    height: 34px;
+    border-radius: 48% 48% 44% 44%;
+    background: radial-gradient(circle at 42% 30%, #ffe9d9 0 34%, #d2a283 74%);
+    border: 2px solid rgba(15, 23, 42, 0.18);
+    z-index: 3;
+}
+
+.roadtrip-student-hair {
+    position: absolute;
+    left: 12px;
+    top: 8px;
+    width: 38px;
+    height: 12px;
+    border-radius: 12px 12px 8px 8px;
+    background:
+        radial-gradient(circle at 10% 45%, #e5e7eb 0 18%, transparent 19%),
+        radial-gradient(circle at 90% 45%, #d1d5db 0 18%, transparent 19%);
+    z-index: 4;
+}
+
+.roadtrip-student-brow {
+    position: absolute;
+    left: 18px;
+    top: 15px;
+    width: 26px;
+    height: 8px;
+    z-index: 5;
+}
+
+.roadtrip-student-brow::before,
+.roadtrip-student-brow::after {
+    content: "";
+    position: absolute;
+    top: 1px;
+    width: 10px;
+    height: 3px;
+    border-radius: 999px;
+    background: #334155;
+}
+
+.roadtrip-student-brow::before {
+    left: 0;
+    transform: rotate(22deg);
+}
+
+.roadtrip-student-brow::after {
+    right: 0;
+    transform: rotate(-22deg);
+}
+
+.roadtrip-student-eyes {
+    position: absolute;
+    left: 21px;
+    top: 20px;
+    width: 20px;
+    height: 6px;
+    z-index: 5;
+}
+
+.roadtrip-student-eyes::before,
+.roadtrip-student-eyes::after {
+    content: "";
+    position: absolute;
+    top: 1px;
+    width: 5px;
+    height: 5px;
     border-radius: 50%;
-    background: radial-gradient(circle at 40% 30%, #ffdfc9, #d7a88a 72%);
-    border: 2px solid rgba(15, 23, 42, 0.14);
+    background: #0f172a;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.roadtrip-student-eyes::before {
+    left: 1px;
+}
+
+.roadtrip-student-eyes::after {
+    right: 1px;
+}
+
+.roadtrip-student-head::after {
+    content: "";
+    position: absolute;
+    left: 10px;
+    top: 24px;
+    width: 12px;
+    height: 6px;
+    border-bottom: 2px solid rgba(127, 29, 29, 0.8);
+    border-radius: 0 0 10px 10px;
+    transform: rotate(-8deg);
+    z-index: 5;
+}
+
+.roadtrip-student-nose {
+    position: absolute;
+    left: 27px;
+    top: 23px;
+    width: 7px;
+    height: 12px;
+    border-radius: 999px;
+    background: rgba(190, 126, 92, 0.46);
+    z-index: 4;
 }
 
 .roadtrip-student-body {
     position: absolute;
     left: 10px;
-    top: 22px;
+    top: 34px;
+    width: 42px;
+    height: 30px;
+    border-radius: 16px 16px 12px 12px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent 24%),
+        linear-gradient(180deg, #d97706, #7c3aed 84%);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.22);
+    z-index: 2;
+}
+
+.roadtrip-student-arm {
+    position: absolute;
+    top: 39px;
+    width: 11px;
+    height: 25px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #ffe1c9, #d7a88a);
+    z-index: 1;
+}
+
+.roadtrip-student-arm.left {
+    left: 7px;
+    transform: rotate(16deg);
+}
+
+.roadtrip-student-arm.right {
+    right: 7px;
+    transform: rotate(-14deg);
+}
+
+.roadtrip-student-legs {
+    position: absolute;
+    top: 59px;
+    width: 12px;
+    height: 24px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #6b7280, #0f172a);
+}
+
+.roadtrip-student-legs.left {
+    left: 20px;
+}
+
+.roadtrip-student-legs.right {
+    left: 34px;
+}
+
+.roadtrip-student-beer {
+    position: absolute;
+    right: -6px;
+    top: 31px;
+    width: 30px;
+    height: 52px;
+    background: url("../assets/peroni.png") center center / contain no-repeat;
+    transform: rotate(11deg);
+    z-index: 4;
+    filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.28));
+}
+
+.roadtrip-student.beer-thrown .roadtrip-student-beer {
+    opacity: 0;
+    transform: rotate(28deg) scale(0.7);
+}
+
+.roadtrip-boomer {
+    width: 74px;
+    height: 92px;
+    filter: drop-shadow(0 12px 12px rgba(15, 23, 42, 0.34));
+}
+
+.roadtrip-boomer-shadow {
+    position: absolute;
+    left: 10px;
+    bottom: 0;
+    width: 52px;
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.18);
+}
+
+.roadtrip-boomer-head {
+    position: absolute;
+    left: 20px;
+    top: 7px;
     width: 32px;
-    height: 38px;
-    border-radius: 12px 12px 8px 8px;
-    background: linear-gradient(180deg, #7c3aed, #4338ca);
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.15);
+    height: 32px;
+    border-radius: 48% 48% 44% 44%;
+    background: radial-gradient(circle at 42% 30%, #ffe8d6 0 34%, #d7a78b 70%);
+    border: 2px solid rgba(15, 23, 42, 0.14);
+    z-index: 3;
+}
+
+.roadtrip-boomer-hair {
+    position: absolute;
+    left: 18px;
+    top: 4px;
+    width: 36px;
+    height: 12px;
+    border-radius: 14px 14px 5px 5px;
+    background: linear-gradient(180deg, #e2e8f0, #94a3b8);
+    z-index: 4;
+}
+
+.roadtrip-boomer-glasses {
+    position: absolute;
+    left: 24px;
+    top: 19px;
+    width: 24px;
+    height: 9px;
+    border-top: 2px solid rgba(15, 23, 42, 0.76);
+    border-bottom: 2px solid rgba(15, 23, 42, 0.3);
+    z-index: 4;
+}
+
+.roadtrip-boomer-brow {
+    position: absolute;
+    left: 23px;
+    top: 15px;
+    width: 26px;
+    height: 8px;
+    z-index: 5;
+}
+
+.roadtrip-boomer-brow::before,
+.roadtrip-boomer-brow::after {
+    content: "";
+    position: absolute;
+    top: 1px;
+    width: 10px;
+    height: 3px;
+    border-radius: 999px;
+    background: #334155;
+}
+
+.roadtrip-boomer-brow::before {
+    left: 0;
+    transform: rotate(24deg);
+}
+
+.roadtrip-boomer-brow::after {
+    right: 0;
+    transform: rotate(-24deg);
+}
+
+.roadtrip-boomer-eyes {
+    position: absolute;
+    left: 27px;
+    top: 22px;
+    width: 18px;
+    height: 5px;
+    z-index: 3;
+}
+
+.roadtrip-boomer-eyes::before,
+.roadtrip-boomer-eyes::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #0f172a;
+}
+
+.roadtrip-boomer-eyes::before {
+    left: 1px;
+}
+
+.roadtrip-boomer-eyes::after {
+    right: 1px;
+}
+
+.roadtrip-boomer-head::after {
+    content: "";
+    position: absolute;
+    left: 10px;
+    top: 24px;
+    width: 12px;
+    height: 6px;
+    border-bottom: 2px solid rgba(127, 29, 29, 0.78);
+    border-radius: 0 0 10px 10px;
+    transform: rotate(-10deg);
+    z-index: 5;
+}
+
+.roadtrip-boomer-body {
+    position: absolute;
+    left: 14px;
+    top: 34px;
+    width: 44px;
+    height: 30px;
+    border-radius: 16px 16px 10px 10px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent 24%),
+        linear-gradient(180deg, #60a5fa, #1d4ed8 84%);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.22);
+    z-index: 2;
+}
+
+.roadtrip-boomer-arm {
+    position: absolute;
+    top: 38px;
+    width: 10px;
+    height: 26px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #ffd8bf, #d7a88a);
+    z-index: 1;
+}
+
+.roadtrip-boomer-arm.left {
+    left: 10px;
+    transform: rotate(22deg);
+}
+
+.roadtrip-boomer-arm.right {
+    right: 10px;
+    transform: rotate(-14deg);
+}
+
+.roadtrip-boomer-tablet {
+    position: absolute;
+    right: 0;
+    top: 39px;
+    width: 22px;
+    height: 28px;
+    border-radius: 6px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 28%),
+        linear-gradient(180deg, #e2e8f0, #64748b 22%, #0f172a 23%, #1e293b 100%);
+    border: 2px solid rgba(15, 23, 42, 0.2);
+    box-shadow: inset 0 0 0 2px rgba(14, 165, 233, 0.22);
+    transform: rotate(12deg);
+    z-index: 3;
+}
+
+.roadtrip-boomer-tablet::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    right: 5px;
+    top: 6px;
+    bottom: 8px;
+    border-radius: 4px;
+    background:
+        linear-gradient(135deg, rgba(14, 165, 233, 0.95), rgba(59, 130, 246, 0.72)),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent);
+}
+
+.roadtrip-boomer-legs {
+    position: absolute;
+    top: 60px;
+    width: 12px;
+    height: 26px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #64748b, #0f172a);
+}
+
+.roadtrip-boomer-legs.left {
+    left: 24px;
+}
+
+.roadtrip-boomer-legs.right {
+    left: 39px;
+}
+
+.roadtrip-ultra {
+    width: 76px;
+    height: 92px;
+    filter: drop-shadow(0 12px 12px rgba(15, 23, 42, 0.36));
+}
+
+.roadtrip-ultra-shadow {
+    position: absolute;
+    left: 9px;
+    bottom: 0;
+    width: 58px;
+    height: 12px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.26);
+}
+
+.roadtrip-ultra-head {
+    position: absolute;
+    left: 21px;
+    top: 6px;
+    width: 32px;
+    height: 32px;
+    border-radius: 48% 48% 44% 44%;
+    background: radial-gradient(circle at 42% 30%, #ffe6d2 0 34%, #d3a07f 74%);
+    border: 2px solid rgba(15, 23, 42, 0.18);
+    z-index: 4;
+}
+
+.roadtrip-ultra-hair {
+    position: absolute;
+    left: 19px;
+    top: 2px;
+    width: 36px;
+    height: 16px;
+    border-radius: 16px 16px 8px 8px;
+    background: linear-gradient(180deg, #1f2937, #0f172a);
+    z-index: 5;
+}
+
+.roadtrip-ultra-brow {
+    position: absolute;
+    left: 23px;
+    top: 15px;
+    width: 28px;
+    height: 8px;
+    z-index: 6;
+}
+
+.roadtrip-ultra-brow::before,
+.roadtrip-ultra-brow::after {
+    content: "";
+    position: absolute;
+    top: 1px;
+    width: 11px;
+    height: 3px;
+    border-radius: 999px;
+    background: #0f172a;
+}
+
+.roadtrip-ultra-brow::before {
+    left: 0;
+    transform: rotate(24deg);
+}
+
+.roadtrip-ultra-brow::after {
+    right: 0;
+    transform: rotate(-24deg);
+}
+
+.roadtrip-ultra-eyes {
+    position: absolute;
+    left: 26px;
+    top: 21px;
+    width: 20px;
+    height: 6px;
+    z-index: 6;
+}
+
+.roadtrip-ultra-eyes::before,
+.roadtrip-ultra-eyes::after {
+    content: "";
+    position: absolute;
+    top: 1px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #020617;
+}
+
+.roadtrip-ultra-eyes::before {
+    left: 1px;
+}
+
+.roadtrip-ultra-eyes::after {
+    right: 1px;
+}
+
+.roadtrip-ultra-head::after {
+    content: "";
+    position: absolute;
+    left: 10px;
+    top: 24px;
+    width: 13px;
+    height: 6px;
+    border-bottom: 2px solid rgba(69, 10, 10, 0.86);
+    border-radius: 0 0 10px 10px;
+    transform: rotate(-10deg);
+    z-index: 6;
+}
+
+.roadtrip-ultra-body {
+    position: absolute;
+    left: 16px;
+    top: 33px;
+    width: 42px;
+    height: 31px;
+    border-radius: 16px 16px 12px 12px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 22%),
+        linear-gradient(180deg, #1d4ed8, #1e40af 46%, #dc2626 47%, #991b1b 100%);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.2);
+    z-index: 2;
+}
+
+.roadtrip-ultra-arm {
+    position: absolute;
+    top: 39px;
+    width: 11px;
+    height: 25px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #ffe1c9, #d7a88a);
+    z-index: 1;
+}
+
+.roadtrip-ultra-arm.left {
+    left: 12px;
+    transform: rotate(18deg);
+}
+
+.roadtrip-ultra-arm.right {
+    right: 11px;
+    transform: rotate(-14deg);
+}
+
+.roadtrip-ultra-legs {
+    position: absolute;
+    top: 59px;
+    width: 12px;
+    height: 27px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #334155, #020617);
+}
+
+.roadtrip-ultra-legs.left {
+    left: 26px;
+}
+
+.roadtrip-ultra-legs.right {
+    left: 41px;
+}
+
+.roadtrip-ultra-scarf {
+    position: absolute;
+    left: 13px;
+    top: 33px;
+    width: 48px;
+    height: 13px;
+    border-radius: 999px;
+    background:
+        repeating-linear-gradient(90deg, #ffffff 0 8px, #c1121f 8px 16px);
+    border: 2px solid rgba(15, 23, 42, 0.14);
+    z-index: 6;
+    transform: rotate(-4deg);
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
+}
+
+.roadtrip-ultra-scarf::after {
+    content: "";
+    position: absolute;
+    right: 3px;
+    top: 8px;
+    width: 12px;
+    height: 22px;
+    border-radius: 6px;
+    background:
+        repeating-linear-gradient(180deg, #ffffff 0 6px, #c1121f 6px 12px);
+    transform: rotate(14deg);
+}
+
+.roadtrip-ultra-badge {
+    position: absolute;
+    left: 28px;
+    top: 28px;
+    width: 18px;
+    height: 5px;
+    border-radius: 999px;
+    background: rgba(127, 29, 29, 0.72);
+    z-index: 5;
 }
 
 .roadtrip-pothole {
-    width: 116px;
-    height: 22px;
+    width: 144px;
+    height: 30px;
     border-radius: 999px;
-    background: radial-gradient(circle at 50% 45%, #111827 0 44%, #374151 45% 100%);
-    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.1);
+    background:
+        radial-gradient(circle at 50% 50%, #020617 0 42%, #1f2937 43% 74%, #475569 75% 100%),
+        linear-gradient(90deg, rgba(248, 250, 252, 0.2), rgba(15, 23, 42, 0.1));
+    border: 3px solid rgba(248, 250, 252, 0.58);
+    box-shadow:
+        0 0 0 4px rgba(15, 23, 42, 0.08),
+        inset 0 2px 8px rgba(255, 255, 255, 0.14);
 }
 
 .roadtrip-barrier {
@@ -3126,6 +4200,182 @@ kbd {
 
 .roadtrip-scooter-wheel.rear {
     left: 14px;
+}
+
+.roadtrip-ramptruck {
+    width: 176px;
+    height: 92px;
+    filter: drop-shadow(0 12px 12px rgba(15, 23, 42, 0.26));
+}
+
+.roadtrip-ramptruck-bed,
+.roadtrip-ramptruck-cab,
+.roadtrip-ramptruck-window,
+.roadtrip-ramptruck-ramp,
+.roadtrip-ramptruck-wheel {
+    position: absolute;
+}
+
+.roadtrip-ramptruck-bed {
+    left: 18px;
+    top: 28px;
+    width: 96px;
+    height: 32px;
+    border-radius: 12px 6px 8px 10px;
+    background: linear-gradient(180deg, #fb7185, #b91c1c 76%);
+    border: 3px solid rgba(15, 23, 42, 0.22);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.24);
+    z-index: 2;
+}
+
+.roadtrip-ramptruck-cab {
+    left: 108px;
+    top: 22px;
+    width: 46px;
+    height: 38px;
+    border-radius: 10px 14px 8px 8px;
+    background: linear-gradient(180deg, #f59e0b, #ea580c 84%);
+    border: 3px solid rgba(15, 23, 42, 0.22);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.24);
+}
+
+.roadtrip-ramptruck-window {
+    left: 118px;
+    top: 28px;
+    width: 22px;
+    height: 12px;
+    border-radius: 6px 8px 4px 4px;
+    background: linear-gradient(180deg, #dff7ff, #7dd3fc);
+    border: 2px solid rgba(15, 23, 42, 0.16);
+}
+
+.roadtrip-ramptruck-ramp {
+    left: -6px;
+    top: 34px;
+    width: 102px;
+    height: 18px;
+    transform: rotate(-19deg);
+    transform-origin: right center;
+    border-radius: 4px 2px 8px 10px;
+    background:
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.18) 0 2px, transparent 2px 8px),
+        repeating-linear-gradient(180deg, rgba(148, 163, 184, 0.3) 0 1px, transparent 1px 4px),
+        linear-gradient(180deg, #d5dde7, #a7b2c0 38%, #7c8797 72%, #64748b 100%);
+    border: 2px solid rgba(51, 65, 85, 0.52);
+    box-shadow:
+        0 6px 10px rgba(15, 23, 42, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    z-index: 3;
+}
+
+.roadtrip-ramptruck-ramp::before {
+    content: "";
+    position: absolute;
+    left: 10px;
+    right: 12px;
+    top: 3px;
+    bottom: 3px;
+    border-radius: 3px;
+    background:
+        repeating-linear-gradient(90deg, rgba(71, 85, 105, 0.22) 0 4px, transparent 4px 12px),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.04));
+    opacity: 0.95;
+}
+
+.roadtrip-ramptruck-ramp::after {
+    content: "JUMP";
+    position: absolute;
+    left: 28px;
+    top: -18px;
+    padding: 1px 7px 2px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.9);
+    color: #fef3c7;
+    font-size: 0.62rem;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    transform: rotate(19deg);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.22);
+}
+
+.roadtrip-ramptruck.used .roadtrip-ramptruck-ramp {
+    filter: saturate(0.86) brightness(0.94);
+}
+
+.roadtrip-ramptruck-wheel {
+    top: 56px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #94a3b8 0 20%, #0f172a 21% 100%);
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+}
+
+.roadtrip-ramptruck-wheel.rear {
+    left: 30px;
+}
+
+.roadtrip-ramptruck-wheel.front {
+    left: 118px;
+}
+
+.roadtrip-turbo {
+    width: 52px;
+    height: 52px;
+    filter: drop-shadow(0 10px 12px rgba(15, 23, 42, 0.22));
+}
+
+.roadtrip-turbo-can {
+    position: absolute;
+    inset: 4px;
+    border-radius: 14px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0) 28%),
+        linear-gradient(180deg, #facc15, #f97316 62%, #dc2626 100%);
+    border: 3px solid rgba(15, 23, 42, 0.2);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.24);
+}
+
+.roadtrip-turbo-can::before,
+.roadtrip-turbo-can::after {
+    content: "";
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.18);
+}
+
+.roadtrip-turbo-can::before {
+    top: 8px;
+}
+
+.roadtrip-turbo-can::after {
+    bottom: 8px;
+}
+
+.roadtrip-turbo-bolt {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: 1.35rem;
+    font-weight: 900;
+    color: #fff7ed;
+    text-shadow: 0 0 10px rgba(255, 247, 237, 0.85);
+    animation: roadtrip-turbo-pulse 0.85s infinite alternate ease-in-out;
+}
+
+@keyframes roadtrip-turbo-pulse {
+    from {
+        transform: scale(0.92);
+        filter: brightness(0.98);
+    }
+    to {
+        transform: scale(1.08);
+        filter: brightness(1.12);
+    }
 }
 
 @keyframes machinegun-projectile-glow {
@@ -3521,6 +4771,7 @@ kbd {
 /* Inherit existing obstacle visuals in smaller preview size */
 .palette-preview.desk      { background: linear-gradient(180deg, #2b3151, var(--desk)); border-radius: 7px; }
 .palette-preview.chair     { background: linear-gradient(180deg, #fff171, var(--chair)); border-radius: 5px; }
+.palette-preview.scooter   { background: linear-gradient(180deg, #38bdf8, #0f172a 62%, #94a3b8); border-radius: 6px; }
 .palette-preview.computer  { background: linear-gradient(180deg, #1b2135, var(--pc)); border-radius: 4px; }
 .palette-preview.board     { background: linear-gradient(180deg, #121626, var(--board)); border: 2px solid #ffea00; border-radius: 5px; }
 .palette-preview.wall      { background: linear-gradient(180deg, #171c31, var(--wall)); }
@@ -3760,6 +5011,11 @@ kbd {
     border: 1.5px solid rgba(40, 160, 255, 0.3);
 }
 
+.hud-stamina.roadtrip-nos {
+    background: rgba(8, 20, 30, 0.85) !important;
+    border-color: rgba(40, 160, 255, 0.3);
+}
+
 .stamina-bar-container {
     width: 90px;
     height: 10px;
@@ -3775,6 +5031,11 @@ kbd {
     background: linear-gradient(90deg, #00aaff, #40d0ff);
     box-shadow: 0 0 8px #00aaff;
     transition: width 0.2s ease-out;
+}
+
+.hud-stamina.roadtrip-nos .stamina-bar-fill {
+    background: linear-gradient(90deg, #00aaff, #40d0ff);
+    box-shadow: 0 0 8px #00aaff;
 }
 
 .hud-stamina.stamina-low {
@@ -3992,12 +5253,12 @@ kbd {
 }
 
 body.mobile-optimized .game-frame {
-    background: linear-gradient(180deg, rgba(255, 234, 0, 0.06), rgba(7, 9, 19, 0));
+    background: transparent;
 }
 
 body.mobile-optimized .game-area {
-    border-width: 3px;
-    border-radius: 14px;
+    border-width: 0;
+    border-radius: 0;
 }
 
 body.mobile-optimized .hud-lives,

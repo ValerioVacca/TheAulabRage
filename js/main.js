@@ -7,6 +7,7 @@ const startButton = document.getElementById("startButton");
 const restartButton = document.getElementById("restartButton");
 const livesValue = document.getElementById("livesValue");
 const studentsValue = document.getElementById("studentsValue");
+const studentsChip = studentsValue?.parentElement || null;
 const endEyebrow = document.getElementById("endEyebrow");
 const endTitle = document.getElementById("endTitle");
 const endMessage = document.getElementById("endMessage");
@@ -56,6 +57,7 @@ const intermissionTitle = document.getElementById("intermissionTitle");
 const intermissionMessage = document.getElementById("intermissionMessage");
 const intermissionButton = document.getElementById("intermissionButton");
 const levelValue = document.getElementById("levelValue");
+const levelChip = levelValue?.parentElement || null;
 const resumeButton = document.getElementById("resumeButton");
 const savedLevelNum = document.getElementById("savedLevelNum");
 const menuButton = document.getElementById("menuButton");
@@ -71,6 +73,7 @@ const skipWeaponVisionBtn = document.getElementById("skipWeaponVisionBtn");
 // Elementi DOM per la stamina
 const hudStamina = document.getElementById("hudStamina");
 const staminaBarFill = document.getElementById("staminaBarFill");
+const hudStaminaLabel = hudStamina?.querySelector(".hud-label") || null;
 
 const GAME = {
     width: 1280,
@@ -157,12 +160,18 @@ const state = {
     studentSpeechQueue: [],
     activeStudentSpeech: null,
     currentScale: 1,
+    currentScaleX: 1,
+    currentScaleY: 1,
     rageActive: false,
     pendingDodge: null,
     rageMeter: 0,
     rageActiveUntil: 0,
+    rageDurationMs: 5000,
+    levelSevenWeaponUnlocked: false,
+    debris: [],
     contentMode: null,
     bonusRoad: null,
+    roadTripNosHeldCount: 0,
     lastRageParticleSpawnAt: 0,
     shakeOffsetX: 0,
     shakeOffsetY: 0,
@@ -177,6 +186,8 @@ const audioState = {
     musicGain: null,
     sfxGain: null,
     musicIntervalId: null,
+    roadTripEngineIntervalId: null,
+    roadTripEnginePhase: 0,
     nextMusicTime: 0,
     musicEnabled: false,
     ambientPulseLfo: null,
@@ -241,10 +252,11 @@ function attemptImmersiveMode() {
 }
 
 function applyGameAreaTransform() {
-    const scale = state.currentScale || 1;
+    const scaleX = state.currentScaleX || state.currentScale || 1;
+    const scaleY = state.currentScaleY || state.currentScale || 1;
     const dx = state.shakeOffsetX || 0;
     const dy = state.shakeOffsetY || 0;
-    gameArea.style.transform = `translate(${dx}px, ${dy}px) scale(${scale})`;
+    gameArea.style.transform = `translate(${dx}px, ${dy}px) scale(${scaleX}, ${scaleY})`;
 }
 
 const levelConfigs = [
@@ -397,8 +409,8 @@ const levelConfigs = [
             { x: 1070, y: 132, width: 72, height: 174, type: "sign" },
             { x: 246, y: 492, width: 108, height: 52, type: "planter" },
             { x: 926, y: 492, width: 108, height: 52, type: "planter" },
-            { x: 480, y: 420, width: 42, height: 34, type: "chair" },
-            { x: 758, y: 420, width: 42, height: 34, type: "chair" },
+            { x: 472, y: 416, width: 62, height: 34, type: "scooter" },
+            { x: 746, y: 416, width: 62, height: 34, type: "scooter" },
             { x: 420, y: 572, width: 40, height: 48, type: "bin" },
             { x: 818, y: 572, width: 40, height: 48, type: "bin" }
         ]
@@ -433,10 +445,10 @@ const levelConfigs = [
             { x: 232, y: 424, width: 202, height: 52, type: "bench" },
             { x: 846, y: 424, width: 202, height: 52, type: "bench" },
             { x: 552, y: 480, width: 184, height: 150, type: "kiosk" },
-            { x: 460, y: 314, width: 42, height: 34, type: "chair" },
-            { x: 782, y: 314, width: 42, height: 34, type: "chair" },
-            { x: 464, y: 602, width: 42, height: 34, type: "chair" },
-            { x: 778, y: 602, width: 42, height: 34, type: "chair" },
+            { x: 450, y: 310, width: 62, height: 34, type: "scooter" },
+            { x: 772, y: 310, width: 62, height: 34, type: "scooter" },
+            { x: 454, y: 598, width: 62, height: 34, type: "scooter" },
+            { x: 768, y: 598, width: 62, height: 34, type: "scooter" },
             { x: 360, y: 560, width: 40, height: 48, type: "bin" },
             { x: 878, y: 560, width: 40, height: 48, type: "bin" }
         ]
@@ -472,6 +484,8 @@ const levelConfigs = [
             { x: 566, y: 488, width: 146, height: 84, type: "stage" },
             { x: 312, y: 330, width: 168, height: 58, type: "bench" },
             { x: 800, y: 330, width: 168, height: 58, type: "bench" },
+            { x: 498, y: 342, width: 62, height: 34, type: "scooter" },
+            { x: 720, y: 342, width: 62, height: 34, type: "scooter" },
             { x: 574, y: 302, width: 130, height: 118, type: "terminal" }
         ]
     }
@@ -507,7 +521,7 @@ function isRoadTripActive() {
 }
 
 function isLevelSixMachineGunActive() {
-    return state.currentLevel === 7;
+    return state.currentLevel === 7 && state.levelSevenWeaponUnlocked;
 }
 
 function registerCutsceneTimeout(callback, delay) {
@@ -575,48 +589,90 @@ function getPlayerWeaponToolStyle() {
     return selectedTeacher?.toolStyle || "hammer";
 }
 
+function setLevelSevenWeaponUnlocked(isUnlocked) {
+    state.levelSevenWeaponUnlocked = Boolean(isUnlocked);
+
+    if (state.player) {
+        applyPlayerWeaponAppearance(state.player);
+    }
+
+    updateAttackButtonAppearance();
+}
+
 function clearBonusRoad() {
+    stopRoadTripEngineSound();
+    state.roadTripNosHeldCount = 0;
     if (!state.bonusRoad) {
+        state.player?.element?.classList.remove("roadtrip-engine-on");
+        gameArea.removeAttribute("data-roadtrip-lane");
+        gameArea.classList.remove("roadtrip-finale");
         return;
     }
 
+    state.bonusRoad.entities?.forEach((entity) => clearSpeechForEntity(entity, false));
     state.bonusRoad.entities?.forEach((entity) => entity.element?.remove());
+    state.bonusRoad.projectiles?.forEach((projectile) => projectile.element?.remove());
     state.bonusRoad.entities = [];
+    state.bonusRoad.projectiles = [];
     gameArea.style.removeProperty("--road-shift");
     gameArea.classList.remove("roadtrip-mode");
+    gameArea.classList.remove("roadtrip-finale");
+    gameArea.removeAttribute("data-roadtrip-lane");
+    state.player?.element?.classList.remove("roadtrip-engine-on");
     state.bonusRoad = null;
 }
 
 function setupRoadTripLevel() {
     clearBonusRoad();
     gameArea.classList.add("roadtrip-mode");
+    const laneGrounds = [522, 592, 660];
     state.bonusRoad = {
         active: true,
         distance: 0,
-        goalDistance: 18500,
-        scrollSpeed: 5.4,
-        spawnTimer: 1050,
+        goalDistance: 10000,
+        baseScrollSpeed: 4.05,
+        scrollSpeed: 4.05,
+        spawnTimer: 1180,
         groundY: 592,
+        laneGrounds,
+        currentLane: 1,
+        targetLane: 1,
+        playerVisualY: laneGrounds[1] - 86,
+        targetPlayerY: laneGrounds[1] - 86,
         jumpStartedAt: 0,
         jumpEndsAt: 0,
         jumpHeight: 132,
+        jumpRampBoost: false,
+        rampRushUntil: 0,
         jumpInputLatched: false,
-        entities: []
+        laneInputLatched: false,
+        warningStage: 0,
+        arrivalTriggered: false,
+        entities: [],
+        projectiles: []
     };
 
     state.player.width = 138;
     state.player.height = 86;
     state.player.direction = "right";
     state.player.x = 118;
-    state.player.y = state.bonusRoad.groundY - state.player.height;
+    state.player.y = state.bonusRoad.playerVisualY;
+    state.player.roadTripNosLevel = 0;
+    state.player.element.style.setProperty("--roadtrip-car-tilt", "0deg");
+    state.player.element.style.setProperty("--roadtrip-car-scale-x", "1");
+    state.player.element.style.setProperty("--roadtrip-car-scale-y", "1");
+    state.player.element.style.setProperty("--roadtrip-wheel-lift", "0px");
     state.player.element.classList.add("bonus-driving");
+    state.player.element.classList.add("roadtrip-engine-on");
     state.player.element.classList.remove("attacking", "dodging");
+    gameArea.dataset.roadtripLane = "2";
     syncRoadTripPlayer();
+    startRoadTripEngineSound();
     updateAttackButtonAppearance();
 
     window.setTimeout(() => {
         if (state.currentLevel === 4 && state.bonusRoad?.active) {
-            showToast("🚗 Livello bonus 2D laterale: la macchina corre da sola. Salta con Space o col tasto salto e lancia il martello con Ctrl o col tasto attacco.");
+            showToast("🚗 Roadtrip per Piazza del Ferrarese: cambia corsia con su e giu', lancia il martello con Space e attiva il NOS con Ctrl.");
         }
     }, 900);
 }
@@ -629,7 +685,11 @@ function teardownRoadTripPlayerState() {
     state.player.width = 62;
     state.player.height = 74;
     state.player.element.style.removeProperty("transform");
-    state.player.element.classList.remove("bonus-driving", "bonus-jumping");
+    state.player.element.style.removeProperty("--roadtrip-car-tilt");
+    state.player.element.style.removeProperty("--roadtrip-car-scale-x");
+    state.player.element.style.removeProperty("--roadtrip-car-scale-y");
+    state.player.element.style.removeProperty("--roadtrip-wheel-lift");
+    state.player.element.classList.remove("bonus-driving", "bonus-jumping", "roadtrip-engine-on", "speed-boosted", "roadtrip-rage-truck");
 }
 
 function getRoadTripJumpOffset() {
@@ -639,12 +699,72 @@ function getRoadTripJumpOffset() {
 
     const now = performance.now();
     if (now >= state.bonusRoad.jumpEndsAt) {
+        state.bonusRoad.jumpRampBoost = false;
         return 0;
     }
 
     const duration = Math.max(1, state.bonusRoad.jumpEndsAt - state.bonusRoad.jumpStartedAt);
     const progress = clamp((now - state.bonusRoad.jumpStartedAt) / duration, 0, 1);
-    return Math.sin(progress * Math.PI) * state.bonusRoad.jumpHeight;
+    const arc = Math.sin(progress * Math.PI);
+    return Math.pow(arc, 0.82) * state.bonusRoad.jumpHeight;
+}
+
+function getRoadTripJumpMotion() {
+    if (!isRoadTripActive()) {
+        return {
+            offset: 0,
+            progress: 0,
+            active: false,
+            forward: 0,
+            tilt: 0,
+            scaleX: 1,
+            scaleY: 1,
+            wheelLift: 0
+        };
+    }
+
+    const now = performance.now();
+    if (now >= state.bonusRoad.jumpEndsAt) {
+        state.bonusRoad.jumpRampBoost = false;
+        return {
+            offset: 0,
+            progress: 0,
+            active: false,
+            forward: 0,
+            tilt: 0,
+            scaleX: 1,
+            scaleY: 1,
+            wheelLift: 0
+        };
+    }
+
+    const duration = Math.max(1, state.bonusRoad.jumpEndsAt - state.bonusRoad.jumpStartedAt);
+    const progress = clamp((now - state.bonusRoad.jumpStartedAt) / duration, 0, 1);
+    const arc = Math.sin(progress * Math.PI);
+    const offset = Math.pow(arc, 0.82) * state.bonusRoad.jumpHeight;
+    const rampBoost = Boolean(state.bonusRoad.jumpRampBoost);
+    const forward = rampBoost
+        ? (Math.sin(progress * Math.PI) * 26) + (Math.sin(progress * Math.PI * 0.68) * 22)
+        : Math.sin(progress * Math.PI) * 8;
+    const tilt = rampBoost
+        ? (progress < 0.52
+            ? (-13 * Math.sin((progress / 0.52) * (Math.PI / 2)))
+            : (9 * Math.sin(((progress - 0.52) / 0.48) * (Math.PI / 2))))
+        : (progress < 0.5 ? -4 : 3);
+    const scaleX = rampBoost ? 1 + (arc * 0.03) : 1 + (arc * 0.015);
+    const scaleY = rampBoost ? 1 - (arc * 0.045) : 1 - (arc * 0.02);
+    const wheelLift = rampBoost ? (-6 * arc) : (-2 * arc);
+
+    return {
+        offset,
+        progress,
+        active: true,
+        forward,
+        tilt,
+        scaleX,
+        scaleY,
+        wheelLift
+    };
 }
 
 function syncRoadTripPlayer() {
@@ -652,110 +772,377 @@ function syncRoadTripPlayer() {
         return;
     }
 
-    const jumpOffset = getRoadTripJumpOffset();
-    const bob = jumpOffset > 0 ? 0 : Math.sin(state.gameTimeMs / 120) * 3;
-    state.player.element.style.transform = `translate(${state.player.x}px, ${state.player.y - jumpOffset + bob}px)`;
+    const jumpMotion = getRoadTripJumpMotion();
+    const bob = jumpMotion.active ? 0 : Math.sin(state.gameTimeMs / 120) * 3;
+    state.player.element.style.transform = `translate(${state.player.x + jumpMotion.forward}px, ${state.player.y - jumpMotion.offset + bob}px)`;
+    state.player.element.style.setProperty("--roadtrip-car-tilt", `${jumpMotion.tilt.toFixed(2)}deg`);
+    state.player.element.style.setProperty("--roadtrip-car-scale-x", jumpMotion.scaleX.toFixed(3));
+    state.player.element.style.setProperty("--roadtrip-car-scale-y", jumpMotion.scaleY.toFixed(3));
+    state.player.element.style.setProperty("--roadtrip-wheel-lift", `${jumpMotion.wheelLift.toFixed(2)}px`);
 }
 
 function triggerRoadTripJump() {
+    return triggerRoadTripJumpWithOptions();
+}
+
+function triggerRoadTripJumpWithOptions(options = {}) {
     if (!isRoadTripActive()) {
         return false;
     }
 
     const now = performance.now();
-    if (now < state.bonusRoad.jumpEndsAt) {
+    if (now < state.bonusRoad.jumpEndsAt && !options.force) {
         return false;
     }
 
+    const jumpDuration = Number.isFinite(options.duration) ? options.duration : 620;
+    const jumpHeight = Number.isFinite(options.height) ? options.height : 132;
     state.bonusRoad.jumpStartedAt = now;
-    state.bonusRoad.jumpEndsAt = now + 620;
+    state.bonusRoad.jumpEndsAt = now + jumpDuration;
+    state.bonusRoad.jumpHeight = jumpHeight;
+    state.bonusRoad.jumpRampBoost = Boolean(options.rampBoost);
+    state.bonusRoad.rampRushUntil = options.rampBoost ? now + (jumpDuration * 0.78) : 0;
     state.player.element.classList.add("bonus-jumping");
-    playSpeedSound();
+    if (options.rampBoost) {
+        playRampBoostSound();
+    } else {
+        playSpeedSound();
+    }
     syncRoadTripPlayer();
     return true;
 }
 
-function spawnRoadTripEntity() {
-    if (!isRoadTripActive()) {
+function getRoadTripLaneGround(laneIndex) {
+    const lanes = state.bonusRoad?.laneGrounds || [522, 592, 660];
+    return lanes[clamp(laneIndex, 0, lanes.length - 1)];
+}
+
+function getRoadTripLanePlayerY(laneIndex) {
+    return getRoadTripLaneGround(laneIndex) - state.player.height;
+}
+
+function adjustRoadTripNosHeldCount(delta) {
+    state.roadTripNosHeldCount = Math.max(0, (state.roadTripNosHeldCount || 0) + delta);
+    if (state.roadTripNosHeldCount > 0) {
+        state.keys.add("control");
+    } else {
+        state.keys.delete("control");
+    }
+}
+
+function getRoadTripPlayerLaneFloat() {
+    if (!isRoadTripActive() || !state.player) {
+        return 0;
+    }
+
+    const laneGrounds = state.bonusRoad.laneGrounds || [522, 592, 660];
+    const playerGroundY = state.player.y + state.player.height;
+
+    for (let i = 0; i < laneGrounds.length - 1; i += 1) {
+        const currentGround = laneGrounds[i];
+        const nextGround = laneGrounds[i + 1];
+        if (playerGroundY >= currentGround && playerGroundY <= nextGround) {
+            const progress = (playerGroundY - currentGround) / Math.max(1, nextGround - currentGround);
+            return i + progress;
+        }
+    }
+
+    if (playerGroundY < laneGrounds[0]) {
+        return 0;
+    }
+
+    return laneGrounds.length - 1;
+}
+
+function isRoadTripEntityInPlayerLane(entity) {
+    if (!isRoadTripActive() || !entity || typeof entity.lane !== "number") {
+        return false;
+    }
+
+    const playerLaneFloat = getRoadTripPlayerLaneFloat();
+    return Math.abs(entity.lane - playerLaneFloat) <= 0.42;
+}
+
+function shiftRoadTripLane(direction) {
+    if (!isRoadTripActive() || !state.player) {
+        return false;
+    }
+
+    const nextLane = clamp((state.bonusRoad.targetLane ?? state.bonusRoad.currentLane ?? 1) + direction, 0, state.bonusRoad.laneGrounds.length - 1);
+    if (nextLane === state.bonusRoad.targetLane) {
+        return false;
+    }
+
+    state.bonusRoad.targetLane = nextLane;
+    state.bonusRoad.targetPlayerY = getRoadTripLanePlayerY(nextLane);
+    gameArea.dataset.roadtripLane = String(nextLane + 1);
+    return true;
+}
+
+function updateRoadTripPlayerLane(delta) {
+    if (!isRoadTripActive() || !state.player) {
         return;
     }
 
-    const roll = Math.random();
-    let type = "student";
-    if (roll > 0.8) {
-        type = "barrier";
-    } else if (roll > 0.54) {
-        type = "pothole";
-    } else if (roll > 0.26) {
-        type = "scooter";
+    const targetY = state.bonusRoad.targetPlayerY ?? state.player.y;
+    const currentY = state.bonusRoad.playerVisualY ?? state.player.y;
+    const laneSpeed = (12 + (getRoadTripNosLevel(performance.now()) * 4)) * delta;
+    const difference = targetY - currentY;
+
+    if (Math.abs(difference) <= laneSpeed) {
+        state.bonusRoad.playerVisualY = targetY;
+        state.player.y = targetY;
+        state.bonusRoad.currentLane = state.bonusRoad.targetLane;
+        return;
     }
 
-    const configs = {
-        student: { width: 54, height: 70, speed: 7.8, removable: true, damage: 1, jumpClearance: 62, yOffset: 70 },
-        pothole: { width: 116, height: 22, speed: 8.4, removable: false, damage: 1, jumpClearance: 30, yOffset: 10 },
-        barrier: { width: 82, height: 58, speed: 7.2, removable: true, damage: 1, jumpClearance: 68, yOffset: 58 },
-        scooter: { width: 108, height: 52, speed: 8.6, removable: true, damage: 1, jumpClearance: 58, yOffset: 52 }
-    };
-    const config = configs[type];
-    const y = state.bonusRoad.groundY - config.yOffset;
+    const nextY = currentY + Math.sign(difference) * laneSpeed;
+    state.bonusRoad.playerVisualY = nextY;
+    state.player.y = nextY;
+}
+
+function getRoadTripEntityConfig(type) {
+    return {
+        student: { width: 62, height: 84, speed: 1.58, removable: true, damage: 1, jumpClearance: 66, yOffset: 84 },
+        boomer: { width: 74, height: 92, speed: 1.28, removable: true, damage: 1, jumpClearance: 72, yOffset: 92 },
+        ultra: { width: 76, height: 92, speed: 1.48, removable: true, damage: 1, jumpClearance: 72, yOffset: 92 },
+        pothole: { width: 132, height: 30, speed: 1.18, removable: false, damage: 1, jumpClearance: 34, yOffset: 14 },
+        barrier: { width: 82, height: 58, speed: 1.46, removable: true, damage: 1, jumpClearance: 68, yOffset: 58 },
+        scooter: { width: 108, height: 52, speed: 1.32, removable: true, damage: 1, jumpClearance: 58, yOffset: 52 },
+        ramptruck: { width: 176, height: 92, speed: 1.08, removable: false, damage: 0, jumpClearance: 0, yOffset: 92, rampBoost: true, jumpHeightBoost: 214, jumpDurationBoost: 920 }
+    }[type];
+}
+
+function spawnRoadTripEntityInstance(type, lane, xOffset = 0) {
+    if (!isRoadTripActive()) {
+        return null;
+    }
+
+    const config = getRoadTripEntityConfig(type);
+    if (!config) {
+        return null;
+    }
+
+    const y = getRoadTripLaneGround(lane) - config.yOffset;
     const element = document.createElement("div");
     element.className = `roadtrip-entity roadtrip-${type}`;
-
-    if (type === "student") {
-        element.innerHTML = `<span class="roadtrip-student-head"></span><span class="roadtrip-student-body"></span>`;
-    } else if (type === "barrier") {
-        element.innerHTML = `<span class="roadtrip-barrier-plank"></span>`;
-    } else if (type === "scooter") {
-        element.innerHTML = `<span class="roadtrip-scooter-seat"></span><span class="roadtrip-scooter-wheel front"></span><span class="roadtrip-scooter-wheel rear"></span>`;
-    }
+    element.innerHTML = getRoadTripEntityMarkup(type);
+    element.dataset.lane = String(lane + 1);
 
     gameArea.appendChild(element);
-    state.bonusRoad.entities.push({
+    const entity = {
         type,
-        x: GAME.width + 40,
+        speechType: {
+            student: "roadtripPeroni",
+            boomer: "roadtripTablet",
+            ultra: "roadtripUltra"
+        }[type] || type,
+        lane,
+        x: GAME.width + 40 + xOffset,
         y,
         width: config.width,
         height: config.height,
         speed: config.speed,
         removable: config.removable,
         damage: config.damage,
+        canThrowBeer: type === "student",
+        beerThrown: false,
+        canSpeak: type === "student" || type === "boomer" || type === "ultra",
+        speechTriggered: false,
+        speechRoll: Math.random() < 0.58,
+        speechTriggerX: state.player.x + randomBetween(120, 420),
         jumpClearance: config.jumpClearance,
+        rampBoost: Boolean(config.rampBoost),
+        rampConsumed: false,
+        jumpHeightBoost: config.jumpHeightBoost || 0,
+        jumpDurationBoost: config.jumpDurationBoost || 0,
         element
-    });
+    };
+    state.bonusRoad.entities.push(entity);
+    return entity;
+}
 
-    if (Math.random() < 0.34) {
-        const comboType = type === "pothole"
-            ? "student"
-            : type === "student"
-                ? (Math.random() < 0.5 ? "pothole" : "scooter")
-                : "student";
-        const comboConfig = configs[comboType];
-        const comboElement = document.createElement("div");
-        const comboY = state.bonusRoad.groundY - comboConfig.yOffset;
-        comboElement.className = `roadtrip-entity roadtrip-${comboType}`;
-
-        if (comboType === "student") {
-            comboElement.innerHTML = `<span class="roadtrip-student-head"></span><span class="roadtrip-student-body"></span>`;
-        } else if (comboType === "barrier") {
-            comboElement.innerHTML = `<span class="roadtrip-barrier-plank"></span>`;
-        } else if (comboType === "scooter") {
-            comboElement.innerHTML = `<span class="roadtrip-scooter-seat"></span><span class="roadtrip-scooter-wheel front"></span><span class="roadtrip-scooter-wheel rear"></span>`;
-        }
-
-        gameArea.appendChild(comboElement);
-        state.bonusRoad.entities.push({
-            type: comboType,
-            x: GAME.width + randomBetween(210, 320),
-            y: comboY,
-            width: comboConfig.width,
-            height: comboConfig.height,
-            speed: comboConfig.speed,
-            removable: comboConfig.removable,
-            damage: comboConfig.damage,
-            jumpClearance: comboConfig.jumpClearance,
-            element: comboElement
-        });
+function getRoadTripWarningText() {
+    if (!isRoadTripActive()) {
+        return "";
     }
+
+    const remainingMeters = Math.max(0, Math.ceil((state.bonusRoad.goalDistance - state.bonusRoad.distance) / 100));
+    const nosLevel = getRoadTripNosLevel(performance.now());
+    if (nosLevel === 2) {
+        return "NOS doppio attivo";
+    }
+    if (nosLevel === 1) {
+        return "NOS attivo";
+    }
+    if (remainingMeters <= 18) {
+        return "Stand Aulab in vista";
+    }
+    if (remainingMeters <= 40) {
+        return "Traffico SPID altissimo";
+    }
+    if (remainingMeters <= 70) {
+        return "Boomer e OTP in aumento";
+    }
+    return "Verso Piazza del Ferrarese";
+}
+
+function getRoadTripStatusText() {
+    if (!isRoadTripActive()) {
+        return "";
+    }
+
+    const nosLevel = getRoadTripNosLevel(performance.now());
+    if (nosLevel === 2) {
+        return "Doppia spinta nitro";
+    }
+    if (nosLevel === 1) {
+        return "Spinta nitro in corso";
+    }
+    return "3 corsie - nos - martello";
+}
+
+function spawnRoadTripPattern() {
+    if (!isRoadTripActive()) {
+        return;
+    }
+
+    const progress = state.bonusRoad.distance / state.bonusRoad.goalDistance;
+    const lanes = [0, 1, 2];
+    const pickLane = () => lanes[Math.floor(Math.random() * lanes.length)];
+    const pickOtherLanes = (used) => lanes.filter((lane) => !used.includes(lane));
+    const freeLane = pickLane();
+    const blockedLanes = pickOtherLanes([freeLane]);
+
+    const earlyPatterns = [
+        () => spawnRoadTripEntityInstance(Math.random() < 0.5 ? "student" : "pothole", pickLane()),
+        () => spawnRoadTripEntityInstance(Math.random() < 0.5 ? "scooter" : "boomer", pickLane()),
+        () => {
+            spawnRoadTripEntityInstance("ramptruck", pickLane());
+        },
+        () => {
+            spawnRoadTripEntityInstance("student", blockedLanes[0]);
+            spawnRoadTripEntityInstance("ultra", freeLane, 180);
+        }
+    ];
+
+    const midPatterns = [
+        () => {
+            spawnRoadTripEntityInstance("pothole", blockedLanes[0]);
+            spawnRoadTripEntityInstance("boomer", blockedLanes[1], 180);
+        },
+        () => {
+            spawnRoadTripEntityInstance("ramptruck", freeLane);
+            spawnRoadTripEntityInstance("barrier", blockedLanes[0], 170);
+        },
+        () => {
+            spawnRoadTripEntityInstance("student", blockedLanes[0]);
+            spawnRoadTripEntityInstance("scooter", blockedLanes[1], 140);
+            spawnRoadTripEntityInstance("ultra", freeLane, 250);
+        },
+        () => {
+            spawnRoadTripEntityInstance("boomer", blockedLanes[0]);
+            spawnRoadTripEntityInstance("ultra", blockedLanes[1], 150);
+        }
+    ];
+
+    const latePatterns = [
+        () => {
+            spawnRoadTripEntityInstance("ramptruck", freeLane);
+            spawnRoadTripEntityInstance("barrier", blockedLanes[0], 120);
+            spawnRoadTripEntityInstance("boomer", blockedLanes[1], 240);
+        },
+        () => {
+            spawnRoadTripEntityInstance("pothole", blockedLanes[0]);
+            spawnRoadTripEntityInstance("scooter", blockedLanes[1], 120);
+            spawnRoadTripEntityInstance("ultra", freeLane, 220);
+        },
+        () => {
+            spawnRoadTripEntityInstance("student", blockedLanes[0]);
+            spawnRoadTripEntityInstance("boomer", blockedLanes[1], 120);
+            spawnRoadTripEntityInstance("ultra", blockedLanes[0], 260);
+        },
+        () => {
+            spawnRoadTripEntityInstance("ramptruck", blockedLanes[0]);
+            spawnRoadTripEntityInstance("ultra", freeLane, 170);
+        }
+    ];
+
+    const patternPool = progress < 0.28 ? earlyPatterns : progress < 0.72 ? midPatterns : latePatterns;
+    const pattern = patternPool[Math.floor(Math.random() * patternPool.length)];
+    pattern();
+}
+
+function getRoadTripEntityMarkup(type) {
+    if (type === "student") {
+        return `
+            <span class="roadtrip-student-shadow"></span>
+            <span class="roadtrip-student-legs left"></span>
+            <span class="roadtrip-student-legs right"></span>
+            <span class="roadtrip-student-body"></span>
+            <span class="roadtrip-student-arm left"></span>
+            <span class="roadtrip-student-arm right"></span>
+            <span class="roadtrip-student-head"></span>
+            <span class="roadtrip-student-hair"></span>
+            <span class="roadtrip-student-brow"></span>
+            <span class="roadtrip-student-eyes"></span>
+            <span class="roadtrip-student-nose"></span>
+            <span class="roadtrip-student-beer"></span>
+        `;
+    }
+    if (type === "boomer") {
+        return `
+            <span class="roadtrip-boomer-shadow"></span>
+            <span class="roadtrip-boomer-legs left"></span>
+            <span class="roadtrip-boomer-legs right"></span>
+            <span class="roadtrip-boomer-body"></span>
+            <span class="roadtrip-boomer-arm left"></span>
+            <span class="roadtrip-boomer-arm right"></span>
+            <span class="roadtrip-boomer-head"></span>
+            <span class="roadtrip-boomer-hair"></span>
+            <span class="roadtrip-boomer-brow"></span>
+            <span class="roadtrip-boomer-eyes"></span>
+            <span class="roadtrip-boomer-glasses"></span>
+            <span class="roadtrip-boomer-tablet"></span>
+        `;
+    }
+    if (type === "ultra") {
+        return `
+            <span class="roadtrip-ultra-shadow"></span>
+            <span class="roadtrip-ultra-legs left"></span>
+            <span class="roadtrip-ultra-legs right"></span>
+            <span class="roadtrip-ultra-body"></span>
+            <span class="roadtrip-ultra-arm left"></span>
+            <span class="roadtrip-ultra-arm right"></span>
+            <span class="roadtrip-ultra-head"></span>
+            <span class="roadtrip-ultra-hair"></span>
+            <span class="roadtrip-ultra-brow"></span>
+            <span class="roadtrip-ultra-eyes"></span>
+            <span class="roadtrip-ultra-scarf"></span>
+            <span class="roadtrip-ultra-badge"></span>
+        `;
+    }
+    if (type === "barrier") {
+        return `<span class="roadtrip-barrier-plank"></span>`;
+    }
+    if (type === "scooter") {
+        return `<span class="roadtrip-scooter-seat"></span><span class="roadtrip-scooter-wheel front"></span><span class="roadtrip-scooter-wheel rear"></span>`;
+    }
+    if (type === "ramptruck") {
+        return `
+            <span class="roadtrip-ramptruck-bed"></span>
+            <span class="roadtrip-ramptruck-cab"></span>
+            <span class="roadtrip-ramptruck-window"></span>
+            <span class="roadtrip-ramptruck-ramp"></span>
+            <span class="roadtrip-ramptruck-wheel rear"></span>
+            <span class="roadtrip-ramptruck-wheel front"></span>
+        `;
+    }
+    return "";
+}
+
+function spawnRoadTripEntity() {
+    spawnRoadTripPattern();
 }
 
 function fireRoadTripHammer() {
@@ -777,6 +1164,45 @@ function fireRoadTripHammer() {
     state.teacherProjectiles.push(projectile);
     playHammerSound();
     playPlayerRangedAttackAnimation();
+}
+
+function isRoadTripNosActive(timestamp = performance.now()) {
+    return getRoadTripNosLevel(timestamp) > 0;
+}
+
+function getRoadTripNosLevel(timestamp = performance.now()) {
+    if (!isRoadTripActive() || !state.player) {
+        return 0;
+    }
+
+    if (timestamp < state.player.speedBoostUntil) {
+        return state.player.roadTripNosLevel || 0;
+    }
+
+    if (state.player.speedBoostUntil || state.player.roadTripNosLevel) {
+        state.player.speedBoostUntil = 0;
+        state.player.roadTripNosLevel = 0;
+    }
+    return 0;
+}
+
+function activateRoadTripNos(timestamp = performance.now()) {
+    if (!isRoadTripActive() || !state.player || state.player.isDodging) {
+        return false;
+    }
+
+    const currentLevel = getRoadTripNosLevel(timestamp);
+    if (state.player.stamina < GAME.staminaPerDodge || currentLevel >= 2) {
+        return false;
+    }
+
+    state.player.stamina -= GAME.staminaPerDodge;
+    state.player.lastStaminaUse = timestamp;
+    state.player.roadTripNosLevel = currentLevel + 1;
+    state.player.speedBoostUntil = timestamp + 1100;
+    state.player.element.classList.add("speed-boosted");
+    playRoadTripNosSound(currentLevel + 1);
+    return true;
 }
 
 function applyPlayerWeaponAppearance(player) {
@@ -803,8 +1229,8 @@ function updateAttackButtonAppearance() {
         attackButton.textContent = "🔨";
         attackButton.setAttribute("aria-label", "Lancia martello");
         if (dodgeButton) {
-            dodgeButton.textContent = "⤴️";
-            dodgeButton.setAttribute("aria-label", "Salta");
+            dodgeButton.textContent = "⚡";
+            dodgeButton.setAttribute("aria-label", "Attiva NOS");
         }
     } else if (isLevelSixMachineGunActive()) {
         attackButton.textContent = "🔫";
@@ -964,6 +1390,21 @@ const speechProfiles = {
                 "mi hanno detto di chiedere qui!",
                 "dove arriva il codice?!",
                 "non mi legge la faccia!"
+            ],
+            roadtripPeroni: [
+                "Una bella Peroni sudata",
+                "Prendila al volo",
+                "Il pooooolpo"
+            ],
+            roadtripTablet: [
+                "Stu tablet non funzion",
+                "Teng la pression a 180",
+                "Baaar ie' Baaar"
+            ],
+            roadtripUltra: [
+                "Forza Bari",
+                "La strad ie' la nost",
+                "A do ste a sci'?"
             ],
             spid: [
                 "mi serve l'OTP!",
@@ -1145,6 +1586,21 @@ const speechProfiles = {
                 "mi hanno detto di rompere qui!",
                 "dov'e' il cazzo di codice?!",
                 "sta faccia non me la legge, merda!"
+            ],
+            roadtripPeroni: [
+                "Awa' sta Peron ghiacciat",
+                "A do ste a sci'? A u ciringhit?",
+                "Stu baccala'"
+            ],
+            roadtripTablet: [
+                "Angor non ue'",
+                "U apparecchj non funzion",
+                "L spaghitt c l'angild"
+            ],
+            roadtripUltra: [
+                "Mo ti a da' nu carton",
+                "U bombon perchiaaat",
+                "Ste a parl o a mov l recchij"
             ],
             spid: [
                 "ridammi l'OTP, bastardo!",
@@ -1475,9 +1931,18 @@ function initTouchControls() {
 
     bindTouchAction(touchDodgeBtn, () => {
         if (isRoadTripActive()) {
-            triggerRoadTripJump();
+            activateRoadTripNos(performance.now());
         } else {
             queuePlayerDodge(getPreferredDodgeVector());
+        }
+    }, {
+        onPress: () => {
+            if (isRoadTripActive()) {
+                adjustRoadTripNosHeldCount(1);
+            }
+        },
+        onRelease: () => {
+            adjustRoadTripNosHeldCount(-1);
         }
     });
 }
@@ -1539,17 +2004,28 @@ function bindEvents() {
         }
 
         if (isRoadTripActive()) {
-            if (!event.repeat && (key === "up" || key === "down" || key === "space")) {
-                triggerRoadTripJump();
+            if (key === "space") {
+                state.keys.add("attack");
+                if (!event.repeat) {
+                    attack();
+                }
+                return;
+            }
+            if (!event.repeat && key === "up") {
+                shiftRoadTripLane(-1);
+                return;
+            }
+            if (!event.repeat && key === "down") {
+                shiftRoadTripLane(1);
                 return;
             }
             if (key === "left" || key === "right") {
                 return;
             }
             if (key === "control") {
-                state.keys.add("attack");
                 if (!event.repeat) {
-                    attack();
+                    adjustRoadTripNosHeldCount(1);
+                    activateRoadTripNos(performance.now());
                 }
                 return;
             }
@@ -1607,7 +2083,7 @@ function bindEvents() {
             state.keys.delete("attack");
         }
         if (key === "control") {
-            state.keys.delete("attack");
+            adjustRoadTripNosHeldCount(-1);
         }
     });
 
@@ -1781,7 +2257,23 @@ function createObstacles(layout) {
         const element = document.createElement("div");
         element.className = `obstacle ${config.type}`;
         setRectStyles(element, config);
+
+        if (isDestructibleObstacle(config)) {
+            element.classList.add("destructible-obstacle");
+            const damageOverlay = document.createElement("span");
+            damageOverlay.className = "obstacle-damage-overlay";
+            element.appendChild(damageOverlay);
+        }
+
         gameArea.appendChild(element);
+
+        if (config.type === "scooter") {
+            element.innerHTML = `
+                <span class="roadtrip-scooter-seat"></span>
+                <span class="roadtrip-scooter-wheel front"></span>
+                <span class="roadtrip-scooter-wheel rear"></span>
+            `;
+        }
 
         // Decorate server obstacles with LED lights, flames, and flying sparks
         if (config.type === "server") {
@@ -1808,7 +2300,12 @@ function createObstacles(layout) {
             element.appendChild(sparksContainer);
         }
 
-        state.obstacles.push({ ...config, element });
+        state.obstacles.push({
+            ...config,
+            element,
+            maxHits: isDestructibleObstacle(config) ? 2 : 1,
+            hitsTaken: 0
+        });
     });
 }
 
@@ -1817,10 +2314,17 @@ function clearObstacles() {
     state.obstacles = [];
 }
 
+function clearDebris() {
+    state.debris.forEach((entry) => entry.element?.remove());
+    state.debris = [];
+}
+
 function resetGame() {
     deactivateRageMode();
     clearEntities();
+    stopRoadTripEngineSound();
     stopStudentSpeech();
+    state.roadTripNosHeldCount = 0;
     state.keys.delete("attack");
 
     state.running = false;
@@ -1831,6 +2335,7 @@ function resetGame() {
     state.gameTimeMs = 0;
     state.nextPowerUpAt = getPowerUpSpawnWindowDelay();
     state.nextHeartPowerUpAt = getHeartPowerUpRespawnDelay();
+    state.levelSevenWeaponUnlocked = false;
     buildLevel(state.currentLevel, true);
     updateHud();
 
@@ -1929,6 +2434,7 @@ function clearEntities() {
 function clearLevelActors(keepPlayer = true) {
     clearActiveCutscenes();
     clearBonusRoad();
+    clearDebris();
     state.students.forEach((student) => {
         if (student.speechTimeoutId) {
             window.clearTimeout(student.speechTimeoutId);
@@ -2210,7 +2716,7 @@ function setupSummoningSequence(levelNumber, level) {
         if (levelNumber === 3) {
             showToast("🎯 NUOVA ARMA DISPONIBILE! Cerca i power-up 'STUDIA' per ottenere l'arma a distanza che insegue il boss!");
         } else if (levelNumber === 7) {
-            showToast("🔫 Livello 7: mitraglietta equipaggiata. Tieni premuto il colpo e scaricala sul Signore dello SPID.");
+            showToast("⚠️ Livello 7: il Signore dello SPID sta arrivando. Preparati al dono finale.");
         }
     }, 1000);
 }
@@ -2218,6 +2724,7 @@ function setupSummoningSequence(levelNumber, level) {
 function buildLevel(levelNumber, resetPlayerLives = false) {
     clearLevelActors(true);
     state.currentLevel = levelNumber;
+    state.levelSevenWeaponUnlocked = false;
     const level = getCurrentLevelConfig();
 
     // Toggle emergency red lights overlay for level 3
@@ -2354,11 +2861,20 @@ function createPlayer(spawn, resetPlayerLives = false) {
     hammerHead.className = "player-hammer-head";
     roadTripCar.className = "roadtrip-car";
     roadTripCar.innerHTML = `
+        <span class="roadtrip-car-exhaust exhaust-back"></span>
+        <span class="roadtrip-car-exhaust exhaust-front"></span>
         <span class="roadtrip-car-body"></span>
         <span class="roadtrip-car-window"></span>
+        <span class="roadtrip-car-driver"></span>
         <span class="roadtrip-car-wheel front"></span>
         <span class="roadtrip-car-wheel rear"></span>
     `;
+    const roadTripDriver = roadTripCar.querySelector(".roadtrip-car-driver");
+    if (roadTripDriver) {
+        roadTripDriver.style.backgroundImage = `url(${selectedTeacher.image})`;
+        roadTripDriver.style.backgroundSize = "cover";
+        roadTripDriver.style.backgroundPosition = "center";
+    }
 
     hammer.appendChild(hammerHead);
     figure.append(face, torso, armLeft, armRight, legLeft, legRight, hammer);
@@ -2380,6 +2896,7 @@ function createPlayer(spawn, resetPlayerLives = false) {
         attackEndsAt: 0,
         shieldHits: 0,
         speedBoostUntil: 0,
+        roadTripNosLevel: 0,
         superHammerUntil: 0,
         // Sistema di stamina e schivata
         stamina: GAME.maxStamina,
@@ -2391,6 +2908,7 @@ function createPlayer(spawn, resetPlayerLives = false) {
         dodgeStartY: 0,
         dodgeTargetX: 0,
         dodgeTargetY: 0,
+        carriedPlant: null,
         element
     };
 
@@ -2412,11 +2930,14 @@ function repositionPlayer(spawn) {
     state.player.invulnerableUntil = 0;
     state.player.shieldHits = 0;
     state.player.speedBoostUntil = 0;
+    state.player.roadTripNosLevel = 0;
     state.player.superHammerUntil = 0;
     state.player.dodgeDurationMs = GAME.dodgeDuration;
+    state.player.carriedPlant = null;
     state.player.element.classList.remove("attacking", "flash-damage", "shield-active", "speed-boosted", "super-hammer-active");
     state.player.element.removeAttribute("data-shield-hits");
     placeEntityInFreeSpot(state.player);
+    updateCarriedPlantVisual();
     syncEntity(state.player);
 }
 
@@ -2623,6 +3144,14 @@ function getStudentLinePool(studentOrType) {
     return profile.typeMessages[messageKey] || profile.studentMessages;
 }
 
+function isActiveSpeechEntity(entity) {
+    if (!entity || !entity.element) {
+        return false;
+    }
+
+    return state.students.includes(entity) || Boolean(state.bonusRoad?.entities?.includes(entity));
+}
+
 function hasQueuedOrActiveStudentSpeech(student) {
     if (!student) {
         return false;
@@ -2681,7 +3210,7 @@ function processStudentSpeechQueue() {
         const nextSpeech = state.studentSpeechQueue.shift();
         const { student, message, bubbleClass, durationMs, onStart } = nextSpeech;
 
-        if (!student || !student.element || student.element.classList.contains("burning") || !state.students.includes(student)) {
+        if (!student || !student.element || student.element.classList.contains("burning") || !isActiveSpeechEntity(student)) {
             continue;
         }
 
@@ -2728,6 +3257,30 @@ function queueStudentSpeech(student, message, options = {}) {
     return true;
 }
 
+function clearSpeechForEntity(entity, resumeQueue = true) {
+    if (!entity) {
+        return;
+    }
+
+    let shouldResumeQueue = false;
+    if (entity.speechTimeoutId) {
+        window.clearTimeout(entity.speechTimeoutId);
+        entity.speechTimeoutId = null;
+    }
+
+    state.studentSpeechQueue = state.studentSpeechQueue.filter((entry) => entry.student !== entity);
+    if (state.activeStudentSpeech?.student === entity) {
+        state.activeStudentSpeech = null;
+        shouldResumeQueue = true;
+    }
+
+    removeStudentSpeechBubble(entity);
+
+    if (resumeQueue && shouldResumeQueue) {
+        processStudentSpeechQueue();
+    }
+}
+
 function getTeacherHitLine() {
     return pickRandomLine(getTeacherHitMessagePool(), "Torna a studiare!");
 }
@@ -2768,6 +3321,8 @@ function gameLoop(timestamp) {
 
         if (isRoadTripActive()) {
             updateRoadTripLevel(delta, timestamp);
+            updateStamina(delta, timestamp);
+            updateRage(delta);
             updateHud();
             applyGameAreaTransform();
             requestAnimationFrame(gameLoop);
@@ -2905,8 +3460,10 @@ function updatePlayer(delta, timestamp) {
 function updateStamina(delta, timestamp) {
     if (!state.player) return;
 
+    const isHoldingRoadTripNos = isRoadTripActive() && state.keys.has("control");
+
     // Rigenerazione stamina se non è stata usata di recente
-    if (timestamp - state.player.lastStaminaUse >= GAME.staminaRegenDelay) {
+    if (!isHoldingRoadTripNos && timestamp - state.player.lastStaminaUse >= GAME.staminaRegenDelay) {
         state.player.stamina = Math.min(GAME.maxStamina,
             state.player.stamina + (GAME.staminaRegenRate * delta));
     }
@@ -3403,7 +3960,13 @@ function updateProjectiles(delta, timestamp) {
         }
 
         const playerCanBeHit = timestamp >= state.player.invulnerableUntil && !state.player.isDodging;
-        if (playerCanBeHit && rectsIntersect(projectile, state.player)) {
+        const playerProjectileHurtRect = getPlayerProjectileHurtRect();
+        if (
+            playerCanBeHit &&
+            playerProjectileHurtRect &&
+            rectsIntersect(projectile, playerProjectileHurtRect) &&
+            !isProjectileBlockedByObstacle(projectile, playerProjectileHurtRect)
+        ) {
             projectile.element.remove();
             if (state.player.shieldHits > 0) {
                 state.player.shieldHits -= 1;
@@ -3439,6 +4002,7 @@ function updateTeacherProjectiles(delta, timestamp) {
 
     state.teacherProjectiles.forEach((projectile) => {
         const { outsideArena, hitsObstacle } = advanceProjectile(projectile, delta);
+        const projectileHitRect = getCollisionRect(projectile);
 
         if (outsideArena || hitsObstacle) {
             projectile.element.remove();
@@ -3449,7 +4013,7 @@ function updateTeacherProjectiles(delta, timestamp) {
         let hitStudent = false;
         const survivors = [];
         state.students.forEach((student) => {
-            if (rectsIntersect(projectile, student)) {
+            if (rectsIntersect(projectileHitRect, student)) {
                 if (student.isChanting) {
                     createHitEffect(student.x - 18, student.y - 18);
                     playShieldSound();
@@ -3470,7 +4034,7 @@ function updateTeacherProjectiles(delta, timestamp) {
         state.students = survivors;
 
         // Controlla collisione con il boss
-        if (state.boss && rectsIntersect(projectile, state.boss)) {
+        if (state.boss && rectsIntersect(projectileHitRect, state.boss)) {
             createHitEffect(projectile.x - 18, projectile.y - 18);
             projectile.element.remove();
             damageBoss();
@@ -3509,6 +4073,7 @@ function updateRoadTripTeacherProjectiles(delta) {
 
             if (rectsIntersect(projectile, entity)) {
                 createHitEffect(entity.x + entity.width / 2 - 18, entity.y + entity.height / 2 - 18);
+                clearSpeechForEntity(entity);
                 entity.element.remove();
                 removed = true;
                 projectile.element.remove();
@@ -3527,25 +4092,128 @@ function updateRoadTripTeacherProjectiles(delta) {
     state.teacherProjectiles = survivors;
 }
 
+function launchRoadTripBeer(entity) {
+    if (!state.bonusRoad || !state.player || !entity?.element) {
+        return false;
+    }
+
+    const startX = entity.x + 10;
+    const startY = entity.y + 20;
+    const projectile = {
+        x: startX,
+        y: startY,
+        width: 28,
+        height: 40,
+        velocityX: -(GAME.projectileSpeed * 2.9),
+        velocityY: 0,
+        gravity: 0,
+        renderRotation: -0.4,
+        rotationSpeed: -0.28,
+        element: document.createElement("div")
+    };
+
+    projectile.element.className = "projectile roadtrip-beer-projectile";
+    gameArea.appendChild(projectile.element);
+    syncEntity(projectile);
+    state.bonusRoad.projectiles.push(projectile);
+    entity.beerThrown = true;
+    entity.element.classList.add("beer-thrown");
+    return true;
+}
+
+function maybeSpeakRoadTripEntity(entity) {
+    if (!entity?.canSpeak || entity.speechTriggered || !entity.speechRoll || !entity.element) {
+        return;
+    }
+
+    const triggerX = entity.speechTriggerX ?? (state.player.x + 320);
+    if (entity.x > triggerX || entity.x < state.player.x - 24) {
+        return;
+    }
+
+    const fallbackByType = {
+        student: "Prendila al volo",
+        boomer: "Stu tablet non funzion",
+        ultra: "Forza Bari"
+    };
+    const message = pickRandomLine(getStudentLinePool(entity), fallbackByType[entity.type] || "Ue'");
+    const queued = queueStudentSpeech(entity, message, {
+        bubbleClass: "speech-bubble",
+        minimumMs: 1300,
+        role: "student"
+    });
+
+    if (queued) {
+        entity.speechTriggered = true;
+    }
+}
+
+function updateRoadTripBeerProjectiles(delta, roadPlayerRect, canTakeHit, jumpOffset) {
+    if (!state.bonusRoad?.projectiles?.length) {
+        return;
+    }
+
+    const survivors = [];
+    state.bonusRoad.projectiles.forEach((projectile) => {
+        projectile.x += projectile.velocityX * delta;
+        projectile.y += projectile.velocityY * delta;
+        projectile.velocityY += projectile.gravity * delta * 16.67;
+        projectile.renderRotation += projectile.rotationSpeed * delta;
+        syncEntity(projectile);
+
+        const outsideArena =
+            projectile.x + projectile.width < -40 ||
+            projectile.y > GAME.height + 40 ||
+            projectile.x > GAME.width + 40;
+
+        if (outsideArena) {
+            projectile.element.remove();
+            return;
+        }
+
+        const clearsProjectile = jumpOffset >= 52;
+        if (canTakeHit && !clearsProjectile && rectsIntersect(projectile, roadPlayerRect)) {
+            damagePlayer();
+            createHitEffect(projectile.x - 18, projectile.y - 18);
+            projectile.element.remove();
+            return;
+        }
+
+        survivors.push(projectile);
+    });
+
+    state.bonusRoad.projectiles = survivors;
+}
+
 function updateRoadTripLevel(delta, timestamp) {
     if (!state.bonusRoad || !state.player) {
         return;
     }
 
-    state.bonusRoad.distance += state.bonusRoad.scrollSpeed * delta * 1.18;
+    const progress = clamp(state.bonusRoad.distance / state.bonusRoad.goalDistance, 0, 1);
+    const rampRushBoost = timestamp < (state.bonusRoad.rampRushUntil || 0) ? 1.55 : 0;
+    const nosLevel = getRoadTripNosLevel(timestamp);
+    const nosActive = nosLevel > 0;
+    state.player.element.classList.toggle("speed-boosted", nosActive);
+    state.bonusRoad.scrollSpeed = state.bonusRoad.baseScrollSpeed + progress * 0.85 + (nosLevel * 0.82) + rampRushBoost;
+    const distanceMultiplier = 1 + (nosLevel * 0.58);
+    state.bonusRoad.distance += state.bonusRoad.scrollSpeed * delta * 1.06 * distanceMultiplier;
     gameArea.style.setProperty("--road-shift", `${-(state.bonusRoad.distance * 1.25)}px`);
 
-    const wantsJumpFromMovement = state.keys.has("up") || state.keys.has("down");
-    if (wantsJumpFromMovement && !state.bonusRoad.jumpInputLatched) {
-        triggerRoadTripJump();
-        state.bonusRoad.jumpInputLatched = true;
-    } else if (!wantsJumpFromMovement) {
-        state.bonusRoad.jumpInputLatched = false;
+    if (state.keys.has("up") && !state.bonusRoad.laneInputLatched) {
+        shiftRoadTripLane(-1);
+        state.bonusRoad.laneInputLatched = true;
+    } else if (state.keys.has("down") && !state.bonusRoad.laneInputLatched) {
+        shiftRoadTripLane(1);
+        state.bonusRoad.laneInputLatched = true;
+    } else if (!state.keys.has("up") && !state.keys.has("down")) {
+        state.bonusRoad.laneInputLatched = false;
     }
 
     if (timestamp >= state.bonusRoad.jumpEndsAt) {
         state.player.element.classList.remove("bonus-jumping");
     }
+    updateRoadTripPlayerLane(delta);
     syncRoadTripPlayer();
 
     if (state.keys.has("attack")) {
@@ -3555,34 +4223,84 @@ function updateRoadTripLevel(delta, timestamp) {
     state.bonusRoad.spawnTimer -= delta * 16.67;
     if (state.bonusRoad.spawnTimer <= 0) {
         spawnRoadTripEntity();
-        const baseDelay = Math.max(420, 920 - state.bonusRoad.distance * 0.012);
-        state.bonusRoad.spawnTimer = randomBetween(baseDelay, baseDelay + 420);
+        const baseDelay = progress < 0.22
+            ? 1180
+            : progress < 0.68
+                ? 980
+                : 760;
+        state.bonusRoad.spawnTimer = randomBetween(baseDelay, baseDelay + 560);
     }
 
     const canTakeHit = timestamp >= state.player.invulnerableUntil;
+    const roadTripRageTruckActive = state.rageActive && state.player?.element?.classList.contains("roadtrip-rage-truck");
     const jumpOffset = getRoadTripJumpOffset();
     const roadPlayerRect = {
-        x: state.player.x + 12,
-        y: state.player.y + 26,
-        width: state.player.width - 26,
-        height: state.player.height - 34
+        x: state.player.x + (roadTripRageTruckActive ? 8 : 18),
+        y: state.player.y + (roadTripRageTruckActive ? 24 : 34),
+        width: state.player.width - (roadTripRageTruckActive ? 16 : 38),
+        height: state.player.height - (roadTripRageTruckActive ? 28 : 50)
     };
 
     const remainingEntities = [];
     state.bonusRoad.entities.forEach((entity) => {
-        entity.x -= entity.speed * delta * 6.2;
+        entity.x -= entity.speed * delta * 4.35 * (0.94 + progress * 0.36 + (rampRushBoost * 0.58));
         entity.element.style.transform = `translate(${entity.x}px, ${entity.y}px)`;
 
         if (entity.x + entity.width < -60) {
+            clearSpeechForEntity(entity, false);
             entity.element.remove();
             return;
         }
 
+        if (!entity.rampConsumed && entity.rampBoost && isRoadTripEntityInPlayerLane(entity) && rectsIntersect(roadPlayerRect, entity)) {
+            const boosted = triggerRoadTripJumpWithOptions({
+                force: true,
+                rampBoost: true,
+                height: entity.jumpHeightBoost || 214,
+                duration: entity.jumpDurationBoost || 920
+            });
+            createHitEffect(entity.x + entity.width / 2 - 18, entity.y + 10);
+            if (boosted) {
+                entity.rampConsumed = true;
+                entity.element.classList.add("used");
+            }
+        }
+
+        if (entity.rampBoost && entity.rampConsumed) {
+            remainingEntities.push(entity);
+            return;
+        }
+
+        maybeSpeakRoadTripEntity(entity);
+
+        if (
+            entity.canThrowBeer &&
+            !entity.beerThrown &&
+            isRoadTripEntityInPlayerLane(entity) &&
+            entity.x <= state.player.x + state.player.width + 320 &&
+            entity.x >= state.player.x + state.player.width + 40
+        ) {
+            launchRoadTripBeer(entity);
+        }
+
+        if (roadTripRageTruckActive && isRoadTripEntityInPlayerLane(entity) && rectsIntersect(roadPlayerRect, entity)) {
+            createHitEffect(entity.x + entity.width / 2 - 18, entity.y + entity.height / 2 - 18);
+            playRageHitSound();
+            if (entity.removable) {
+                clearSpeechForEntity(entity);
+                entity.element.remove();
+                return;
+            }
+            remainingEntities.push(entity);
+            return;
+        }
+
         const clearsEntity = jumpOffset >= (entity.jumpClearance || 999);
-        if (canTakeHit && !clearsEntity && rectsIntersect(roadPlayerRect, entity)) {
+        if (canTakeHit && isRoadTripEntityInPlayerLane(entity) && !clearsEntity && rectsIntersect(roadPlayerRect, entity)) {
             damagePlayer();
             createHitEffect(entity.x + entity.width / 2 - 18, entity.y + entity.height / 2 - 18);
             if (entity.removable) {
+                clearSpeechForEntity(entity);
                 entity.element.remove();
                 return;
             }
@@ -3591,6 +4309,17 @@ function updateRoadTripLevel(delta, timestamp) {
         remainingEntities.push(entity);
     });
     state.bonusRoad.entities = remainingEntities;
+    updateRoadTripBeerProjectiles(delta, roadPlayerRect, canTakeHit, jumpOffset);
+
+    const remainingMeters = Math.max(0, Math.ceil((state.bonusRoad.goalDistance - state.bonusRoad.distance) / 100));
+    if (state.bonusRoad.warningStage < 1 && remainingMeters <= 70) {
+        state.bonusRoad.warningStage = 1;
+        showToast("📲 Traffico SPID in aumento: scegli bene le corsie e usa il NOS nei momenti giusti.");
+    } else if (state.bonusRoad.warningStage < 2 && remainingMeters <= 35) {
+        state.bonusRoad.warningStage = 2;
+        gameArea.classList.add("roadtrip-finale");
+        showToast("📣 Piazza del Ferrarese vicina! Lo stand Aulab e' ormai davanti.");
+    }
 
     updateRoadTripTeacherProjectiles(delta);
     updateHud();
@@ -3600,10 +4329,15 @@ function updateRoadTripLevel(delta, timestamp) {
         return;
     }
 
-    if (state.bonusRoad.distance >= state.bonusRoad.goalDistance) {
+    if (state.bonusRoad.distance >= state.bonusRoad.goalDistance && !state.bonusRoad.arrivalTriggered) {
         state.bonusRoad.distance = state.bonusRoad.goalDistance;
+        state.bonusRoad.arrivalTriggered = true;
+        state.running = false;
+        showToast("🎪 Arrivo epico in piazza: lo stand Aulab e' assediato!");
         localStorage.setItem("aulab_rage_saved_level", state.currentLevel);
-        advanceToNextLevel();
+        registerCutsceneTimeout(() => {
+            advanceToNextLevel();
+        }, 900);
     }
 }
 
@@ -3618,17 +4352,20 @@ function getPlayerAimVector() {
 function fireMachineGun() {
     const aim = getPlayerAimVector();
     const muzzle = centerOf(state.player);
-    const spreadAngle = (Math.random() - 0.5) * 0.12;
+    const spreadAngle = (Math.random() - 0.5) * 0.045;
     const baseAngle = Math.atan2(aim.y, aim.x) + spreadAngle;
-    const speed = GAME.projectileSpeed * 2.35;
+    const speed = GAME.projectileSpeed * 2.65;
 
     const projectile = {
-        x: muzzle.x - 10,
-        y: muzzle.y - 4,
-        width: 20,
-        height: 8,
+        x: muzzle.x - 14,
+        y: muzzle.y - 5,
+        width: 28,
+        height: 10,
         velocityX: Math.cos(baseAngle) * speed,
         velocityY: Math.sin(baseAngle) * speed,
+        renderRotation: baseAngle,
+        collisionWidth: 18,
+        collisionHeight: 5,
         ownerId: "player-machinegun",
         element: document.createElement("div")
     };
@@ -3646,7 +4383,7 @@ function advanceProjectile(projectile, delta) {
     const totalStepX = projectile.velocityX * delta;
     const totalStepY = projectile.velocityY * delta;
     const maxStep = Math.max(Math.abs(totalStepX), Math.abs(totalStepY));
-    const steps = Math.max(1, Math.ceil(maxStep / 6));
+    const steps = Math.max(1, Math.ceil(maxStep / 4));
     const stepX = totalStepX / steps;
     const stepY = totalStepY / steps;
 
@@ -3665,8 +4402,8 @@ function advanceProjectile(projectile, delta) {
             return { outsideArena: true, hitsObstacle: false };
         }
 
-        const hitsObstacle = state.obstacles.some((obstacle) => rectsIntersect(projectile, obstacle));
-        if (hitsObstacle) {
+        const collidesWithObstacle = hitsObstacle(projectile);
+        if (collidesWithObstacle) {
             syncEntity(projectile);
             return { outsideArena: false, hitsObstacle: true };
         }
@@ -3677,8 +4414,12 @@ function advanceProjectile(projectile, delta) {
 }
 
 function updatePowerUps(delta) {
-    if (!state.powerUp && !state.dragonStrike && !state.studiaStrike && state.gameTimeMs >= state.nextPowerUpAt && state.students.length > 0) {
-        spawnPowerUp();
+    const hasActiveCombatTargets = state.students.length > 0 || Boolean(state.boss) || Boolean(state.summoningActive);
+
+    if (!state.powerUp && !state.dragonStrike && !state.studiaStrike && state.gameTimeMs >= state.nextPowerUpAt && hasActiveCombatTargets) {
+        if (!spawnPowerUp()) {
+            state.nextPowerUpAt = state.gameTimeMs + 900;
+        }
     }
 
     if (
@@ -3686,7 +4427,9 @@ function updatePowerUps(delta) {
         !state.heartPowerUp &&
         state.gameTimeMs >= state.nextHeartPowerUpAt
     ) {
-        spawnHeartPowerUp();
+        if (!spawnHeartPowerUp()) {
+            state.nextHeartPowerUpAt = state.gameTimeMs + 900;
+        }
     }
 
     if (state.powerUp && canCollectPickup(state.powerUp)) {
@@ -3742,11 +4485,26 @@ function attack() {
         return;
     }
 
+    const attackZone = getAttackZone();
+    if (state.player?.carriedPlant) {
+        state.lastAttackAt = now;
+        state.player.attackEndsAt = 0;
+        throwCarriedPlant();
+        return;
+    }
+
+    const pickupPlant = findPickupPlantInZone(attackZone);
+    if (pickupPlant) {
+        state.lastAttackAt = now;
+        state.player.attackEndsAt = 0;
+        pickupPlantObstacle(pickupPlant);
+        return;
+    }
+
     playHammerSound();
     state.lastAttackAt = now;
     state.player.attackEndsAt = now + 220;
     state.player.element.classList.add("attacking");
-    const attackZone = getAttackZone();
     createSwingEffect(attackZone);
 
     // Gestione colpi al Boss
@@ -3798,10 +4556,10 @@ function attack() {
         speakTeacher(getTeacherHitLine());
     }
 
-    // Gestione colpi alle sedie scorrevoli e ai cestini
+    // Gestione colpi agli oggetti lanciabili e ai cestini
     const remainingObstacles = [];
     state.obstacles.forEach((obstacle) => {
-        if (obstacle.type === "chair" && rectsIntersect(attackZone, obstacle)) {
+        if (isLaunchableObstacle(obstacle) && rectsIntersect(attackZone, obstacle)) {
             obstacle.sliding = true;
             obstacle.smokeTimer = 0;
             
@@ -3828,34 +4586,40 @@ function attack() {
                 obstacle.element.remove();
             }
             
-            let type = "speed";
-            if (state.selectedHackademyId === "standard") {
-                if (state.currentLevel === 1) {
-                    type = "speed";
-                } else if (state.currentLevel === 2) {
-                    type = "shield";
-                } else if (state.currentLevel === 3) {
-                    type = "super_hammer";
-                } else if (state.currentLevel === 4) {
-                    type = "coffee";
-                } else if (state.currentLevel === 5) {
-                    type = "coffee";
-                } else if (state.currentLevel === 6) {
-                    type = "speed";
-                } else {
-                    type = "studia";
-                }
-            } else {
-                const types = ["coffee", "shield", "speed", "super_hammer"];
-                type = types[Math.floor(Math.random() * types.length)];
-            }
+            const type = getRandomBinPowerUpType();
             
             const spawnX = obstacle.x + obstacle.width / 2 - 16;
             const spawnY = obstacle.y + obstacle.height / 2 - 16;
-            spawnPowerUpAt(spawnX, spawnY, type);
+            spawnPowerUpAt(spawnX, spawnY, type, {
+                animateFromBin: true,
+                sourceRect: {
+                    x: obstacle.x,
+                    y: obstacle.y,
+                    width: obstacle.width,
+                    height: obstacle.height
+                },
+                emergeFromX: obstacle.x + obstacle.width / 2 - 16,
+                emergeFromY: obstacle.y + obstacle.height / 2 - 12
+            });
             
             playChairBounceSound();
             createHitEffect(obstacle.x + obstacle.width / 2 - 18, obstacle.y + obstacle.height / 2 - 18);
+            return;
+        } else if (isDestructibleObstacle(obstacle) && rectsIntersect(attackZone, obstacle)) {
+            obstacle.hitsTaken = (obstacle.hitsTaken || 0) + 1;
+            createHitEffect(obstacle.x + obstacle.width / 2 - 18, obstacle.y + obstacle.height / 2 - 18);
+            playChairBounceSound();
+
+            if (obstacle.hitsTaken < (obstacle.maxHits || 2)) {
+                markObstacleDamaged(obstacle);
+                remainingObstacles.push(obstacle);
+                return;
+            }
+
+            obstacle.element?.remove();
+            createDestructionBurst(obstacle);
+            createEnvironmentalDebris(obstacle);
+            playEnvironmentBreakSound(obstacle.type);
             return;
         }
         remainingObstacles.push(obstacle);
@@ -4006,9 +4770,152 @@ function createSlideSmokeEffect(x, y) {
     }, 350);
 }
 
+function isLaunchableObstacle(obstacle) {
+    return obstacle?.type === "chair" || obstacle?.type === "scooter" || Boolean(obstacle?.carriedThrowable);
+}
+
+function isDestructibleObstacle(obstacle) {
+    if (!obstacle?.type) {
+        return false;
+    }
+
+    const destructibleTypes = new Set([
+        "desk",
+        "computer",
+        "board",
+        "plant",
+        "server",
+        "bench",
+        "sign",
+        "kiosk",
+        "speaker",
+        "planter",
+        "terminal",
+        "barrier"
+    ]);
+
+    return destructibleTypes.has(obstacle.type);
+}
+
+function markObstacleDamaged(obstacle) {
+    if (!obstacle?.element) {
+        return;
+    }
+
+    obstacle.element.classList.add("damaged");
+    obstacle.element.dataset.damageStage = "1";
+}
+
+function updateCarriedPlantVisual() {
+    if (!state.player?.element) {
+        return;
+    }
+
+    state.player.element.classList.toggle("carrying-plant", Boolean(state.player.carriedPlant));
+}
+
+function pickupPlantObstacle(obstacle) {
+    if (!state.player || !obstacle || state.player.carriedPlant) {
+        return false;
+    }
+
+    obstacle.element?.remove();
+    state.obstacles = state.obstacles.filter((entry) => entry !== obstacle);
+    state.player.carriedPlant = {
+        type: "plant",
+        width: obstacle.width,
+        height: obstacle.height
+    };
+    updateCarriedPlantVisual();
+    playPowerUpSound();
+    return true;
+}
+
+function findPickupPlantInZone(zone) {
+    if (!state.player || state.player.carriedPlant) {
+        return null;
+    }
+
+    return state.obstacles.find((obstacle) => obstacle.type === "plant" && rectsIntersect(zone, obstacle)) || null;
+}
+
+function throwCarriedPlant() {
+    if (!state.player?.carriedPlant) {
+        return false;
+    }
+
+    const direction = getPreferredDodgeVector();
+    const pushSpeed = 16;
+    const plant = {
+        type: "plant",
+        x: state.player.x + state.player.width / 2 - 23 + direction.x * 22,
+        y: state.player.y + state.player.height / 2 - 29 + direction.y * 22,
+        width: 46,
+        height: 58,
+        carriedThrowable: true,
+        sliding: true,
+        smokeTimer: 0,
+        vx: direction.x * pushSpeed,
+        vy: direction.y * pushSpeed,
+        element: document.createElement("div")
+    };
+
+    plant.element.className = "obstacle plant thrown-plant";
+    setRectStyles(plant.element, plant);
+    gameArea.appendChild(plant.element);
+    state.obstacles.push(plant);
+    state.player.carriedPlant = null;
+    updateCarriedPlantVisual();
+    playChairSlideSound();
+    createHitEffect(plant.x + plant.width / 2 - 18, plant.y + plant.height / 2 - 18);
+    return true;
+}
+
+function createDestructionBurst(obstacle) {
+    const burst = document.createElement("div");
+    burst.className = `environment-burst burst-${obstacle.type}`;
+    burst.style.left = `${obstacle.x + obstacle.width / 2 - 28}px`;
+    burst.style.top = `${obstacle.y + obstacle.height / 2 - 28}px`;
+
+    for (let i = 0; i < 6; i += 1) {
+        const shard = document.createElement("span");
+        shard.className = "environment-burst-shard";
+        shard.style.setProperty("--burst-angle", `${(360 / 6) * i}deg`);
+        shard.style.setProperty("--burst-distance", `${18 + Math.random() * 22}px`);
+        shard.style.setProperty("--burst-delay", `${Math.random() * 40}ms`);
+        burst.appendChild(shard);
+    }
+
+    gameArea.appendChild(burst);
+    window.setTimeout(() => burst.remove(), 440);
+}
+
+function createEnvironmentalDebris(obstacle) {
+    const element = document.createElement("div");
+    element.className = `environment-debris debris-${obstacle.type}`;
+    element.style.left = `${obstacle.x}px`;
+    element.style.top = `${obstacle.y}px`;
+    element.style.width = `${obstacle.width}px`;
+    element.style.height = `${obstacle.height}px`;
+
+    for (let i = 0; i < 5; i += 1) {
+        const chunk = document.createElement("span");
+        chunk.className = "debris-chunk";
+        chunk.style.left = `${8 + Math.random() * Math.max(10, obstacle.width - 20)}px`;
+        chunk.style.top = `${Math.max(0, obstacle.height * 0.25) + Math.random() * Math.max(8, obstacle.height * 0.6)}px`;
+        chunk.style.width = `${8 + Math.random() * 14}px`;
+        chunk.style.height = `${5 + Math.random() * 9}px`;
+        chunk.style.setProperty("--chunk-rot", `${-28 + Math.random() * 56}deg`);
+        element.appendChild(chunk);
+    }
+
+    gameArea.appendChild(element);
+    state.debris.push({ element });
+}
+
 function updateSlidingChairs(delta) {
     state.obstacles.forEach((chair) => {
-        if (chair.type !== "chair" || !chair.sliding) return;
+        if (!isLaunchableObstacle(chair) || !chair.sliding) return;
 
         const prevX = chair.x;
         const prevY = chair.y;
@@ -4043,7 +4950,7 @@ function updateSlidingChairs(delta) {
             if (other === chair) continue;
             if (rectsIntersect(chair, other)) {
                 collideX = true;
-                if (other.type === "chair") {
+                if (isLaunchableObstacle(other)) {
                     other.sliding = true;
                     other.vx = chair.vx * 0.9;
                     other.vy = chair.vy * 0.9;
@@ -4067,7 +4974,7 @@ function updateSlidingChairs(delta) {
             if (other === chair) continue;
             if (rectsIntersect(chair, other)) {
                 collideY = true;
-                if (other.type === "chair") {
+                if (isLaunchableObstacle(other)) {
                     other.sliding = true;
                     other.vx = chair.vx * 0.9;
                     other.vy = chair.vy * 0.9;
@@ -4234,6 +5141,52 @@ function placeEntityInFreeSpot(entity) {
     entity.y = safeSpot.y;
 }
 
+function rememberBossSafePosition() {
+    if (!state.boss) {
+        return;
+    }
+
+    if (isEntityInsideArena(state.boss) && !hitsObstacle(state.boss)) {
+        state.boss.lastSafeX = state.boss.x;
+        state.boss.lastSafeY = state.boss.y;
+    }
+}
+
+function stabilizeBossPosition(originX = state.boss?.x, originY = state.boss?.y) {
+    if (!state.boss) {
+        return;
+    }
+
+    state.boss.x = clamp(state.boss.x, 24, GAME.width - state.boss.width - 24);
+    state.boss.y = clamp(state.boss.y, 24, GAME.height - state.boss.height - 24);
+
+    if (isEntityInsideArena(state.boss) && !hitsObstacle(state.boss)) {
+        rememberBossSafePosition();
+        syncEntity(state.boss);
+        return;
+    }
+
+    const hasSafeMemory =
+        Number.isFinite(state.boss.lastSafeX) &&
+        Number.isFinite(state.boss.lastSafeY) &&
+        isFreePositionForEntity(state.boss, state.boss.lastSafeX, state.boss.lastSafeY);
+
+    const fallback = hasSafeMemory
+        ? { x: state.boss.lastSafeX, y: state.boss.lastSafeY }
+        : findNearestFreeSpot(state.boss, originX, originY, (candidate) => {
+            if (!state.player) {
+                return true;
+            }
+            return !rectsIntersect(candidate, state.player);
+        });
+
+    state.boss.x = fallback.x;
+    state.boss.y = fallback.y;
+    state.boss.lastSafeX = fallback.x;
+    state.boss.lastSafeY = fallback.y;
+    syncEntity(state.boss);
+}
+
 function rememberStudentSafePosition(student) {
     if (!student || student.studentType === undefined) {
         return;
@@ -4276,30 +5229,35 @@ function stabilizeStudentPosition(student) {
     syncEntity(student);
 }
 
+function isSafePickupSpot(testEntity, options = {}) {
+    const ignoreOtherPowerUps = Boolean(options.ignoreOtherPowerUps);
+    const overlapsActor =
+        (state.player && rectsIntersect(testEntity, state.player)) ||
+        state.students.some((student) => rectsIntersect(testEntity, student));
+    const overlapsOtherPowerUp =
+        !ignoreOtherPowerUps &&
+        (
+            (state.powerUp && rectsIntersect(testEntity, state.powerUp)) ||
+            (state.heartPowerUp && rectsIntersect(testEntity, state.heartPowerUp))
+        );
+    const overlapsBossOrCampfire = isPickupBlockedByBossOrCampfire(testEntity);
+
+    return !hitsObstacle(testEntity) && !overlapsActor && !overlapsOtherPowerUp && !overlapsBossOrCampfire;
+}
+
 function placePowerUpInFreeSpot(entity) {
     const safeMargin = 58;
     const minX = safeMargin;
     const minY = safeMargin;
     const maxX = GAME.width - entity.width - safeMargin;
     const maxY = GAME.height - entity.height - safeMargin;
-    const isSafePickupSpot = (testEntity) => {
-        const overlapsActor =
-            (state.player && rectsIntersect(testEntity, state.player)) ||
-            state.students.some((student) => rectsIntersect(testEntity, student));
-        const overlapsOtherPowerUp =
-            (state.powerUp && rectsIntersect(testEntity, state.powerUp)) ||
-            (state.heartPowerUp && rectsIntersect(testEntity, state.heartPowerUp));
-        const overlapsBossOrCampfire = isPickupBlockedByBossOrCampfire(testEntity);
-
-        return !hitsObstacle(testEntity) && !overlapsActor && !overlapsOtherPowerUp && !overlapsBossOrCampfire;
-    };
 
     for (let attempts = 0; attempts < 80; attempts += 1) {
         entity.x = Math.random() * (maxX - minX) + minX;
         entity.y = Math.random() * (maxY - minY) + minY;
 
         if (isSafePickupSpot(entity)) {
-            return;
+            return true;
         }
     }
 
@@ -4308,7 +5266,7 @@ function placePowerUpInFreeSpot(entity) {
             entity.x = x;
             entity.y = y;
             if (isSafePickupSpot(entity)) {
-                return;
+                return true;
             }
         }
     }
@@ -4316,6 +5274,97 @@ function placePowerUpInFreeSpot(entity) {
     const fallbackSpot = findNearestFreeSpot(entity, minX, minY, isSafePickupSpot);
     entity.x = fallbackSpot.x;
     entity.y = fallbackSpot.y;
+    return isSafePickupSpot(entity);
+}
+
+function placePowerUpNearPosition(entity, originX, originY, options = {}) {
+    const allowOrigin = options.allowOrigin !== false;
+    const localOnly = Boolean(options.localOnly);
+    const maxDistance = Number.isFinite(options.maxDistance) ? options.maxDistance : Infinity;
+    const offsets = [
+        { x: 0, y: -26 },
+        { x: 26, y: 0 },
+        { x: -26, y: 0 },
+        { x: 0, y: 26 },
+        { x: 32, y: -20 },
+        { x: -32, y: -20 },
+        { x: 32, y: 20 },
+        { x: -32, y: 20 },
+        { x: 0, y: -40 },
+        { x: 40, y: 0 },
+        { x: -40, y: 0 },
+        { x: 0, y: 40 },
+        { x: 52, y: -14 },
+        { x: -52, y: -14 },
+        { x: 52, y: 14 },
+        { x: -52, y: 14 },
+        { x: 18, y: -48 },
+        { x: -18, y: -48 }
+    ];
+
+    if (allowOrigin) {
+        offsets.unshift({ x: 0, y: 0 });
+    }
+
+    for (const offset of offsets) {
+        entity.x = clamp(originX + offset.x, 24, GAME.width - entity.width - 24);
+        entity.y = clamp(originY + offset.y, 24, GAME.height - entity.height - 24);
+        const withinRadius = Math.hypot(entity.x - originX, entity.y - originY) <= maxDistance;
+        if (!withinRadius) {
+            continue;
+        }
+        if (isSafePickupSpot(entity, { ignoreOtherPowerUps: true })) {
+            return true;
+        }
+    }
+
+    if (localOnly) {
+        return false;
+    }
+
+    const fallbackSpot = findNearestFreeSpot(
+        entity,
+        originX,
+        originY,
+        (candidate) => isSafePickupSpot(candidate, { ignoreOtherPowerUps: true })
+    );
+    entity.x = fallbackSpot.x;
+    entity.y = fallbackSpot.y;
+    return isSafePickupSpot(entity, { ignoreOtherPowerUps: true });
+}
+
+function placePowerUpAroundRect(entity, sourceRect, options = {}) {
+    if (!sourceRect) {
+        return false;
+    }
+
+    const maxDistance = Number.isFinite(options.maxDistance) ? options.maxDistance : 72;
+    const padding = Number.isFinite(options.padding) ? options.padding : 10;
+    const originX = sourceRect.x + sourceRect.width / 2 - entity.width / 2;
+    const originY = sourceRect.y + sourceRect.height / 2 - entity.height / 2;
+    const candidates = [
+        { x: sourceRect.x + (sourceRect.width - entity.width) / 2, y: sourceRect.y - entity.height - padding },
+        { x: sourceRect.x + sourceRect.width + padding, y: sourceRect.y + (sourceRect.height - entity.height) / 2 },
+        { x: sourceRect.x - entity.width - padding, y: sourceRect.y + (sourceRect.height - entity.height) / 2 },
+        { x: sourceRect.x + (sourceRect.width - entity.width) / 2, y: sourceRect.y + sourceRect.height + padding },
+        { x: sourceRect.x + sourceRect.width + padding, y: sourceRect.y - entity.height * 0.35 },
+        { x: sourceRect.x - entity.width - padding, y: sourceRect.y - entity.height * 0.35 },
+        { x: sourceRect.x + sourceRect.width + padding, y: sourceRect.y + sourceRect.height - entity.height * 0.65 },
+        { x: sourceRect.x - entity.width - padding, y: sourceRect.y + sourceRect.height - entity.height * 0.65 }
+    ];
+
+    for (const candidate of candidates) {
+        entity.x = clamp(candidate.x, 24, GAME.width - entity.width - 24);
+        entity.y = clamp(candidate.y, 24, GAME.height - entity.height - 24);
+        if (Math.hypot(entity.x - originX, entity.y - originY) > maxDistance) {
+            continue;
+        }
+        if (isSafePickupSpot(entity, { ignoreOtherPowerUps: true })) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function getCampfireRect() {
@@ -4351,15 +5400,60 @@ function isPickupBlockedByBossOrCampfire(entity) {
 
 function canCollectPickup(pickup) {
     if (!state.player) return false;
+    if (pickup.collectibleAt && state.gameTimeMs < pickup.collectibleAt) return false;
 
-    const playerPickupRect = expandRect(getCollisionRect(state.player), 24);
-    const playerBodyRect = expandRect(state.player, 4);
-    const pickupRect = expandRect(pickup, 14);
+    const playerPickupRect = expandRect(getCollisionRect(state.player), pickup.spawnedFromBin ? 10 : 34);
+    const playerBodyRect = expandRect(state.player, pickup.spawnedFromBin ? 4 : 10);
+    const pickupRect = expandRect(pickup, pickup.spawnedFromBin ? 8 : 20);
+
+    if (pickup.spawnedFromBin) {
+        return rectsIntersect(playerPickupRect, pickupRect) || rectsIntersect(playerBodyRect, pickupRect);
+    }
+
     const playerCenter = centerOf(state.player);
     const pickupCenter = centerOf(pickup);
-    const nearEnough = Math.hypot(playerCenter.x - pickupCenter.x, playerCenter.y - pickupCenter.y) <= 58;
-
+    const nearEnough = Math.hypot(playerCenter.x - pickupCenter.x, playerCenter.y - pickupCenter.y) <= 74;
     return nearEnough || rectsIntersect(playerPickupRect, pickupRect) || rectsIntersect(playerBodyRect, pickupRect);
+}
+
+function getPlayerProjectileHurtRect() {
+    if (!state.player) {
+        return null;
+    }
+
+    return {
+        x: state.player.x + 12,
+        y: state.player.y + 24,
+        width: 38,
+        height: 42
+    };
+}
+
+function isProjectileBlockedByObstacle(projectile, targetRect) {
+    if (!projectile || !targetRect) {
+        return false;
+    }
+
+    const source = centerOf(projectile);
+    const target = centerOf(targetRect);
+    const distance = Math.hypot(target.x - source.x, target.y - source.y);
+    const steps = Math.max(1, Math.ceil(distance / 6));
+
+    for (let i = 1; i < steps; i += 1) {
+        const progress = i / steps;
+        const probe = {
+            x: source.x + (target.x - source.x) * progress - 3,
+            y: source.y + (target.y - source.y) * progress - 3,
+            width: 6,
+            height: 6
+        };
+
+        if (hitsObstacle(probe)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function getCollisionRect(entity) {
@@ -4388,6 +5482,13 @@ function getCollisionRect(entity) {
             width: 32,
             height: 18
         };
+    } else if (entity && Number.isFinite(entity.collisionWidth) && Number.isFinite(entity.collisionHeight)) {
+        return {
+            x: entity.x + (entity.width - entity.collisionWidth) / 2,
+            y: entity.y + (entity.height - entity.collisionHeight) / 2,
+            width: entity.collisionWidth,
+            height: entity.collisionHeight
+        };
     }
     return entity;
 }
@@ -4395,8 +5496,8 @@ function getCollisionRect(entity) {
 function hitsObstacle(entity) {
     const colRect = getCollisionRect(entity);
     return state.obstacles.some((obstacle) => {
-        // Ignora le sedie che stanno scivolando per evitare blocchi o incastri
-        if (obstacle.type === "chair" && obstacle.sliding) {
+        // Ignora gli oggetti lanciabili che stanno scivolando per evitare blocchi o incastri
+        if (isLaunchableObstacle(obstacle) && obstacle.sliding) {
             return false;
         }
         return rectsIntersect(colRect, obstacle);
@@ -4413,6 +5514,20 @@ function getPowerUpRespawnDelay() {
 
 function getHeartPowerUpRespawnDelay() {
     return getPowerUpSpawnWindowDelay();
+}
+
+function getRandomBinPowerUpType() {
+    let types = ["coffee", "shield", "speed", "super_hammer"];
+
+    if (state.currentLevel >= 5) {
+        types = ["coffee", "shield", "speed", "super_hammer", "coffee", "speed"];
+    }
+
+    if ((state.currentLevel === 3 && state.boss) || state.currentLevel >= 7) {
+        types.push("studia");
+    }
+
+    return types[Math.floor(Math.random() * types.length)];
 }
 
 function checkEndConditions() {
@@ -4464,8 +5579,8 @@ function advanceToNextLevel() {
                 intermissionButton.textContent = "Affronta il Livello 3 (Boss Battle)";
             }
         } else if (state.currentLevel === 3) {
-            intermissionTitle.textContent = "Transizione di Mondo! 🚗";
-            intermissionMessage.textContent = "Il boss e' crollato, ma la missione continua fuori da Aulab. Nel livello bonus entri in un runner 2D laterale: la macchina corre da sola verso la piazza, tu salti buche e ostacoli con Space o col tasto salto e lanci il martello contro studenti e scooter con Ctrl o col tasto attacco.";
+            intermissionTitle.textContent = "Verso Piazza del Ferrarese! 🚗";
+            intermissionMessage.textContent = "Il boss e' crollato, ma adesso bisogna correre a Bari, in piazza del Ferrarese, per un evento Aulab. Lo stand e' gia' stato assalito da anziani e boomer in panico per SPID e OTP: nel tragitto dovrai cambiare tra 3 corsie, prendere le rampe dei camion, lanciare il martello con Space o col tasto attacco e usare il NOS con Ctrl.";
             if (intermissionButton) {
                 intermissionButton.textContent = "Parti per il Livello Bonus";
             }
@@ -4483,7 +5598,7 @@ function advanceToNextLevel() {
             }
         } else if (state.currentLevel === 6) {
             intermissionTitle.textContent = "Gazebo Salvo... per ora. 📲";
-            intermissionMessage.textContent = "Hai contenuto il caos, ma dietro tutto questo c'e' un'entita' digitale ancora peggiore. Nel Livello 7 verra' evocato il Signore dello SPID e partirai subito con una mitraglietta speciale.";
+            intermissionMessage.textContent = "Hai contenuto il caos, ma dietro tutto questo c'e' un'entita' digitale ancora peggiore. Nel Livello 7 verra' evocato il Signore dello SPID e riceverai una mitraglietta speciale poco prima dello scontro.";
             if (intermissionButton) {
                 intermissionButton.textContent = "Entra nel Livello 7 (Boss Finale)";
             }
@@ -4540,13 +5655,16 @@ function spawnPowerUp() {
     counter.textContent = "3";
     powerUp.element.append(counter, icon);
     
-    placePowerUpInFreeSpot(powerUp);
+    if (!placePowerUpInFreeSpot(powerUp)) {
+        return false;
+    }
     gameArea.appendChild(powerUp.element);
     syncEntity(powerUp);
     state.powerUp = powerUp;
+    return true;
 }
 
-function spawnPowerUpAt(x, y, type) {
+function spawnPowerUpAt(x, y, type, options = {}) {
     if (state.powerUp) {
         expirePowerUp();
     }
@@ -4561,6 +5679,8 @@ function spawnPowerUpAt(x, y, type) {
         height: 32,
         type,
         expiresAt: state.gameTimeMs + GAME.powerUpLifetime,
+        collectibleAt: state.gameTimeMs,
+        spawnedFromBin: Boolean(options.animateFromBin),
         counter,
         element: document.createElement("div")
     };
@@ -4575,13 +5695,48 @@ function spawnPowerUpAt(x, y, type) {
         rectsIntersect(powerUp, state.player) ||
         state.students.some((student) => rectsIntersect(powerUp, student));
 
-    if (hitsObstacle(powerUp) || isPickupBlockedByBossOrCampfire(powerUp) || overlapsActor) {
-        placePowerUpInFreeSpot(powerUp);
+    const needsRelocation =
+        hitsObstacle(powerUp) ||
+        isPickupBlockedByBossOrCampfire(powerUp) ||
+        overlapsActor;
+
+    if (options.animateFromBin) {
+        const placedNearBin = options.sourceRect
+            ? placePowerUpAroundRect(powerUp, options.sourceRect, { maxDistance: 72, padding: 10 })
+            : placePowerUpNearPosition(powerUp, x, y, { allowOrigin: false, localOnly: true, maxDistance: 64 });
+        if (!placedNearBin) {
+            return false;
+        }
+    } else if (needsRelocation) {
+        if (!placePowerUpNearPosition(powerUp, x, y, { allowOrigin: true }) && !placePowerUpInFreeSpot(powerUp)) {
+            return false;
+        }
     }
 
     syncEntity(powerUp);
     gameArea.appendChild(powerUp.element);
+    if (options.animateFromBin) {
+        const emergeFromX = Number.isFinite(options.emergeFromX) ? options.emergeFromX : x;
+        const emergeFromY = Number.isFinite(options.emergeFromY) ? options.emergeFromY : y;
+        powerUp.collectibleAt = state.gameTimeMs + 650;
+        powerUp.element.style.setProperty("--pickup-base-x", `${powerUp.x}px`);
+        powerUp.element.style.setProperty("--pickup-base-y", `${powerUp.y}px`);
+        powerUp.element.classList.add("bin-powerup-emerge");
+        powerUp.element.style.setProperty("--pickup-emerge-x", `${emergeFromX - powerUp.x}px`);
+        powerUp.element.style.setProperty("--pickup-emerge-y", `${emergeFromY - powerUp.y}px`);
+        window.setTimeout(() => {
+            if (!state.powerUp || state.powerUp !== powerUp) {
+                return;
+            }
+            powerUp.element.classList.remove("bin-powerup-emerge");
+            powerUp.element.style.removeProperty("--pickup-base-x");
+            powerUp.element.style.removeProperty("--pickup-base-y");
+            powerUp.element.style.removeProperty("--pickup-emerge-x");
+            powerUp.element.style.removeProperty("--pickup-emerge-y");
+        }, 620);
+    }
     state.powerUp = powerUp;
+    return true;
 }
 
 function spawnHeartPowerUp() {
@@ -4602,10 +5757,13 @@ function spawnHeartPowerUp() {
     counter.className = "powerup-counter";
     counter.textContent = "3";
     heartPowerUp.element.append(counter, icon);
-    placePowerUpInFreeSpot(heartPowerUp);
+    if (!placePowerUpInFreeSpot(heartPowerUp)) {
+        return false;
+    }
     gameArea.appendChild(heartPowerUp.element);
     syncEntity(heartPowerUp);
     state.heartPowerUp = heartPowerUp;
+    return true;
 }
 
 function collectPowerUp() {
@@ -4901,6 +6059,7 @@ function finishGame(isVictory) {
     state.running = false;
     state.gameOver = !isVictory;
     state.victory = isVictory;
+    stopRoadTripEngineSound();
     stopBackgroundMusic();
     stopStudentSpeech();
     if (!isVictory) {
@@ -4968,11 +6127,30 @@ function updateHud() {
         renderLives(state.player.lives);
         updateStaminaHud();
     }
+    if (studentsChip?.childNodes?.[0]) {
+        studentsChip.childNodes[0].textContent = isRoadTripActive() ? "KM: " : "Studenti: ";
+    }
     if (isRoadTripActive()) {
         const remaining = Math.max(0, Math.ceil((state.bonusRoad.goalDistance - state.bonusRoad.distance) / 100));
         studentsValue.textContent = `${remaining}m`;
+        studentsChip?.classList.add("roadtrip-chip");
+        levelChip?.classList.add("roadtrip-chip");
+        if (studentsChip) {
+            studentsChip.dataset.roadtripWarning = getRoadTripWarningText();
+        }
+        if (levelChip) {
+            levelChip.dataset.roadtripWarning = getRoadTripStatusText();
+        }
     } else {
         studentsValue.textContent = state.students.length;
+        studentsChip?.classList.remove("roadtrip-chip");
+        levelChip?.classList.remove("roadtrip-chip");
+        if (studentsChip) {
+            delete studentsChip.dataset.roadtripWarning;
+        }
+        if (levelChip) {
+            delete levelChip.dataset.roadtripWarning;
+        }
     }
     if (levelValue) {
         levelValue.textContent = state.selectedHackademyId === "standard" ? state.currentLevel : "Sandbox";
@@ -4984,6 +6162,12 @@ function updateStaminaHud() {
 
     const staminaPct = Math.max(0, Math.min(100, (state.player.stamina / GAME.maxStamina) * 100));
     staminaBarFill.style.width = `${staminaPct}%`;
+    if (hudStaminaLabel) {
+        hudStaminaLabel.textContent = isRoadTripActive() ? "NOS" : "Stamina";
+    }
+    if (hudStamina) {
+        hudStamina.classList.toggle("roadtrip-nos", isRoadTripActive());
+    }
 
     // Aggiorna la classe CSS per lo stato di stamina bassa
     if (staminaPct < 50) {
@@ -5007,24 +6191,20 @@ function renderLives(currentLives) {
 function updateGameScale() {
     const viewportWidth = Math.max(1, gameViewport.clientWidth || getViewportMetrics().width);
     const viewportHeight = Math.max(1, gameViewport.clientHeight || getViewportMetrics().height);
-    const compactMobile = isCompactMobileViewport();
-    const horizontalPadding = compactMobile ? 0 : 12;
-    const verticalPadding = compactMobile ? 0 : 12;
-    const scale = Math.min(
-        (viewportWidth - horizontalPadding) / GAME.width,
-        (viewportHeight - verticalPadding) / GAME.height,
-        1
-    );
-    const safeScale = Math.max(scale, 0.1);
-    state.currentScale = safeScale;
+    const scaleX = Math.max(viewportWidth / GAME.width, 0.1);
+    const scaleY = Math.max(viewportHeight / GAME.height, 0.1);
+    state.currentScale = Math.min(scaleX, scaleY);
+    state.currentScaleX = scaleX;
+    state.currentScaleY = scaleY;
 
-    gameStage.style.width = `${GAME.width * safeScale}px`;
-    gameStage.style.height = `${GAME.height * safeScale}px`;
+    gameStage.style.width = `${viewportWidth}px`;
+    gameStage.style.height = `${viewportHeight}px`;
     applyGameAreaTransform();
 }
 
 function syncEntity(entity) {
-    entity.element.style.transform = `translate(${entity.x}px, ${entity.y}px)`;
+    const rotation = Number.isFinite(entity.renderRotation) ? ` rotate(${entity.renderRotation}rad)` : "";
+    entity.element.style.transform = `translate(${entity.x}px, ${entity.y}px)${rotation}`;
 }
 
 function updateStudentVisual(student, isMoving) {
@@ -5472,6 +6652,107 @@ function playSpeedSound() {
     });
 }
 
+function playRoadTripNosSound(level = 1) {
+    const boostLevel = clamp(level, 1, 2);
+    playToneBurst({
+        frequencies: boostLevel === 2 ? [196, 293.66, 440, 659.25] : [164.81, 246.94, 392, 587.33],
+        duration: boostLevel === 2 ? 0.44 : 0.34,
+        type: "sawtooth",
+        peakGain: boostLevel === 2 ? 0.15 : 0.12,
+        stagger: 0.028,
+        slideTo: boostLevel === 2 ? 880 : 698.46
+    });
+    playToneBurst({
+        frequencies: boostLevel === 2 ? [82.41, 123.47] : [98, 146.83],
+        duration: boostLevel === 2 ? 0.3 : 0.24,
+        type: "triangle",
+        peakGain: 0.08,
+        stagger: 0.018,
+        slideTo: boostLevel === 2 ? 196 : 174.61
+    });
+}
+
+function playRampBoostSound() {
+    playToneBurst({
+        frequencies: [220, 440, 880, 1174.66],
+        duration: 0.42,
+        type: "sawtooth",
+        peakGain: 0.13,
+        stagger: 0.03,
+        slideTo: 1567.98
+    });
+    playToneBurst({
+        frequencies: [98, 146.83],
+        duration: 0.26,
+        type: "triangle",
+        peakGain: 0.08,
+        stagger: 0.02,
+        slideTo: 196
+    });
+}
+
+function playRoadTripEnginePulse() {
+    if (!audioState.context || audioState.muted || !isRoadTripActive()) {
+        return;
+    }
+
+    const ctx = audioState.context;
+    const now = ctx.currentTime;
+    const phase = audioState.roadTripEnginePhase++;
+    const speedFactor = clamp((state.bonusRoad?.scrollSpeed || 4.2) / 6, 0.65, 1.25);
+    const wobble = phase % 2 === 0 ? -3.5 : 3.5;
+    const baseFrequency = 54 + speedFactor * 22 + wobble;
+    const growlOsc = ctx.createOscillator();
+    const growlGain = ctx.createGain();
+    const humOsc = ctx.createOscillator();
+    const humGain = ctx.createGain();
+
+    growlOsc.type = "sawtooth";
+    humOsc.type = "triangle";
+    growlOsc.frequency.setValueAtTime(baseFrequency, now);
+    growlOsc.frequency.exponentialRampToValueAtTime(baseFrequency * 0.94, now + 0.2);
+    humOsc.frequency.setValueAtTime(baseFrequency * 1.9, now);
+    humOsc.frequency.exponentialRampToValueAtTime(baseFrequency * 1.6, now + 0.2);
+
+    growlGain.gain.setValueAtTime(0.0001, now);
+    growlGain.gain.exponentialRampToValueAtTime(0.055, now + 0.03);
+    growlGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+    humGain.gain.setValueAtTime(0.0001, now);
+    humGain.gain.exponentialRampToValueAtTime(0.02, now + 0.02);
+    humGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+    growlOsc.connect(growlGain);
+    humOsc.connect(humGain);
+    growlGain.connect(audioState.sfxGain);
+    humGain.connect(audioState.sfxGain);
+
+    growlOsc.start(now);
+    humOsc.start(now);
+    growlOsc.stop(now + 0.24);
+    humOsc.stop(now + 0.2);
+}
+
+function startRoadTripEngineSound() {
+    if (!audioState.context || audioState.roadTripEngineIntervalId) {
+        return;
+    }
+
+    playRoadTripEnginePulse();
+    audioState.roadTripEngineIntervalId = window.setInterval(() => {
+        playRoadTripEnginePulse();
+    }, 180);
+}
+
+function stopRoadTripEngineSound() {
+    if (!audioState.roadTripEngineIntervalId) {
+        return;
+    }
+
+    window.clearInterval(audioState.roadTripEngineIntervalId);
+    audioState.roadTripEngineIntervalId = null;
+    audioState.roadTripEnginePhase = 0;
+}
+
 function playSuperHammerSound() {
     playToneBurst({
         frequencies: [196, 293.66, 392, 587.33],
@@ -5500,6 +6781,44 @@ function playChairBounceSound() {
         type: "triangle",
         peakGain: 0.15,
         slideTo: 80
+    });
+}
+
+function playEnvironmentBreakSound(type = "generic") {
+    const isWoodLike = ["desk", "bench", "kiosk", "board", "sign", "planter", "plant"].includes(type);
+    const isMetalLike = ["computer", "server", "speaker", "terminal", "barrier"].includes(type);
+
+    if (isWoodLike) {
+        playToneBurst({
+            frequencies: [240, 170, 120],
+            duration: 0.22,
+            type: "sawtooth",
+            peakGain: 0.14,
+            stagger: 0.03,
+            slideTo: 70
+        });
+        return;
+    }
+
+    if (isMetalLike) {
+        playToneBurst({
+            frequencies: [520, 390, 180],
+            duration: 0.26,
+            type: "triangle",
+            peakGain: 0.13,
+            stagger: 0.03,
+            slideTo: 90
+        });
+        return;
+    }
+
+    playToneBurst({
+        frequencies: [320, 220, 120],
+        duration: 0.2,
+        type: "sawtooth",
+        peakGain: 0.12,
+        stagger: 0.02,
+        slideTo: 60
     });
 }
 
@@ -5587,6 +6906,14 @@ function stopStudentSpeech() {
             student.speechTimeoutId = null;
         }
         removeStudentSpeechBubble(student);
+    });
+
+    state.bonusRoad?.entities?.forEach((entity) => {
+        if (entity.speechTimeoutId) {
+            window.clearTimeout(entity.speechTimeoutId);
+            entity.speechTimeoutId = null;
+        }
+        removeStudentSpeechBubble(entity);
     });
 
     if (audioState.speechEnabled && window.speechSynthesis) {
@@ -5770,7 +7097,10 @@ function getBossConfig(kind = getCurrentBossKind()) {
             shootCooldown: 2200,
             speechCooldown: 3500,
             summonCooldown: 0,
-            summonCharges: 0
+            summonCharges: 0,
+            leapDuration: 0,
+            leapArcHeight: 0,
+            leapImpactRadius: 0
         },
         spidOverlord: {
             kind: "spidOverlord",
@@ -5784,11 +7114,14 @@ function getBossConfig(kind = getCurrentBossKind()) {
             height: 132,
             lives: 20,
             maxLives: 20,
-            speed: 0.95,
-            shootCooldown: 1800,
+            speed: 0.82,
+            shootCooldown: 2100,
             speechCooldown: 3000,
             summonCooldown: 9000,
-            summonCharges: 2
+            summonCharges: 2,
+            leapDuration: 760,
+            leapArcHeight: 150,
+            leapImpactRadius: 112
         }
     };
 
@@ -5880,14 +7213,27 @@ function spawnBoss() {
         lastShotAt: 0,
         lastSpeechAt: 0,
         lastSummonAt: 0,
+        blockedFrames: 0,
         summonCharges: config.summonCharges,
         speechTimeoutId: null,
         shootCooldown: config.shootCooldown,
         speechCooldown: config.speechCooldown,
         summonCooldown: config.summonCooldown,
+        leapDuration: config.leapDuration,
+        leapArcHeight: config.leapArcHeight,
+        leapImpactRadius: config.leapImpactRadius,
+        isLeaping: false,
+        leapStartAt: 0,
+        leapEndsAt: 0,
+        leapStartX: config.spawn.x,
+        leapStartY: config.spawn.y,
+        leapTargetX: config.spawn.x,
+        leapTargetY: config.spawn.y,
         element
     };
     
+    placeEntityInFreeSpot(state.boss);
+    rememberBossSafePosition();
     syncEntity(state.boss);
     const healthContainer = document.getElementById("bossHealthContainer");
     if (healthContainer) {
@@ -5925,6 +7271,7 @@ function formatCutsceneTimecode(elapsedMs) {
 
 function triggerSecondBossWeaponVision(onComplete) {
     if (!weaponVisionOverlay) {
+        setLevelSevenWeaponUnlocked(true);
         onComplete();
         return;
     }
@@ -5974,6 +7321,7 @@ function triggerSecondBossWeaponVision(onComplete) {
             weaponVisionTc.textContent = "TC 00:00:00:00";
         }
 
+        setLevelSevenWeaponUnlocked(true);
         onComplete();
     };
 
@@ -6166,10 +7514,168 @@ function speakBossSkibidiboppi(bypassRunning = false) {
     synth.speak(utterance);
 }
 
+function createBossLeapImpact(x, y, radius) {
+    const impact = document.createElement("div");
+    impact.className = "boss-stomp-impact";
+    impact.style.left = `${x - radius}px`;
+    impact.style.top = `${y - radius}px`;
+    impact.style.width = `${radius * 2}px`;
+    impact.style.height = `${radius * 2}px`;
+    gameArea.appendChild(impact);
+    window.setTimeout(() => impact.remove(), 420);
+}
+
+function startSpidOverlordLeap(timestamp) {
+    if (!state.boss || !state.player) return;
+
+    const boss = state.boss;
+    const playerCenter = centerOf(state.player);
+    const desiredX = playerCenter.x - boss.width / 2;
+    const desiredY = playerCenter.y - boss.height / 2;
+    const landingSpot = findNearestFreeSpot(boss, desiredX, desiredY, (candidate) => {
+        const expandedCandidate = expandRect(candidate, 12);
+        const expandedPlayer = expandRect(state.player, 12);
+        return !rectsIntersect(expandedCandidate, expandedPlayer);
+    });
+
+    boss.lastShotAt = timestamp;
+    boss.isLeaping = true;
+    boss.leapStartAt = timestamp;
+    boss.leapEndsAt = timestamp + (boss.leapDuration || 760);
+    boss.leapStartX = boss.x;
+    boss.leapStartY = boss.y;
+    boss.leapTargetX = landingSpot.x;
+    boss.leapTargetY = landingSpot.y;
+    boss.element.classList.add("boss-leaping");
+    playBossShotSound(true);
+}
+
+function resolveSpidOverlordLeapImpact(timestamp) {
+    if (!state.boss || !state.player) {
+        return;
+    }
+
+    const impactRadius = state.boss.leapImpactRadius || 112;
+    const impactCenterX = state.boss.x + state.boss.width / 2;
+    const impactCenterY = state.boss.y + state.boss.height - 12;
+    const impactRect = {
+        x: impactCenterX - impactRadius,
+        y: impactCenterY - impactRadius,
+        width: impactRadius * 2,
+        height: impactRadius * 2
+    };
+
+    createBossLeapImpact(impactCenterX, impactCenterY, impactRadius);
+    triggerScreenShake(340, 10);
+    createHitEffect(impactCenterX - 18, impactCenterY - 18);
+
+    const playerCanBeHit = timestamp >= state.player.invulnerableUntil && !state.player.isDodging;
+    const playerHurtRect = getPlayerProjectileHurtRect();
+    if (playerCanBeHit && playerHurtRect && rectsIntersect(playerHurtRect, impactRect)) {
+        damagePlayer();
+    }
+}
+
+function updateSpidOverlordBoss(delta, timestamp) {
+    if (!state.boss || !state.player) {
+        return;
+    }
+
+    const boss = state.boss;
+    const bossCenter = centerOf(boss);
+    const playerCenter = centerOf(state.player);
+    const dx = playerCenter.x - bossCenter.x;
+    const dy = playerCenter.y - bossCenter.y;
+    const vector = normalizeVector(dx, dy);
+    const wrapper = boss.element.querySelector(".boss-wrapper");
+
+    if (boss.isLeaping) {
+        const duration = Math.max(1, boss.leapEndsAt - boss.leapStartAt);
+        const progress = Math.max(0, Math.min(1, (timestamp - boss.leapStartAt) / duration));
+        const arcLift = Math.sin(progress * Math.PI) * (boss.leapArcHeight || 150);
+
+        boss.x = boss.leapStartX + (boss.leapTargetX - boss.leapStartX) * progress;
+        boss.y = boss.leapStartY + (boss.leapTargetY - boss.leapStartY) * progress - arcLift;
+        syncEntity(boss);
+
+        if (wrapper) {
+            wrapper.style.transform = `${boss.leapTargetX < boss.leapStartX ? "scaleX(-1) " : ""}rotate(${(0.5 - progress) * 0.2}rad)`;
+        }
+
+        if (progress >= 1) {
+            boss.isLeaping = false;
+            boss.x = boss.leapTargetX;
+            boss.y = boss.leapTargetY;
+            boss.element.classList.remove("boss-leaping");
+            syncEntity(boss);
+            rememberBossSafePosition();
+            resolveSpidOverlordLeapImpact(timestamp);
+        }
+    } else {
+        const driftVector = normalizeVector(
+            dx + Math.sin(timestamp / 360) * 26,
+            dy + Math.cos(timestamp / 420) * 18
+        );
+        const previousX = boss.x;
+        const previousY = boss.y;
+        moveWithCollisions(boss, driftVector.x * boss.speed * delta * 0.55, driftVector.y * boss.speed * delta * 0.55);
+
+        const movedDistance = Math.hypot(boss.x - previousX, boss.y - previousY);
+        if (movedDistance < 0.25) {
+            boss.blockedFrames = (boss.blockedFrames || 0) + 1;
+        } else {
+            boss.blockedFrames = 0;
+        }
+
+        if (boss.blockedFrames >= 10 || hitsObstacle(boss)) {
+            stabilizeBossPosition(previousX + driftVector.x * 72, previousY + driftVector.y * 72);
+            boss.blockedFrames = 0;
+        } else {
+            rememberBossSafePosition();
+        }
+
+        if (wrapper) {
+            wrapper.style.transform = driftVector.x < 0 ? "scaleX(-1)" : "";
+        }
+
+        if (!boss.lastShotAt) {
+            boss.lastShotAt = timestamp;
+        }
+        if (timestamp - boss.lastShotAt > boss.shootCooldown) {
+            bossShoot(timestamp);
+        }
+    }
+
+    if (
+        boss.summonCharges > 0 &&
+        !boss.isLeaping &&
+        state.students.length < 5 &&
+        timestamp - boss.lastSummonAt > boss.summonCooldown
+    ) {
+        bossSummonStudent(timestamp);
+    }
+
+    if (!boss.lastSpeechAt) {
+        boss.lastSpeechAt = timestamp;
+        speakBossSkibidiboppi();
+    }
+    if (timestamp - boss.lastSpeechAt > boss.speechCooldown) {
+        boss.lastSpeechAt = timestamp;
+        speakBossSkibidiboppi();
+    }
+}
+
 function updateBoss(delta, timestamp) {
     if (!state.boss) return;
+
+    if (state.boss.kind === "spidOverlord") {
+        updateSpidOverlordBoss(delta, timestamp);
+        return;
+    }
     
     // Inseguimento player
+    const previousX = state.boss.x;
+    const previousY = state.boss.y;
     const bossCenter = centerOf(state.boss);
     const playerCenter = centerOf(state.player);
     const dx = playerCenter.x - bossCenter.x;
@@ -6187,6 +7693,25 @@ function updateBoss(delta, timestamp) {
     const stepY = vector.y * state.boss.speed * delta;
     
     moveWithCollisions(state.boss, stepX, stepY);
+
+    const movedDistance = Math.hypot(state.boss.x - previousX, state.boss.y - previousY);
+    const wasTryingToMove = Math.abs(stepX) > 0.18 || Math.abs(stepY) > 0.18;
+
+    if (wasTryingToMove && movedDistance < 0.35) {
+        state.boss.blockedFrames = (state.boss.blockedFrames || 0) + 1;
+    } else {
+        state.boss.blockedFrames = 0;
+    }
+
+    if (state.boss.blockedFrames >= 10 || hitsObstacle(state.boss)) {
+        stabilizeBossPosition(
+            previousX + vector.x * 72,
+            previousY + vector.y * 72
+        );
+        state.boss.blockedFrames = 0;
+    } else {
+        rememberBossSafePosition();
+    }
     
     // Orientamento visivo
     const wrapper = state.boss.element.querySelector(".boss-wrapper");
@@ -6228,55 +7753,17 @@ function updateBoss(delta, timestamp) {
 
 function bossShoot(timestamp) {
     if (!state.boss) return;
+
+    if (state.boss.kind === "spidOverlord") {
+        startSpidOverlordLeap(timestamp);
+        return;
+    }
+
     state.boss.lastShotAt = timestamp;
     
     const source = centerOf(state.boss);
     const target = centerOf(state.player);
     const vector = normalizeVector(target.x - source.x, target.y - source.y);
-
-    if (state.boss.kind === "spidOverlord") {
-        const isQrBurst = Math.random() < 0.42;
-        playBossShotSound(isQrBurst);
-
-        if (isQrBurst) {
-            const projectile = {
-                x: source.x - 22,
-                y: source.y - 22,
-                width: 44,
-                height: 44,
-                velocityX: vector.x * GAME.projectileSpeed * 1.1,
-                velocityY: vector.y * GAME.projectileSpeed * 1.1,
-                ownerId: "boss",
-                isGiant: true,
-                element: document.createElement("div")
-            };
-            projectile.element.className = "projectile boss-projectile giant-fireball giant-qr";
-            gameArea.appendChild(projectile.element);
-            syncEntity(projectile);
-            state.projectiles.push(projectile);
-            return;
-        }
-
-        const baseAngle = Math.atan2(vector.y, vector.x);
-        const angles = [baseAngle - 0.42, baseAngle - 0.18, baseAngle, baseAngle + 0.18, baseAngle + 0.42];
-        angles.forEach((angle) => {
-            const projectile = {
-                x: source.x - 11,
-                y: source.y - 11,
-                width: 22,
-                height: 22,
-                velocityX: Math.cos(angle) * GAME.projectileSpeed * 1.18,
-                velocityY: Math.sin(angle) * GAME.projectileSpeed * 1.18,
-                ownerId: "boss",
-                element: document.createElement("div")
-            };
-            projectile.element.className = "projectile boss-projectile spid-ping";
-            gameArea.appendChild(projectile.element);
-            syncEntity(projectile);
-            state.projectiles.push(projectile);
-        });
-        return;
-    }
 
     const isGiant = Math.random() < 0.35;
     playBossShotSound(isGiant);
@@ -6379,9 +7866,11 @@ function damageBoss() {
     updateBossHealthBar();
 
     if (state.boss.kind === "spidOverlord" && state.boss.lives === Math.floor(state.boss.maxLives / 2)) {
-        state.boss.shootCooldown = Math.max(1250, state.boss.shootCooldown - 350);
+        state.boss.shootCooldown = Math.max(1350, state.boss.shootCooldown - 320);
         state.boss.speed += 0.12;
-        showToast("⚠️ Il Signore dello SPID e' entrato in modalita' escalation: OTP e note vocali piovono ovunque!");
+        state.boss.leapImpactRadius += 12;
+        state.boss.leapDuration = Math.max(620, state.boss.leapDuration - 70);
+        showToast("⚠️ Il Signore dello SPID e' entrato in modalita' escalation: salta piu' spesso e atterra ancora piu' forte!");
     }
     
     if (state.boss.lives <= 0) {
@@ -6797,11 +8286,15 @@ function activateRageMode() {
     if (!state.running || state.gameOver || state.victory) return;
     
     playRageStartSound();
+    const isRoadTripRage = isRoadTripActive();
+    const rageDuration = isRoadTripRage ? 5000 : 5000;
     
     state.rageActive = true;
-    state.rageActiveUntil = state.gameTimeMs + 5000;
-    state.rageMeter = 100;
+    state.rageActiveUntil = state.gameTimeMs + rageDuration;
+    state.rageDurationMs = rageDuration;
+    state.rageMeter = isRoadTripRage ? 0 : 100;
     state.lastRageParticleSpawnAt = 0;
+    updateRageBarVisual();
     
     if (gameArea) {
         gameArea.classList.add("rage-active");
@@ -6809,6 +8302,10 @@ function activateRageMode() {
     
     if (state.player && state.player.element) {
         state.player.element.classList.add("rage-active-player");
+        if (isRoadTripRage) {
+            state.player.element.classList.add("roadtrip-rage-truck");
+            state.player.invulnerableUntil = performance.now() + rageDuration;
+        }
     }
     
     const hudRage = document.getElementById("hudRage");
@@ -6822,6 +8319,7 @@ function activateRageMode() {
 function deactivateRageMode() {
     state.rageActive = false;
     state.rageActiveUntil = 0;
+    state.rageDurationMs = 5000;
     state.rageMeter = 0;
     
     updateRageBarVisual();
@@ -6832,6 +8330,7 @@ function deactivateRageMode() {
     
     if (state.player && state.player.element) {
         state.player.element.classList.remove("rage-active-player");
+        state.player.element.classList.remove("roadtrip-rage-truck");
     }
     
     const hudRage = document.getElementById("hudRage");
@@ -6851,28 +8350,36 @@ function updateRage(delta) {
     if (!state.running || state.gameOver || state.victory) return;
     
     if (state.rageActive) {
+        const roadTripRageActive = isRoadTripActive();
         const timeLeft = Math.max(0, state.rageActiveUntil - state.gameTimeMs);
-        state.rageMeter = (timeLeft / 5000) * 100;
+        if (roadTripRageActive) {
+            state.rageMeter = 0;
+        } else {
+            const rageDuration = Math.max(1, state.rageDurationMs || 5000);
+            state.rageMeter = (timeLeft / rageDuration) * 100;
+        }
         updateRageBarVisual();
         
         // Spawn particle trail if player is moving
-        const movement = getInputVector();
-        const isMoving = movement.x !== 0 || movement.y !== 0;
+        const movement = roadTripRageActive ? { x: 1, y: 0 } : getInputVector();
+        const isMoving = roadTripRageActive || movement.x !== 0 || movement.y !== 0;
         if (isMoving && state.gameTimeMs - state.lastRageParticleSpawnAt > 90) {
             spawnRageParticle(state.player);
             state.lastRageParticleSpawnAt = state.gameTimeMs;
         }
         
         // Check collision with students to defeat them
-        const playerRect = state.player;
-        state.students.forEach((student) => {
-            if (rectsIntersect(playerRect, student)) {
-                if (!student.isChanting && !student.element.classList.contains("burning")) {
-                    burnStudent(student);
-                    playRageHitSound();
+        if (!roadTripRageActive) {
+            const playerRect = state.player;
+            state.students.forEach((student) => {
+                if (rectsIntersect(playerRect, student)) {
+                    if (!student.isChanting && !student.element.classList.contains("burning")) {
+                        burnStudent(student);
+                        playRageHitSound();
+                    }
                 }
-            }
-        });
+            });
+        }
         
         if (timeLeft <= 0) {
             deactivateRageMode();
