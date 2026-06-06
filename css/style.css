@@ -240,6 +240,62 @@ kbd {
     box-shadow: inset 0 0 120px rgba(248, 211, 118, 0.18);
 }
 
+.game-area.stealth-mode {
+    background:
+        radial-gradient(circle at 18% 20%, rgba(140, 164, 220, 0.08), transparent 22%),
+        radial-gradient(circle at 82% 14%, rgba(112, 138, 196, 0.07), transparent 20%),
+        linear-gradient(180deg, rgba(4, 9, 20, 0.82), rgba(4, 8, 18, 0.94)),
+        repeating-linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.015) 0 84px,
+            rgba(6, 10, 20, 0.015) 84px 88px
+        ),
+        url("../assets/città.png") center center / cover no-repeat,
+        linear-gradient(135deg, #111827 0%, #0b1120 50%, #060b16 100%);
+}
+
+.game-area.stealth-mode::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+        radial-gradient(circle at 50% -8%, rgba(173, 216, 255, 0.1), transparent 34%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(3, 8, 18, 0.06) 34%, rgba(1, 4, 10, 0.18) 100%),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.28), transparent 14%, transparent 86%, rgba(0, 0, 0, 0.3));
+}
+
+.game-area.stealth-mode::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+        repeating-linear-gradient(
+            180deg,
+            transparent 0 104px,
+            rgba(148, 163, 184, 0.035) 104px 108px
+        ),
+        radial-gradient(circle at 50% 50%, transparent 0 48%, rgba(0, 0, 0, 0.28) 100%);
+    mix-blend-mode: screen;
+}
+
+.game-area.stealth-mode.police-sweep::before {
+    background:
+        linear-gradient(90deg, rgba(37, 99, 235, 0.18), transparent 28%, transparent 72%, rgba(220, 38, 38, 0.16)),
+        radial-gradient(circle at 50% -8%, rgba(173, 216, 255, 0.1), transparent 34%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(3, 8, 18, 0.06) 34%, rgba(1, 4, 10, 0.18) 100%),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.28), transparent 14%, transparent 86%, rgba(0, 0, 0, 0.3));
+    animation: police-sweep-flash 0.35s linear infinite alternate;
+}
+
+@keyframes police-sweep-flash {
+    from { opacity: 0.85; }
+    to { opacity: 1; }
+}
+
 .hud-overlay {
     position: absolute;
     top: 18px;
@@ -343,6 +399,21 @@ kbd {
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: rgba(226, 232, 240, 0.84);
+}
+
+.hud-lives.stealth-chip {
+    min-width: 176px;
+}
+
+.stealth-readout {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #dbeafe;
 }
 
 .controls-inline {
@@ -676,12 +747,48 @@ kbd {
 }
 
 .kiosk {
+    overflow: hidden;
     border-radius: 24px;
     background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.05) 24%, transparent 25%),
-        linear-gradient(180deg, #fdf2b8, #f59e0b 68%, #c56d05 100%);
-    border: 4px solid rgba(124, 45, 18, 0.18);
-    box-shadow: inset 0 -10px 0 rgba(104, 45, 9, 0.18), 0 14px 24px rgba(0, 0, 0, 0.14);
+        linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.06) 18%, transparent 19%),
+        linear-gradient(180deg, #f8fbff 0 18%, #dbeafe 18% 28%, #133b86 28% 72%, #0f2659 72% 100%);
+    border: 4px solid rgba(15, 23, 42, 0.28);
+    box-shadow:
+        inset 0 -12px 0 rgba(8, 15, 32, 0.22),
+        inset 0 0 0 2px rgba(255, 255, 255, 0.14),
+        0 14px 24px rgba(0, 0, 0, 0.14);
+}
+
+.kiosk::before,
+.kiosk::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.kiosk::before {
+    top: 12px;
+    width: 76%;
+    height: 34%;
+    border-radius: 16px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.96)),
+        url("../assets/aulab.png") center / contain no-repeat;
+    box-shadow:
+        0 8px 16px rgba(15, 23, 42, 0.18),
+        inset 0 0 0 2px rgba(19, 59, 134, 0.08);
+}
+
+.kiosk::after {
+    bottom: 16px;
+    width: 80%;
+    height: 20%;
+    border-radius: 999px;
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08));
+    opacity: 0.85;
 }
 
 .speaker {
@@ -3114,6 +3221,7 @@ kbd {
 }
 .entity.boss.boss-defeated {
     pointer-events: none;
+    transform-origin: center center;
     animation: boss-death-spin 1.5s ease-out forwards;
 }
 @keyframes boss-death-spin {
@@ -3478,32 +3586,33 @@ kbd {
 }
 
 .teacher-projectile.machinegun-projectile {
-    width: 28px;
-    height: 10px;
-    border-radius: 999px 6px 6px 999px;
+    width: 22px;
+    height: 8px;
+    border-radius: 999px 4px 4px 999px;
     border-width: 1px;
-    background: linear-gradient(90deg, #f8fafc 0%, #e2e8f0 26%, #facc15 58%, #f97316 100%);
-    box-shadow: 0 0 10px rgba(250, 204, 21, 0.9), 0 0 18px rgba(249, 115, 22, 0.45);
-    animation: machinegun-projectile-glow 0.14s linear infinite alternate;
+    background: linear-gradient(90deg, #f8fafc 0%, #e5e7eb 36%, #fbbf24 68%, #92400e 100%);
+    box-shadow: 0 0 4px rgba(255, 244, 202, 0.55);
+    animation: machinegun-projectile-glow 0.18s linear infinite alternate;
 }
 
 .teacher-projectile.machinegun-projectile::before {
-    left: -20px;
-    width: 18px;
-    height: 6px;
-    background: linear-gradient(90deg, rgba(250, 204, 21, 0), rgba(249, 115, 22, 0.86));
+    left: -10px;
+    width: 9px;
+    height: 3px;
+    top: 2px;
+    background: linear-gradient(90deg, rgba(250, 204, 21, 0), rgba(245, 158, 11, 0.42));
 }
 
 .teacher-projectile.machinegun-projectile::after {
     content: "";
     position: absolute;
-    right: -4px;
+    right: -2px;
     top: 1px;
-    width: 8px;
-    height: 8px;
+    width: 5px;
+    height: 6px;
     border-radius: 2px 999px 999px 2px;
     background: linear-gradient(90deg, #fff7ed, #fde68a);
-    box-shadow: 0 0 10px rgba(255, 247, 237, 0.95);
+    box-shadow: 0 0 4px rgba(255, 247, 237, 0.65);
 }
 
 .teacher-projectile.roadtrip-hammer-projectile {
@@ -3531,6 +3640,484 @@ kbd {
         filter: drop-shadow(0 0 8px rgba(255, 234, 0, 0.9));
         opacity: 1;
     }
+}
+
+.stealth-lamp {
+    position: absolute;
+    width: 52px;
+    height: 128px;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.stealth-lamp-post,
+.stealth-lamp-head,
+.stealth-light-zone {
+    position: absolute;
+    display: block;
+}
+
+.stealth-lamp-post {
+    left: 22px;
+    bottom: 0;
+    width: 8px;
+    height: 96px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #334155, #0f172a);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.stealth-lamp-head {
+    left: 13px;
+    top: 14px;
+    width: 26px;
+    height: 22px;
+    border-radius: 12px 12px 9px 9px;
+    background: linear-gradient(180deg, #64748b, #1e293b);
+    box-shadow: 0 0 10px rgba(191, 219, 254, 0.12);
+    transition: box-shadow 180ms ease, background 180ms ease;
+}
+
+.stealth-light-zone {
+    left: calc(50% - var(--lamp-radius, 110px));
+    top: 28px;
+    width: calc(var(--lamp-radius, 110px) * 2);
+    height: calc(var(--lamp-radius, 110px) * 1.34);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 245, 200, 0.28) 0%, rgba(255, 231, 150, 0.16) 34%, rgba(255, 225, 120, 0.08) 56%, transparent 72%);
+    opacity: 0;
+    filter: blur(2px);
+    transition: opacity 180ms ease;
+}
+
+.stealth-lamp.active .stealth-light-zone {
+    opacity: 1;
+}
+
+.stealth-lamp.active .stealth-lamp-head {
+    background: linear-gradient(180deg, #fde68a, #b45309);
+    box-shadow: 0 0 18px rgba(253, 224, 71, 0.36);
+}
+
+.stealth-guard {
+    position: absolute;
+    width: 54px;
+    height: 68px;
+    z-index: 3;
+    filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.28));
+}
+
+.stealth-vision-cone {
+    position: absolute;
+    left: 27px;
+    top: calc(34px - var(--stealth-vision-spread, 78px));
+    width: var(--stealth-vision-distance, 200px);
+    height: calc(var(--stealth-vision-spread, 78px) * 2);
+    transform-origin: 0 50%;
+    transform: rotate(var(--stealth-vision-angle, 0rad));
+    clip-path: polygon(0 50%, 100% 0, 100% 100%);
+    background: linear-gradient(90deg, rgba(251, 191, 36, 0.18), rgba(251, 191, 36, 0.08) 52%, transparent 100%);
+    opacity: 0.44;
+    filter: blur(0.8px);
+    pointer-events: none;
+}
+
+.stealth-guard.alerted .stealth-vision-cone {
+    background: linear-gradient(90deg, rgba(248, 113, 113, 0.32), rgba(248, 113, 113, 0.12) 58%, transparent 100%);
+    opacity: 0.88;
+}
+
+.stealth-guard-shadow,
+.stealth-guard-head,
+.stealth-guard-cap,
+.stealth-guard-brow,
+.stealth-guard-eyes,
+.stealth-guard-body,
+.stealth-guard-arm,
+.stealth-guard-legs {
+    position: absolute;
+    display: block;
+}
+
+.stealth-guard-shadow {
+    left: 10px;
+    bottom: 2px;
+    width: 34px;
+    height: 12px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(2, 6, 23, 0.4) 0%, rgba(2, 6, 23, 0.14) 62%, transparent 100%);
+}
+
+.stealth-guard-head {
+    left: 15px;
+    top: 10px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #f1c5a0, #d6a17e);
+}
+
+.stealth-guard-cap {
+    left: 12px;
+    top: 6px;
+    width: 30px;
+    height: 13px;
+    border-radius: 14px 14px 6px 6px;
+    background: linear-gradient(180deg, #0f172a, #334155);
+}
+
+.stealth-guard-brow {
+    left: 18px;
+    top: 18px;
+    width: 18px;
+    height: 8px;
+}
+
+.stealth-guard-brow::before,
+.stealth-guard-brow::after,
+.stealth-guard-eyes::before,
+.stealth-guard-eyes::after {
+    content: "";
+    position: absolute;
+}
+
+.stealth-guard-brow::before,
+.stealth-guard-brow::after {
+    top: 0;
+    width: 8px;
+    height: 3px;
+    border-radius: 999px;
+    background: #0f172a;
+}
+
+.stealth-guard-brow::before {
+    left: 0;
+    transform: rotate(20deg);
+}
+
+.stealth-guard-brow::after {
+    right: 0;
+    transform: rotate(-20deg);
+}
+
+.stealth-guard-eyes {
+    left: 19px;
+    top: 21px;
+    width: 16px;
+    height: 6px;
+}
+
+.stealth-guard-eyes::before,
+.stealth-guard-eyes::after {
+    top: 0;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #0f172a;
+}
+
+.stealth-guard-eyes::before {
+    left: 1px;
+}
+
+.stealth-guard-eyes::after {
+    right: 1px;
+}
+
+.stealth-guard-body {
+    left: 12px;
+    top: 30px;
+    width: 30px;
+    height: 24px;
+    border-radius: 12px 12px 8px 8px;
+    background: linear-gradient(180deg, #111827, #1f2937);
+}
+
+.stealth-guard-arm {
+    top: 34px;
+    width: 8px;
+    height: 20px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #f1c5a0, #c28767 34%, #111827 35%, #1f2937 100%);
+}
+
+.stealth-guard-arm.left {
+    left: 8px;
+    transform: rotate(14deg);
+}
+
+.stealth-guard-arm.right {
+    right: 8px;
+    transform: rotate(-14deg);
+}
+
+.stealth-guard-legs {
+    bottom: 4px;
+    width: 9px;
+    height: 18px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #334155, #0f172a);
+}
+
+.stealth-guard-legs.left {
+    left: 18px;
+}
+
+.stealth-guard-legs.right {
+    right: 18px;
+}
+
+.stealth-guard.zampo-brute .stealth-guard-body {
+    background: linear-gradient(180deg, #3f1d1d, #1f1111);
+}
+
+.stealth-guard.zampo-scout .stealth-guard-body {
+    background: linear-gradient(180deg, #1e3a5f, #0f1c35);
+}
+
+.stealth-guard.panicking {
+    animation: stealth-guard-panic 0.18s linear infinite alternate;
+}
+
+@keyframes stealth-guard-panic {
+    from { transform: translateY(0px); }
+    to { transform: translateY(-2px); }
+}
+
+.stealth-police-patrol {
+    position: absolute;
+    width: 196px;
+    height: 78px;
+    z-index: 4;
+    pointer-events: none;
+    filter: drop-shadow(0 16px 18px rgba(0, 0, 0, 0.34));
+}
+
+.stealth-police-shadow,
+.stealth-police-body,
+.stealth-police-window,
+.stealth-police-lightbar,
+.stealth-police-wheel,
+.stealth-police-officer,
+.stealth-police-officer-shadow,
+.stealth-police-officer-body,
+.stealth-police-officer-head,
+.stealth-police-officer-cap,
+.stealth-police-officer-arm,
+.stealth-police-officer-legs {
+    position: absolute;
+    display: block;
+}
+
+.stealth-police-shadow {
+    left: 18px;
+    right: 12px;
+    bottom: 2px;
+    height: 16px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(2, 6, 23, 0.42) 0%, rgba(2, 6, 23, 0.14) 64%, transparent 100%);
+}
+
+.stealth-police-body {
+    inset: 12px 8px 12px 8px;
+    border-radius: 22px 28px 18px 18px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 24%),
+        linear-gradient(180deg, #1d4ed8 0 38%, #f8fafc 38% 58%, #1e293b 58% 100%);
+    border: 3px solid rgba(15, 23, 42, 0.38);
+}
+
+.stealth-police-window {
+    left: 54px;
+    top: 18px;
+    width: 78px;
+    height: 24px;
+    border-radius: 12px 16px 10px 10px;
+    background: linear-gradient(180deg, rgba(191, 219, 254, 0.92), rgba(59, 130, 246, 0.42));
+    border: 2px solid rgba(15, 23, 42, 0.26);
+}
+
+.stealth-police-lightbar {
+    left: 74px;
+    top: 8px;
+    width: 44px;
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #2563eb 0 50%, #dc2626 50% 100%);
+    box-shadow:
+        0 0 14px rgba(37, 99, 235, 0.55),
+        0 0 14px rgba(220, 38, 38, 0.45);
+    animation: police-lightbar-flash 0.28s linear infinite alternate;
+}
+
+.stealth-police-wheel {
+    bottom: 4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #cbd5e1 0 16%, #0f172a 17% 68%, #1e293b 69% 100%);
+}
+
+.stealth-police-wheel.front {
+    right: 26px;
+}
+
+.stealth-police-wheel.rear {
+    left: 26px;
+}
+
+.stealth-police-officer {
+    left: 0;
+    top: 0;
+    width: 42px;
+    height: 54px;
+    opacity: 0;
+    transition: opacity 120ms ease;
+}
+
+.stealth-police-officer.active {
+    opacity: 1;
+}
+
+.stealth-police-officer-shadow {
+    left: 8px;
+    bottom: 0;
+    width: 24px;
+    height: 9px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(2, 6, 23, 0.36) 0%, rgba(2, 6, 23, 0.14) 62%, transparent 100%);
+}
+
+.stealth-police-officer-body {
+    left: 11px;
+    top: 20px;
+    width: 20px;
+    height: 18px;
+    border-radius: 8px 8px 6px 6px;
+    background: linear-gradient(180deg, #1d4ed8, #0f172a);
+}
+
+.stealth-police-officer-head {
+    left: 13px;
+    top: 8px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #f1c5a0, #d6a17e);
+}
+
+.stealth-police-officer-cap {
+    left: 10px;
+    top: 5px;
+    width: 22px;
+    height: 8px;
+    border-radius: 999px 999px 4px 4px;
+    background: linear-gradient(180deg, #0f172a, #334155);
+}
+
+.stealth-police-officer-arm {
+    top: 22px;
+    width: 6px;
+    height: 15px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #f1c5a0, #c28767 36%, #1d4ed8 37%, #0f172a 100%);
+}
+
+.stealth-police-officer-arm.left {
+    left: 7px;
+    transform: rotate(18deg);
+}
+
+.stealth-police-officer-arm.right {
+    right: 7px;
+    transform: rotate(-18deg);
+}
+
+.stealth-police-officer-legs {
+    bottom: 3px;
+    width: 7px;
+    height: 15px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #334155, #0f172a);
+}
+
+.stealth-police-officer-legs.left {
+    left: 14px;
+}
+
+.stealth-police-officer-legs.right {
+    right: 14px;
+}
+
+.stealth-police-officer.carrying .stealth-police-officer-arm.right {
+    transform: rotate(-52deg);
+}
+
+.stealth-police-officer.carrying .stealth-police-officer-arm.left {
+    transform: rotate(38deg);
+}
+
+@keyframes police-lightbar-flash {
+    from {
+        box-shadow:
+            -10px 0 16px rgba(37, 99, 235, 0.72),
+            10px 0 10px rgba(220, 38, 38, 0.24);
+    }
+    to {
+        box-shadow:
+            -10px 0 10px rgba(37, 99, 235, 0.24),
+            10px 0 16px rgba(220, 38, 38, 0.72);
+    }
+}
+
+.stealth-exit {
+    position: absolute;
+    z-index: 2;
+    border-radius: 18px 18px 8px 8px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 26%),
+        linear-gradient(180deg, #1e293b, #0f172a 56%, #111827 100%);
+    border: 3px solid rgba(148, 163, 184, 0.26);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.04), 0 16px 24px rgba(0, 0, 0, 0.3);
+}
+
+.stealth-exit::before {
+    content: "";
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    top: 18px;
+    bottom: 14px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #5b4a35, #2b2118);
+}
+
+.stealth-exit-sign {
+    position: absolute;
+    left: 50%;
+    top: 10px;
+    transform: translateX(-50%);
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.86);
+    color: #dbeafe;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+}
+
+.player.stealth-lit .player-face,
+.player.stealth-lit .player-body {
+    box-shadow: 0 0 12px rgba(250, 204, 21, 0.2);
+}
+
+.player.stealth-alerted {
+    animation: stealth-alert-pulse 0.28s ease-in-out 2;
+}
+
+@keyframes stealth-alert-pulse {
+    0%, 100% { filter: none; }
+    50% { filter: brightness(1.15) saturate(1.1); }
 }
 
 .roadtrip-entity {
@@ -6047,7 +6634,7 @@ body.mobile-optimized .warning-icon {
    ========================================================================== */
 #weaponVisionOverlay {
     background:
-        radial-gradient(circle at top, rgba(255, 221, 120, 0.2), transparent 35%),
+        radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 35%),
         radial-gradient(circle at center, rgba(17, 24, 39, 0.96) 0%, rgba(3, 6, 15, 0.995) 100%);
     display: flex;
     justify-content: center;
@@ -6142,8 +6729,8 @@ body.mobile-optimized .warning-icon {
     font-weight: 900;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: #fff7d6;
-    text-shadow: 0 0 18px rgba(250, 204, 21, 0.28), 0 0 36px rgba(255, 255, 255, 0.12);
+    color: #f8fafc;
+    text-shadow: 0 0 16px rgba(255, 255, 255, 0.12);
 }
 
 .weapon-vision-screen {
@@ -6152,14 +6739,14 @@ body.mobile-optimized .warning-icon {
     aspect-ratio: 16 / 9;
     border-radius: 24px;
     overflow: hidden;
-    border: 3px solid rgba(250, 204, 21, 0.52);
+    border: 3px solid rgba(226, 232, 240, 0.26);
     background:
-        radial-gradient(circle at 72% 18%, rgba(255, 248, 210, 0.34), transparent 18%),
+        radial-gradient(circle at 72% 18%, rgba(255, 255, 255, 0.14), transparent 18%),
         linear-gradient(180deg, #24496d 0%, #132033 44%, #09111f 100%);
     box-shadow:
         0 0 0 1px rgba(255, 255, 255, 0.07),
         0 24px 70px rgba(2, 6, 23, 0.72),
-        0 0 42px rgba(250, 204, 21, 0.16);
+        0 0 20px rgba(148, 163, 184, 0.08);
 }
 
 .weapon-vision-screen::before {
@@ -6191,7 +6778,7 @@ body.mobile-optimized .warning-icon {
 .weapon-vision-noise,
 .weapon-vision-clouds,
 .weapon-vision-beam,
-.weapon-vision-celestial,
+.weapon-vision-sannicola,
 .weapon-vision-pistol,
 .weapon-vision-teacher {
     position: absolute;
@@ -6262,29 +6849,26 @@ body.mobile-optimized .warning-icon {
     left: 47%;
     width: 28%;
     height: 60%;
-    background: linear-gradient(180deg, rgba(254, 249, 195, 0.65), rgba(250, 204, 21, 0.12) 42%, rgba(250, 204, 21, 0) 100%);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(226, 232, 240, 0.04) 42%, rgba(226, 232, 240, 0) 100%);
     clip-path: polygon(44% 0, 58% 0, 100% 100%, 0 100%);
     opacity: 0;
-    filter: blur(2px);
+    filter: blur(1px);
     transform-origin: top center;
     z-index: 4;
 }
 
-.weapon-vision-celestial {
+.weapon-vision-sannicola {
     top: 13%;
     left: 60%;
-    width: 168px;
-    height: 198px;
+    width: 190px;
+    height: 244px;
     z-index: 7;
-    filter: drop-shadow(0 0 22px rgba(255, 244, 202, 0.55));
+    background: url("../assets/sannicola.png") center center / contain no-repeat;
+    filter: none;
+    opacity: 0;
+    transform-origin: center center;
 }
 
-.weapon-vision-celestial-halo,
-.weapon-vision-celestial-head,
-.weapon-vision-celestial-hair,
-.weapon-vision-celestial-beard,
-.weapon-vision-celestial-body,
-.weapon-vision-celestial-arm,
 .weapon-vision-teacher-aura,
 .weapon-vision-teacher-face,
 .weapon-vision-teacher-body,
@@ -6293,76 +6877,6 @@ body.mobile-optimized .warning-icon {
 .weapon-vision-pistol-grip {
     position: absolute;
     display: block;
-}
-
-.weapon-vision-celestial-halo {
-    top: 2px;
-    left: 47px;
-    width: 74px;
-    height: 24px;
-    border-radius: 999px;
-    border: 3px solid rgba(254, 240, 138, 0.92);
-    box-shadow: 0 0 20px rgba(254, 240, 138, 0.85);
-}
-
-.weapon-vision-celestial-head {
-    top: 18px;
-    left: 60px;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: linear-gradient(180deg, #f9dec5, #e9bb92);
-    z-index: 4;
-}
-
-.weapon-vision-celestial-hair {
-    top: 10px;
-    left: 52px;
-    width: 68px;
-    height: 60px;
-    border-radius: 45% 45% 50% 50%;
-    background: linear-gradient(180deg, #8b6a3e, #f4ddb7 72%);
-    z-index: 3;
-}
-
-.weapon-vision-celestial-beard {
-    top: 47px;
-    left: 66px;
-    width: 38px;
-    height: 32px;
-    border-radius: 45% 45% 60% 60%;
-    background: linear-gradient(180deg, #f7f3eb, #d8c5a5);
-    z-index: 5;
-}
-
-.weapon-vision-celestial-body {
-    left: 28px;
-    top: 62px;
-    width: 112px;
-    height: 120px;
-    background: linear-gradient(180deg, #fffef9, #e4d8bf);
-    clip-path: polygon(48% 0, 76% 10%, 100% 100%, 0 100%, 22% 10%);
-    border-radius: 32px 32px 20px 20px;
-}
-
-.weapon-vision-celestial-arm {
-    top: 80px;
-    width: 20px;
-    height: 70px;
-    border-radius: 999px;
-    background: linear-gradient(180deg, #f7ecda, #d6c7aa);
-    z-index: 2;
-}
-
-.weapon-vision-celestial-arm.left {
-    left: 22px;
-    transform: rotate(22deg);
-}
-
-.weapon-vision-celestial-arm.right {
-    right: 24px;
-    transform: rotate(-44deg);
-    transform-origin: top center;
 }
 
 .weapon-vision-pistol {
@@ -6468,7 +6982,7 @@ body.mobile-optimized .warning-icon {
 .weapon-vision-caption {
     width: min(92vw, 760px);
     margin: 1.25rem 0 0.9rem;
-    color: #fef3c7;
+    color: #e2e8f0;
     font-size: clamp(1rem, 2vw, 1.25rem);
     font-weight: 700;
     letter-spacing: 0.04em;
@@ -6505,12 +7019,8 @@ body.mobile-optimized .warning-icon {
     animation: weapon-vision-beam-glow 4.25s ease-in-out both;
 }
 
-#weaponVisionOverlay.playing .weapon-vision-celestial {
+#weaponVisionOverlay.playing .weapon-vision-sannicola {
     animation: weapon-vision-celestial-float 4.25s ease-in-out both;
-}
-
-#weaponVisionOverlay.playing .weapon-vision-celestial-arm.right {
-    animation: weapon-vision-celestial-handout 4.25s ease-in-out both;
 }
 
 #weaponVisionOverlay.playing .weapon-vision-pistol {
@@ -6548,8 +7058,8 @@ body.mobile-optimized .warning-icon {
 
 @keyframes weapon-vision-beam-glow {
     0%, 22% { opacity: 0; transform: scaleY(0.6); }
-    32%, 74% { opacity: 0.95; transform: scaleY(1); }
-    100% { opacity: 0.18; transform: scaleY(1.08); }
+    32%, 74% { opacity: 0.38; transform: scaleY(1); }
+    100% { opacity: 0.06; transform: scaleY(1.04); }
 }
 
 @keyframes weapon-vision-celestial-float {
@@ -6557,11 +7067,6 @@ body.mobile-optimized .warning-icon {
     18% { opacity: 1; }
     50% { transform: translateY(4px) scale(1); opacity: 1; }
     100% { transform: translateY(-6px) scale(1.02); opacity: 1; }
-}
-
-@keyframes weapon-vision-celestial-handout {
-    0%, 35% { transform: rotate(-44deg); }
-    55%, 100% { transform: rotate(-76deg); }
 }
 
 @keyframes weapon-vision-pistol-handoff {
@@ -6619,7 +7124,7 @@ body.mobile-optimized .warning-icon {
         border-radius: 18px;
     }
 
-    .weapon-vision-celestial {
+    .weapon-vision-sannicola {
         left: 54%;
         top: 11%;
         transform: scale(0.9);
@@ -6823,6 +7328,23 @@ body.mobile-optimized .warning-icon {
 }
 
 /* Center and scale the boss element inside VHS screen */
+.boss-intro-boss {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.boss-intro-avatar-container .entity.boss.boss-intro-preview {
+    position: relative;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    margin: 0 auto;
+}
+
 .boss-intro-avatar-container .boss-giant-student {
     transform: scale(2.4);
     position: relative;

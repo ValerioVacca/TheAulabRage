@@ -69,11 +69,15 @@ const weaponVisionProgress = document.getElementById("weaponVisionProgress");
 const weaponVisionTc = document.getElementById("weaponVisionTc");
 const weaponVisionTeacherFace = document.getElementById("weaponVisionTeacherFace");
 const skipWeaponVisionBtn = document.getElementById("skipWeaponVisionBtn");
+const hudLivesLabel = document.querySelector(".hud-lives .hud-label");
 
 // Elementi DOM per la stamina
 const hudStamina = document.getElementById("hudStamina");
 const staminaBarFill = document.getElementById("staminaBarFill");
 const hudStaminaLabel = hudStamina?.querySelector(".hud-label") || null;
+const hudRage = document.getElementById("hudRage");
+const hudRageLabel = hudRage?.querySelector(".hud-label") || null;
+const rageBarFill = document.getElementById("rageBarFill");
 
 const GAME = {
     width: 1280,
@@ -126,6 +130,13 @@ const defaultHackademies = [
     }
 ];
 
+const cityBackgroundPlantZones = [
+    { x: 34, y: 28, width: 258, height: 160 },
+    { x: 988, y: 28, width: 258, height: 160 },
+    { x: 34, y: 536, width: 258, height: 160 },
+    { x: 988, y: 536, width: 258, height: 160 }
+];
+
 const state = {
     running: false,
     gameOver: false,
@@ -168,6 +179,7 @@ const state = {
     rageActiveUntil: 0,
     rageDurationMs: 5000,
     levelSevenWeaponUnlocked: false,
+    stealth: null,
     debris: [],
     contentMode: null,
     bonusRoad: null,
@@ -488,6 +500,88 @@ const levelConfigs = [
             { x: 720, y: 342, width: 62, height: 34, type: "scooter" },
             { x: 574, y: 302, width: 130, height: 118, type: "terminal" }
         ]
+    },
+    {
+        id: 8,
+        mode: "stealthNight",
+        playerSpawn: { x: 86, y: 616 },
+        studentSpawns: [],
+        stealth: {
+            exitZone: { x: 1162, y: 144, width: 72, height: 116 },
+            lamps: [
+                { x: 140, y: 604, radius: 116, onMs: 900, offMs: 1300, phaseMs: 180 },
+                { x: 544, y: 604, radius: 118, onMs: 1200, offMs: 1100, phaseMs: 620 },
+                { x: 1090, y: 604, radius: 120, onMs: 1450, offMs: 900, phaseMs: 320 },
+                { x: 382, y: 424, radius: 104, onMs: 800, offMs: 1500, phaseMs: 910 },
+                { x: 844, y: 424, radius: 104, onMs: 950, offMs: 1450, phaseMs: 1260 },
+                { x: 592, y: 232, radius: 120, onMs: 1300, offMs: 1200, phaseMs: 520 },
+                { x: 1108, y: 126, radius: 124, onMs: 1600, offMs: 900, phaseMs: 100 }
+            ],
+            guards: [
+                {
+                    x: 454,
+                    y: 608,
+                    patrol: [{ x: 454, y: 608 }, { x: 610, y: 608 }],
+                    speed: 1.12,
+                    viewDistance: 188,
+                    fov: 48,
+                    pauseMs: 640,
+                    variant: "lookout"
+                },
+                {
+                    x: 462,
+                    y: 206,
+                    patrol: [{ x: 462, y: 206 }, { x: 592, y: 206 }],
+                    speed: 1.08,
+                    viewDistance: 186,
+                    fov: 52,
+                    pauseMs: 780,
+                    variant: "scout"
+                },
+                {
+                    x: 840,
+                    y: 592,
+                    patrol: [{ x: 840, y: 592 }, { x: 1088, y: 592 }],
+                    speed: 1.26,
+                    viewDistance: 208,
+                    fov: 50,
+                    pauseMs: 520,
+                    variant: "lookout"
+                },
+                {
+                    x: 1094,
+                    y: 94,
+                    patrol: [{ x: 1094, y: 94 }, { x: 1180, y: 94 }],
+                    speed: 0.98,
+                    viewDistance: 176,
+                    fov: 54,
+                    pauseMs: 940,
+                    variant: "brute"
+                }
+            ]
+        },
+        obstacles: [
+            { x: 0, y: 0, width: 1280, height: 24, type: "wall" },
+            { x: 0, y: 696, width: 1280, height: 24, type: "wall" },
+            { x: 0, y: 0, width: 24, height: 720, type: "wall" },
+            { x: 1256, y: 0, width: 24, height: 720, type: "wall" },
+            { x: 24, y: 548, width: 252, height: 24, type: "wall" },
+            { x: 350, y: 548, width: 306, height: 24, type: "wall" },
+            { x: 736, y: 548, width: 272, height: 24, type: "wall" },
+            { x: 202, y: 286, width: 24, height: 262, type: "wall" },
+            { x: 652, y: 170, width: 24, height: 402, type: "wall" },
+            { x: 1018, y: 286, width: 24, height: 262, type: "wall" },
+            { x: 24, y: 286, width: 132, height: 24, type: "wall" },
+            { x: 230, y: 286, width: 278, height: 24, type: "wall" },
+            { x: 742, y: 286, width: 228, height: 24, type: "wall" },
+            { x: 1042, y: 286, width: 120, height: 24, type: "wall" },
+            { x: 176, y: 116, width: 24, height: 170, type: "wall" },
+            { x: 866, y: 116, width: 24, height: 170, type: "wall" },
+            { x: 200, y: 116, width: 246, height: 24, type: "wall" },
+            { x: 924, y: 116, width: 220, height: 24, type: "wall" },
+            { x: 454, y: 406, width: 142, height: 24, type: "wall" },
+            { x: 760, y: 406, width: 168, height: 24, type: "wall" }
+        ]
     }
 ];
 
@@ -518,6 +612,15 @@ function isRoadTripLevel(levelNumber = state.currentLevel) {
 
 function isRoadTripActive() {
     return Boolean(state.bonusRoad?.active);
+}
+
+function isStealthLevel(levelNumber = state.currentLevel) {
+    const level = levelConfigs.find((entry) => entry.id === levelNumber);
+    return level?.mode === "stealthNight";
+}
+
+function isStealthActive() {
+    return Boolean(state.stealth?.active);
 }
 
 function isLevelSixMachineGunActive() {
@@ -554,7 +657,7 @@ function resetCutsceneOverlays() {
         weaponVisionOverlay.classList.remove("playing");
     }
     if (weaponVisionCaption) {
-        weaponVisionCaption.textContent = "Segnale dal cloud... upgrade in arrivo.";
+        weaponVisionCaption.textContent = "San Nicola appare.";
     }
     if (weaponVisionProgress) {
         weaponVisionProgress.style.width = "0%";
@@ -578,7 +681,7 @@ function getPlayerAttackCooldown() {
     if (isRoadTripActive()) {
         return 240;
     }
-    return isLevelSixMachineGunActive() ? 95 : GAME.attackCooldown;
+    return isLevelSixMachineGunActive() ? 185 : GAME.attackCooldown;
 }
 
 function getPlayerWeaponToolStyle() {
@@ -949,8 +1052,8 @@ function spawnRoadTripEntityInstance(type, lane, xOffset = 0) {
         beerThrown: false,
         canSpeak: type === "student" || type === "boomer" || type === "ultra",
         speechTriggered: false,
-        speechRoll: Math.random() < 0.58,
-        speechTriggerX: state.player.x + randomBetween(120, 420),
+        speechRoll: Math.random() < 0.78,
+        speechTriggerX: GAME.width - randomBetween(30, 90),
         jumpClearance: config.jumpClearance,
         rampBoost: Boolean(config.rampBoost),
         rampConsumed: false,
@@ -1232,6 +1335,13 @@ function updateAttackButtonAppearance() {
             dodgeButton.textContent = "⚡";
             dodgeButton.setAttribute("aria-label", "Attiva NOS");
         }
+    } else if (isStealthActive()) {
+        attackButton.textContent = "🚓";
+        attackButton.setAttribute("aria-label", "Chiama i Carabinieri");
+        if (dodgeButton) {
+            dodgeButton.textContent = "💨";
+            dodgeButton.setAttribute("aria-label", "Scatto stealth");
+        }
     } else if (isLevelSixMachineGunActive()) {
         attackButton.textContent = "🔫";
         attackButton.setAttribute("aria-label", "Spara");
@@ -1392,19 +1502,27 @@ const speechProfiles = {
                 "non mi legge la faccia!"
             ],
             roadtripPeroni: [
-                "Una bella Peroni sudata",
-                "Prendila al volo",
-                "Il pooooolpo"
+                "Bari è Bari!",
+                "Prendi la Peroni!",
+                "Ci voleva la focaccia",
+                "Uè signorina!"
             ],
             roadtripTablet: [
-                "Stu tablet non funzion",
-                "Teng la pression a 180",
-                "Baaar ie' Baaar"
+                "Villacchione!",
+                "Teng la pression a cindottand",
+                "Sembri un cinghiale del San Paolo"
             ],
             roadtripUltra: [
-                "Forza Bari",
-                "La strad ie' la nost",
+                "Forza Bari!",
+                "Dove sta lo stadio?",
                 "A do ste a sci'?"
+            ],
+            stealthZampo: [
+                "Ue', chi va la'?",
+                "Hai un euro?",
+                "Iniettatemi la peroni nelle vene.",
+                "Questi vicoli non sono per te!",
+                "Amico delle guardie!"
             ],
             spid: [
                 "mi serve l'OTP!",
@@ -1588,19 +1706,27 @@ const speechProfiles = {
                 "sta faccia non me la legge, merda!"
             ],
             roadtripPeroni: [
-                "Awa' sta Peron ghiacciat",
-                "A do ste a sci'? A u ciringhit?",
-                "Stu baccala'"
+                "Stu TRMòN!",
+                "A do ste a scì, a u Ciringhit?",
+                "Stu baccalà"
             ],
             roadtripTablet: [
-                "Angor non ue'",
-                "U apparecchj non funzion",
-                "L spaghitt c l'angild"
+                "Tua madre sta sulla statale?",
+                "Sei un riccio vacand",
+                "La bocchina di tua madre"
             ],
             roadtripUltra: [
-                "Mo ti a da' nu carton",
-                "U bombon perchiaaat",
-                "Ste a parl o a mov l recchij"
+                "Mo te lo devo dare uno!",
+                "U bombon perchiat",
+                "Kitemmurt, vieni qua",
+                "Vai a fare i chinotti, uè trimone!"
+            ],
+            stealthZampo: [
+                "A do sta sto cornuto?",
+                "La madama non la temo!",
+                "Chi vuole un cartone nelle palle?",
+                "Ora esco il coltello!",
+                "Tua madre a pecora devo mettere"
             ],
             spid: [
                 "ridammi l'OTP, bastardo!",
@@ -1919,10 +2045,16 @@ function initTouchControls() {
     }
 
     bindTouchAction(touchAttackBtn, () => {
-        attack();
+        if (isStealthActive()) {
+            callStealthPolice(performance.now());
+        } else {
+            attack();
+        }
     }, {
         onPress: () => {
-            state.keys.add("attack");
+            if (!isStealthActive()) {
+                state.keys.add("attack");
+            }
         },
         onRelease: () => {
             state.keys.delete("attack");
@@ -2027,6 +2159,13 @@ function bindEvents() {
                     adjustRoadTripNosHeldCount(1);
                     activateRoadTripNos(performance.now());
                 }
+                return;
+            }
+        }
+
+        if (isStealthActive()) {
+            if (!event.repeat && key === "shift") {
+                callStealthPolice(performance.now());
                 return;
             }
         }
@@ -2250,10 +2389,91 @@ function normalizeKey(key) {
     return aliases[lower] || lower;
 }
 
+function shouldProtectCityBackgroundPlants(levelNumber, layout) {
+    return Array.isArray(layout) && layout.length > 0 && levelNumber >= 5 && levelNumber <= 7;
+}
+
+function getClosestCityPlantSafePosition(config) {
+    if (!config || config.type === "wall") {
+        return null;
+    }
+
+    const arenaMin = 24;
+    const arenaMaxX = GAME.width - config.width - 24;
+    const arenaMaxY = GAME.height - config.height - 24;
+    const margin = 14;
+    let adjusted = { ...config };
+    let moved = false;
+
+    cityBackgroundPlantZones.forEach((zone) => {
+        if (!rectsIntersect(adjusted, zone)) {
+            return;
+        }
+
+        const candidates = [];
+        const leftX = zone.x - adjusted.width - margin;
+        const rightX = zone.x + zone.width + margin;
+        const topY = zone.y - adjusted.height - margin;
+        const bottomY = zone.y + zone.height + margin;
+
+        if (leftX >= arenaMin) {
+            candidates.push({ x: leftX, y: adjusted.y });
+        }
+        if (rightX <= arenaMaxX) {
+            candidates.push({ x: rightX, y: adjusted.y });
+        }
+        if (topY >= arenaMin) {
+            candidates.push({ x: adjusted.x, y: topY });
+        }
+        if (bottomY <= arenaMaxY) {
+            candidates.push({ x: adjusted.x, y: bottomY });
+        }
+
+        const validCandidates = candidates
+            .map((candidate) => ({
+                x: clamp(candidate.x, arenaMin, arenaMaxX),
+                y: clamp(candidate.y, arenaMin, arenaMaxY)
+            }))
+            .filter((candidate) => !cityBackgroundPlantZones.some((plantZone) => rectsIntersect({
+                x: candidate.x,
+                y: candidate.y,
+                width: adjusted.width,
+                height: adjusted.height
+            }, plantZone)));
+
+        if (!validCandidates.length) {
+            return;
+        }
+
+        validCandidates.sort((a, b) => {
+            const distA = Math.abs(a.x - adjusted.x) + Math.abs(a.y - adjusted.y);
+            const distB = Math.abs(b.x - adjusted.x) + Math.abs(b.y - adjusted.y);
+            return distA - distB;
+        });
+
+        adjusted = {
+            ...adjusted,
+            x: validCandidates[0].x,
+            y: validCandidates[0].y
+        };
+        moved = true;
+    });
+
+    return moved ? adjusted : null;
+}
+
+function normalizeCityBackgroundObstacleLayout(layout) {
+    return layout.map((config) => getClosestCityPlantSafePosition(config) || config);
+}
+
 function createObstacles(layout) {
     clearObstacles();
 
-    layout.forEach((config) => {
+    const safeLayout = shouldProtectCityBackgroundPlants(state.currentLevel, layout)
+        ? normalizeCityBackgroundObstacleLayout(layout)
+        : layout;
+
+    safeLayout.forEach((config) => {
         const element = document.createElement("div");
         element.className = `obstacle ${config.type}`;
         setRectStyles(element, config);
@@ -2435,6 +2655,9 @@ function clearLevelActors(keepPlayer = true) {
     clearActiveCutscenes();
     clearBonusRoad();
     clearDebris();
+    gameArea.classList.remove("stealth-mode");
+    gameArea.classList.remove("police-sweep");
+    state.player?.element?.classList.remove("stealth-lit", "stealth-alerted");
     state.students.forEach((student) => {
         if (student.speechTimeoutId) {
             window.clearTimeout(student.speechTimeoutId);
@@ -2481,6 +2704,13 @@ function clearLevelActors(keepPlayer = true) {
     state.dragonStrike = null;
     state.studiaStrike = null;
     state.pendingStudiaShots = 0;
+    if (state.stealth) {
+        state.stealth.guards?.forEach((guard) => guard.element?.remove());
+        state.stealth.lamps?.forEach((lamp) => lamp.element?.remove());
+        state.stealth.policeSweep?.element?.remove();
+        state.stealth.exitElement?.remove();
+        state.stealth = null;
+    }
     if (intermissionOverlay) {
         intermissionOverlay.classList.add("d-none");
     }
@@ -2721,6 +2951,264 @@ function setupSummoningSequence(levelNumber, level) {
     }, 1000);
 }
 
+function createStealthLamp(config, index) {
+    const element = document.createElement("div");
+    element.className = "stealth-lamp";
+    element.innerHTML = `
+        <span class="stealth-lamp-post"></span>
+        <span class="stealth-lamp-head"></span>
+        <span class="stealth-light-zone"></span>
+    `;
+    element.style.left = `${config.x - 26}px`;
+    element.style.top = `${config.y - 118}px`;
+    element.style.setProperty("--lamp-radius", `${config.radius}px`);
+    gameArea.appendChild(element);
+
+    return {
+        id: `stealth-lamp-${index}`,
+        x: config.x,
+        y: config.y,
+        radius: config.radius,
+        onMs: config.onMs || 1000,
+        offMs: config.offMs || 1000,
+        phaseMs: config.phaseMs || 0,
+        isOn: true,
+        element
+    };
+}
+
+function createStealthGuard(config, index) {
+    const element = document.createElement("div");
+    element.className = `stealth-guard zampo-${config.variant || "lookout"}`;
+    element.innerHTML = `
+        <span class="stealth-vision-cone"></span>
+        <span class="stealth-guard-shadow"></span>
+        <span class="stealth-guard-legs left"></span>
+        <span class="stealth-guard-legs right"></span>
+        <span class="stealth-guard-body"></span>
+        <span class="stealth-guard-arm left"></span>
+        <span class="stealth-guard-arm right"></span>
+        <span class="stealth-guard-head"></span>
+        <span class="stealth-guard-cap"></span>
+        <span class="stealth-guard-brow"></span>
+        <span class="stealth-guard-eyes"></span>
+    `;
+    gameArea.appendChild(element);
+
+    const patrol = (config.patrol || [{ x: config.x, y: config.y }]).map((point) => ({ ...point }));
+    const guard = {
+        id: `stealth-guard-${index}`,
+        x: config.x,
+        y: config.y,
+        width: 54,
+        height: 68,
+        speechType: "stealthZampo",
+        speechTriggered: false,
+        speechTimeoutId: null,
+        speechCooldownUntil: 0,
+        patrol,
+        patrolIndex: patrol.length > 1 ? 1 : 0,
+        speed: config.speed || 1.2,
+        viewDistance: config.viewDistance || 200,
+        fov: config.fov || 60,
+        pauseMs: config.pauseMs || 600,
+        pauseUntil: 0,
+        directionVector: { x: 1, y: 0 },
+        element
+    };
+
+    syncStealthGuard(guard);
+    return guard;
+}
+
+function syncStealthGuard(guard) {
+    const angle = Math.atan2(guard.directionVector.y, guard.directionVector.x);
+    const spread = Math.max(42, Math.min(guard.viewDistance * Math.tan(((guard.fov || 60) * Math.PI) / 360), 168));
+    guard.element.style.transform = `translate(${guard.x}px, ${guard.y}px)`;
+    guard.element.style.setProperty("--stealth-vision-angle", `${angle}rad`);
+    guard.element.style.setProperty("--stealth-vision-distance", `${guard.viewDistance}px`);
+    guard.element.style.setProperty("--stealth-vision-spread", `${spread}px`);
+    guard.element.classList.toggle("facing-left", guard.directionVector.x < -0.05);
+    guard.element.classList.toggle("facing-right", guard.directionVector.x > 0.05);
+    guard.element.classList.toggle("facing-up", guard.directionVector.y < -0.05);
+    guard.element.classList.toggle("facing-down", guard.directionVector.y > 0.05);
+}
+
+function maybeSpeakStealthGuard(guard, timestamp) {
+    if (!guard?.element || state.stealth?.detected) {
+        return;
+    }
+
+    if (guard.speechCooldownUntil && timestamp < guard.speechCooldownUntil) {
+        return;
+    }
+
+    const playerCenter = centerOf(state.player);
+    const guardCenter = centerOf(guard);
+    const distance = Math.hypot(playerCenter.x - guardCenter.x, playerCenter.y - guardCenter.y);
+    if (distance > 240) {
+        return;
+    }
+
+    const message = pickRandomLine(getStudentLinePool(guard), "Ue', chi va la'?");
+    const queued = queueStudentSpeech(guard, message, {
+        bubbleClass: "speech-bubble",
+        minimumMs: 1200,
+        role: "student"
+    });
+
+    if (queued) {
+        guard.speechCooldownUntil = timestamp + 3400 + Math.random() * 1800;
+    }
+}
+
+function updateStealthPoliceHud() {
+    if (!isStealthActive()) {
+        return;
+    }
+
+    if (hudRageLabel) {
+        hudRageLabel.textContent = "112";
+    }
+    if (rageBarFill) {
+        const maxCharges = Math.max(1, state.stealth?.maxPoliceCharges || 1);
+        const pct = ((state.stealth?.policeCharges || 0) / maxCharges) * 100;
+        rageBarFill.style.width = `${pct}%`;
+    }
+}
+
+function callStealthPolice(timestamp = performance.now()) {
+    if (!isStealthActive() || !state.stealth || state.stealth.detected) {
+        return false;
+    }
+
+    if ((state.stealth.policeCharges || 0) <= 0 || state.stealth.policeSweep || timestamp < (state.stealth.policeIncomingUntil || 0)) {
+        return false;
+    }
+
+    const bandCenterY = clamp(state.player.y + state.player.height / 2, 96, GAME.height - 96);
+    const bandHeight = 176;
+    const sweepDirection = state.player.x > GAME.width / 2 ? -1 : 1;
+    const bandTop = bandCenterY - bandHeight / 2;
+    const bandBottom = bandCenterY + bandHeight / 2;
+    const eligibleGuards = state.stealth.guards.filter((guard) => {
+        const guardCenterY = guard.y + guard.height / 2;
+        return guardCenterY >= bandTop && guardCenterY <= bandBottom;
+    });
+    const targetPool = eligibleGuards.length ? eligibleGuards : state.stealth.guards;
+    const targetGuard = targetPool.length
+        ? targetPool[Math.floor(Math.random() * targetPool.length)]
+        : null;
+    if (!targetGuard) {
+        return false;
+    }
+
+    const patrolWidth = 196;
+    const patrolHeight = 78;
+    const startX = sweepDirection > 0 ? -232 : GAME.width + 32;
+    const endX = sweepDirection > 0 ? GAME.width + 248 : -248;
+    const stopX = clamp(targetGuard.x + (sweepDirection > 0 ? -124 : 124), 72, GAME.width - patrolWidth - 72);
+    const element = document.createElement("div");
+    element.className = "stealth-police-patrol";
+    element.innerHTML = `
+        <span class="stealth-police-shadow"></span>
+        <span class="stealth-police-body"></span>
+        <span class="stealth-police-window"></span>
+        <span class="stealth-police-lightbar"></span>
+        <span class="stealth-police-wheel front"></span>
+        <span class="stealth-police-wheel rear"></span>
+        <span class="stealth-police-officer">
+            <span class="stealth-police-officer-shadow"></span>
+            <span class="stealth-police-officer-legs left"></span>
+            <span class="stealth-police-officer-legs right"></span>
+            <span class="stealth-police-officer-body"></span>
+            <span class="stealth-police-officer-arm left"></span>
+            <span class="stealth-police-officer-arm right"></span>
+            <span class="stealth-police-officer-head"></span>
+            <span class="stealth-police-officer-cap"></span>
+        </span>
+    `;
+    gameArea.appendChild(element);
+
+    state.stealth.policeCharges -= 1;
+    state.stealth.policeIncomingUntil = timestamp + 6500;
+    gameArea.classList.add("police-sweep");
+    state.stealth.policeSweep = {
+        x: startX,
+        y: bandCenterY - patrolHeight / 2,
+        width: patrolWidth,
+        height: patrolHeight,
+        speed: 8.8,
+        direction: sweepDirection,
+        bandTop,
+        bandBottom,
+        endX,
+        stopX,
+        phase: "entering",
+        targetGuardId: targetGuard.id,
+        carriedGuardId: null,
+        removedIds: new Set(),
+        officer: {
+            x: sweepDirection > 0 ? 58 : 124,
+            y: patrolHeight - 12,
+            active: false,
+            carrying: false
+        },
+        element
+    };
+    syncEntity(state.stealth.policeSweep);
+    updateStealthPoliceHud();
+    showToast("🚓 Hai chiamato i Carabinieri. La pattuglia sta entrando nei vicoli.");
+    playPoliceSirenSound();
+
+    return true;
+}
+
+function setupStealthLevel(level) {
+    state.projectiles = [];
+    state.teacherProjectiles = [];
+    state.powerUp = null;
+    state.heartPowerUp = null;
+    state.player.lives = 1;
+    state.player.stamina = GAME.maxStamina;
+    state.player.lastStaminaUse = 0;
+    state.player.invulnerableUntil = 0;
+    state.player.shieldHits = 0;
+    state.player.speedBoostUntil = 0;
+    state.player.superHammerUntil = 0;
+    state.player.element.classList.remove("shield-active", "speed-boosted", "super-hammer-active", "attacking");
+    gameArea.classList.add("stealth-mode");
+
+    const exitElement = document.createElement("div");
+    exitElement.className = "stealth-exit";
+    setRectStyles(exitElement, level.stealth.exitZone);
+    exitElement.innerHTML = `<span class="stealth-exit-sign">CASA</span>`;
+    gameArea.appendChild(exitElement);
+
+    const lamps = (level.stealth.lamps || []).map((lamp, index) => createStealthLamp(lamp, index));
+    const guards = (level.stealth.guards || []).map((guard, index) => createStealthGuard(guard, index));
+
+    state.stealth = {
+        active: true,
+        guards,
+        lamps,
+        exitZone: { ...level.stealth.exitZone },
+        exitElement,
+        maxPoliceCharges: 1,
+        policeCharges: 1,
+        policeIncomingUntil: 0,
+        policeSweep: null,
+        detected: false,
+        litPlayer: false
+    };
+    updateAttackButtonAppearance();
+
+    showToast("🌙 Ti hanno rubato la macchina. Devi rientrare a casa a piedi, passando per Bari Vecchia senza farti vedere.");
+    registerCutsceneTimeout(() => {
+        showToast("🕯️ Muoviti nelle ombre, scatta con Ctrl e usa Shift per chiamare i Carabinieri se i vicoli si chiudono.");
+    }, 1700);
+}
+
 function buildLevel(levelNumber, resetPlayerLives = false) {
     clearLevelActors(true);
     state.currentLevel = levelNumber;
@@ -2741,9 +3229,10 @@ function buildLevel(levelNumber, resetPlayerLives = false) {
     }
 
     gameArea.classList.remove("roadtrip-mode");
+    gameArea.classList.remove("stealth-mode");
 
     // Usa la mappa personalizzata dell'editor se disponibile, altrimenti usa il default
-    const customObstacles = (typeof MapEditor !== "undefined" && level.mode !== "roadTrip")
+    const customObstacles = (typeof MapEditor !== "undefined" && level.mode !== "roadTrip" && level.mode !== "stealthNight")
         ? MapEditor.getObstaclesForLevel(levelNumber)
         : null;
     createObstacles(customObstacles || level.obstacles);
@@ -2766,6 +3255,12 @@ function buildLevel(levelNumber, resetPlayerLives = false) {
         state.projectiles = [];
         state.teacherProjectiles = [];
         setupRoadTripLevel();
+        return;
+    }
+
+    if (level.mode === "stealthNight" && state.selectedHackademyId === "standard") {
+        state.students = [];
+        setupStealthLevel(level);
         return;
     }
 
@@ -3149,7 +3644,9 @@ function isActiveSpeechEntity(entity) {
         return false;
     }
 
-    return state.students.includes(entity) || Boolean(state.bonusRoad?.entities?.includes(entity));
+    return state.students.includes(entity) ||
+        Boolean(state.bonusRoad?.entities?.includes(entity)) ||
+        Boolean(state.stealth?.guards?.includes(entity));
 }
 
 function hasQueuedOrActiveStudentSpeech(student) {
@@ -3329,6 +3826,15 @@ function gameLoop(timestamp) {
             return;
         }
 
+        if (isStealthActive()) {
+            updateStealthLevel(delta, timestamp);
+            updateStamina(delta, timestamp);
+            updateHud();
+            applyGameAreaTransform();
+            requestAnimationFrame(gameLoop);
+            return;
+        }
+
         // --- GESTIONE EVOCAZIONE BOSS ---
         if (state.summoningActive) {
             state.summoningTimer -= frameDeltaMs;
@@ -3399,6 +3905,308 @@ function gameLoop(timestamp) {
     requestAnimationFrame(gameLoop);
 }
 
+function updateStealthLevel(delta, timestamp) {
+    if (!state.stealth || !state.player) {
+        return;
+    }
+
+    updatePlayer(delta, timestamp);
+    updateStealthLamps(timestamp);
+    updateStealthPoliceSweep(delta, timestamp);
+    updateStealthGuards(delta, timestamp);
+
+    state.player.element.classList.toggle("stealth-lit", state.stealth.litPlayer);
+    state.player.element.classList.toggle("stealth-alerted", state.stealth.detected);
+
+    if (state.stealth.detected) {
+        return;
+    }
+
+    if (rectsIntersect(state.player, state.stealth.exitZone)) {
+        state.running = false;
+        state.stealth.active = false;
+        showToast("🏠 Sei arrivato al portone. Per stanotte sei salvo.");
+        if (state.selectedHackademyId === "standard") {
+            localStorage.setItem("aulab_rage_saved_level", state.currentLevel);
+        }
+        registerCutsceneTimeout(() => {
+            if (state.currentLevel < levelConfigs.length) {
+                advanceToNextLevel();
+            } else {
+                finishGame(true);
+            }
+        }, 700);
+    }
+}
+
+function updateStealthPoliceSweep(delta, timestamp) {
+    if (!state.stealth?.policeSweep) {
+        return;
+    }
+
+    const sweep = state.stealth.policeSweep;
+    const officerEl = sweep.element.querySelector(".stealth-police-officer");
+    const targetGuard = state.stealth.guards.find((guard) => guard.id === sweep.targetGuardId) || null;
+    const carriedGuard = state.stealth.guards.find((guard) => guard.id === sweep.carriedGuardId) || null;
+
+    state.stealth.guards.forEach((guard) => {
+        const guardCenterY = guard.y + guard.height / 2;
+        const inSweepBand = guardCenterY >= sweep.bandTop && guardCenterY <= sweep.bandBottom;
+        guard.element.classList.toggle("panicking", inSweepBand && guard.id !== sweep.carriedGuardId);
+    });
+
+    if (sweep.phase === "entering") {
+        sweep.x += sweep.direction * sweep.speed * delta * 6.2;
+        if ((sweep.direction > 0 && sweep.x >= sweep.stopX) || (sweep.direction < 0 && sweep.x <= sweep.stopX)) {
+            sweep.x = sweep.stopX;
+            sweep.phase = "deploying";
+            sweep.officer.active = true;
+            if (officerEl) {
+                officerEl.classList.add("active");
+            }
+        }
+    } else if (sweep.phase === "deploying") {
+        if (!targetGuard) {
+            sweep.phase = "departing";
+            sweep.officer.active = false;
+            if (officerEl) {
+                officerEl.classList.remove("active");
+            }
+        } else {
+            const targetX = targetGuard.x + targetGuard.width / 2;
+            const targetY = targetGuard.y + targetGuard.height - 4;
+            const officerWorldX = sweep.x + sweep.officer.x;
+            const officerWorldY = sweep.y + sweep.officer.y;
+            const vector = normalizeVector(targetX - officerWorldX, targetY - officerWorldY);
+            const nextOfficerX = officerWorldX + vector.x * 5.1 * delta * 3.2;
+            const nextOfficerY = officerWorldY + vector.y * 5.1 * delta * 3.2;
+            sweep.officer.x = nextOfficerX - sweep.x;
+            sweep.officer.y = nextOfficerY - sweep.y;
+            if (Math.hypot(targetX - nextOfficerX, targetY - nextOfficerY) < 18) {
+                sweep.phase = "returning";
+                sweep.carriedGuardId = targetGuard.id;
+                sweep.officer.carrying = true;
+                clearSpeechForEntity(targetGuard);
+                showToast("👮 Il poliziotto ha bloccato uno zampo e lo sta portando via.");
+            }
+        }
+    } else if (sweep.phase === "returning") {
+        const doorX = sweep.direction > 0 ? 74 : 118;
+        const doorY = sweep.height - 8;
+        const officerWorldX = sweep.x + sweep.officer.x;
+        const officerWorldY = sweep.y + sweep.officer.y;
+        const targetX = sweep.x + doorX;
+        const targetY = sweep.y + doorY;
+        const vector = normalizeVector(targetX - officerWorldX, targetY - officerWorldY);
+        const nextOfficerX = officerWorldX + vector.x * 4.8 * delta * 3.2;
+        const nextOfficerY = officerWorldY + vector.y * 4.8 * delta * 3.2;
+        sweep.officer.x = nextOfficerX - sweep.x;
+        sweep.officer.y = nextOfficerY - sweep.y;
+
+        if (carriedGuard) {
+            carriedGuard.x = nextOfficerX + (sweep.direction > 0 ? -18 : 18);
+            carriedGuard.y = nextOfficerY - 8;
+            syncStealthGuard(carriedGuard);
+        }
+
+        if (Math.hypot(targetX - nextOfficerX, targetY - nextOfficerY) < 14) {
+            if (carriedGuard) {
+                carriedGuard.element.remove();
+                state.stealth.guards = state.stealth.guards.filter((guard) => guard !== carriedGuard);
+                sweep.removedIds.add(carriedGuard.id);
+            }
+            sweep.carriedGuardId = null;
+            sweep.officer.carrying = false;
+            sweep.officer.active = false;
+            if (officerEl) {
+                officerEl.classList.remove("active");
+            }
+            sweep.phase = "departing";
+        }
+    } else if (sweep.phase === "departing") {
+        sweep.x += sweep.direction * sweep.speed * delta * 6.4;
+        const finished = sweep.direction > 0 ? sweep.x >= sweep.endX : sweep.x <= sweep.endX;
+        if (finished) {
+            const removedTotal = sweep.removedIds.size;
+            sweep.element.remove();
+            state.stealth.policeSweep = null;
+            gameArea.classList.remove("police-sweep");
+            state.stealth.guards.forEach((guard) => guard.element.classList.remove("panicking"));
+            showToast(
+                removedTotal > 0
+                    ? `👮 La pattuglia ha fermato ${removedTotal} malvivente e se n'e' andata.`
+                    : "👮 La pattuglia ha attraversato il vicolo, ma non ha trovato nessuno da portare via."
+            );
+            updateHud();
+            return;
+        }
+    }
+
+    if (officerEl) {
+        officerEl.style.transform = `translate(${sweep.officer.x}px, ${sweep.officer.y}px)`;
+        officerEl.classList.toggle("carrying", sweep.officer.carrying);
+    }
+
+    syncEntity(sweep);
+}
+
+function updateStealthLamps(timestamp) {
+    if (!state.stealth || !state.player) {
+        return;
+    }
+
+    const playerCenter = centerOf(state.player);
+    let litPlayer = false;
+
+    state.stealth.lamps.forEach((lamp) => {
+        const cycle = Math.max(300, lamp.onMs + lamp.offMs);
+        const cycleTime = (timestamp + lamp.phaseMs) % cycle;
+        lamp.isOn = cycleTime < lamp.onMs;
+        lamp.element.classList.toggle("active", lamp.isOn);
+
+        if (!lamp.isOn) {
+            return;
+        }
+
+        if (Math.hypot(playerCenter.x - lamp.x, playerCenter.y - lamp.y) <= lamp.radius) {
+            litPlayer = true;
+        }
+    });
+
+    state.stealth.litPlayer = litPlayer;
+}
+
+function updateStealthGuards(delta, timestamp) {
+    if (!state.stealth || !state.player) {
+        return;
+    }
+
+    for (const guard of state.stealth.guards) {
+        if (guard.element.classList.contains("panicking")) {
+            maybeSpeakStealthGuard(guard, timestamp);
+            continue;
+        }
+        updateStealthGuardPatrol(guard, delta, timestamp);
+        maybeSpeakStealthGuard(guard, timestamp);
+        if (canStealthGuardSeePlayer(guard)) {
+            triggerStealthDetection(guard);
+            break;
+        }
+    }
+}
+
+function updateStealthGuardPatrol(guard, delta, timestamp) {
+    if (!guard?.patrol?.length) {
+        return;
+    }
+
+    if (guard.pauseUntil > timestamp) {
+        syncStealthGuard(guard);
+        return;
+    }
+
+    const target = guard.patrol[guard.patrolIndex];
+    const dx = target.x - guard.x;
+    const dy = target.y - guard.y;
+    const distance = Math.hypot(dx, dy);
+
+    if (distance < 4) {
+        guard.patrolIndex = (guard.patrolIndex + 1) % guard.patrol.length;
+        guard.pauseUntil = timestamp + guard.pauseMs;
+        const nextPoint = guard.patrol[guard.patrolIndex];
+        const nextVector = normalizeVector(nextPoint.x - guard.x, nextPoint.y - guard.y);
+        if (nextVector.x || nextVector.y) {
+            guard.directionVector = nextVector;
+        }
+        syncStealthGuard(guard);
+        return;
+    }
+
+    const movement = normalizeVector(dx, dy);
+    guard.directionVector = movement;
+    const previousX = guard.x;
+    const previousY = guard.y;
+    moveWithCollisions(guard, movement.x * guard.speed * delta * 2.1, movement.y * guard.speed * delta * 2.1);
+    const movedDistance = Math.hypot(guard.x - previousX, guard.y - previousY);
+    if (movedDistance < 0.45) {
+        guard.blockedFrames = (guard.blockedFrames || 0) + 1;
+    } else {
+        guard.blockedFrames = 0;
+    }
+
+    if (guard.blockedFrames >= 8) {
+        guard.blockedFrames = 0;
+        guard.patrolIndex = (guard.patrolIndex + 1) % guard.patrol.length;
+        guard.pauseUntil = timestamp + Math.max(220, guard.pauseMs * 0.5);
+        const fallbackTarget = guard.patrol[guard.patrolIndex];
+        const fallbackVector = normalizeVector(fallbackTarget.x - guard.x, fallbackTarget.y - guard.y);
+        if (fallbackVector.x || fallbackVector.y) {
+            guard.directionVector = fallbackVector;
+        }
+    }
+
+    syncStealthGuard(guard);
+}
+
+function canStealthGuardSeePlayer(guard) {
+    if (!state.player || !state.stealth || state.player.isDodging) {
+        return false;
+    }
+
+    const guardCenter = centerOf(guard);
+    const playerCenter = centerOf(state.player);
+    const toPlayer = {
+        x: playerCenter.x - guardCenter.x,
+        y: playerCenter.y - guardCenter.y
+    };
+    const distance = Math.hypot(toPlayer.x, toPlayer.y);
+    if (distance > guard.viewDistance) {
+        return false;
+    }
+
+    const facing = guard.directionVector || { x: 1, y: 0 };
+    const normalizedToPlayer = normalizeVector(toPlayer.x, toPlayer.y);
+    const dot = facing.x * normalizedToPlayer.x + facing.y * normalizedToPlayer.y;
+    const minDot = Math.cos(((guard.fov || 60) * Math.PI) / 360);
+    if (dot < minDot) {
+        return false;
+    }
+
+    if (isStealthSightBlocked(guardCenter, playerCenter)) {
+        return false;
+    }
+
+    return state.stealth.litPlayer || distance <= 72;
+}
+
+function isStealthSightBlocked(sourceCenter, targetCenter) {
+    const sightRect = {
+        x: Math.min(sourceCenter.x, targetCenter.x),
+        y: Math.min(sourceCenter.y, targetCenter.y),
+        width: Math.abs(sourceCenter.x - targetCenter.x) || 1,
+        height: Math.abs(sourceCenter.y - targetCenter.y) || 1
+    };
+
+    return state.obstacles.some((obstacle) => rectsIntersect(expandRect(sightRect, 8), obstacle));
+}
+
+function triggerStealthDetection(guard) {
+    if (!state.stealth || state.stealth.detected) {
+        return;
+    }
+
+    state.stealth.detected = true;
+    guard.element.classList.add("alerted");
+    showToast("🚨 Ti hanno visto! Gli zampi ti hanno alleggerito prima di farti scappare.");
+    triggerScreenShake(350, 7);
+    damagePlayer();
+    registerCutsceneTimeout(() => {
+        if (state.player.lives <= 0) {
+            finishGame(false);
+        }
+    }, 220);
+}
+
 function updatePlayer(delta, timestamp) {
     let speedMult = 1.0;
     const speedBoostActive = isPlayerSpeedBoostActive(timestamp);
@@ -3451,9 +4259,6 @@ function updatePlayer(delta, timestamp) {
         state.player.element.classList.remove("attacking");
     }
 
-    if (isLevelSixMachineGunActive() && state.keys.has("attack") && !state.player.isDodging) {
-        attack();
-    }
 }
 
 // Sistema di stamina e schivata
@@ -4001,10 +4806,13 @@ function updateTeacherProjectiles(delta, timestamp) {
     const nextTeacherProjectiles = [];
 
     state.teacherProjectiles.forEach((projectile) => {
-        const { outsideArena, hitsObstacle } = advanceProjectile(projectile, delta);
+        const { outsideArena, hitsObstacle, obstacleHit } = advanceProjectile(projectile, delta);
         const projectileHitRect = getCollisionRect(projectile);
 
         if (outsideArena || hitsObstacle) {
+            if (hitsObstacle && projectile.ownerId === "player-machinegun") {
+                applyMachinegunProjectileObstacleHit(projectile, obstacleHit);
+            }
             projectile.element.remove();
             return;
         }
@@ -4126,7 +4934,7 @@ function maybeSpeakRoadTripEntity(entity) {
         return;
     }
 
-    const triggerX = entity.speechTriggerX ?? (state.player.x + 320);
+    const triggerX = entity.speechTriggerX ?? (GAME.width - Math.max(entity.width * 0.7, 52));
     if (entity.x > triggerX || entity.x < state.player.x - 24) {
         return;
     }
@@ -4352,20 +5160,19 @@ function getPlayerAimVector() {
 function fireMachineGun() {
     const aim = getPlayerAimVector();
     const muzzle = centerOf(state.player);
-    const spreadAngle = (Math.random() - 0.5) * 0.045;
-    const baseAngle = Math.atan2(aim.y, aim.x) + spreadAngle;
-    const speed = GAME.projectileSpeed * 2.65;
+    const baseAngle = Math.atan2(aim.y, aim.x);
+    const speed = GAME.projectileSpeed * 3.15;
 
     const projectile = {
-        x: muzzle.x - 14,
-        y: muzzle.y - 5,
-        width: 28,
-        height: 10,
+        x: muzzle.x - 10,
+        y: muzzle.y - 4,
+        width: 22,
+        height: 8,
         velocityX: Math.cos(baseAngle) * speed,
         velocityY: Math.sin(baseAngle) * speed,
         renderRotation: baseAngle,
-        collisionWidth: 18,
-        collisionHeight: 5,
+        collisionWidth: 14,
+        collisionHeight: 4,
         ownerId: "player-machinegun",
         element: document.createElement("div")
     };
@@ -4399,18 +5206,18 @@ function advanceProjectile(projectile, delta) {
 
         if (outsideArena) {
             syncEntity(projectile);
-            return { outsideArena: true, hitsObstacle: false };
+            return { outsideArena: true, hitsObstacle: false, obstacleHit: null };
         }
 
-        const collidesWithObstacle = hitsObstacle(projectile);
-        if (collidesWithObstacle) {
+        const obstacleHit = findCollidingObstacle(projectile);
+        if (obstacleHit) {
             syncEntity(projectile);
-            return { outsideArena: false, hitsObstacle: true };
+            return { outsideArena: false, hitsObstacle: true, obstacleHit };
         }
     }
 
     syncEntity(projectile);
-    return { outsideArena: false, hitsObstacle: false };
+    return { outsideArena: false, hitsObstacle: false, obstacleHit: null };
 }
 
 function updatePowerUps(delta) {
@@ -4468,6 +5275,10 @@ function updatePowerUps(delta) {
 function attack() {
     const now = performance.now();
     if (!state.running || now - state.lastAttackAt < getPlayerAttackCooldown()) {
+        return;
+    }
+
+    if (isStealthActive()) {
         return;
     }
 
@@ -4911,6 +5722,30 @@ function createEnvironmentalDebris(obstacle) {
 
     gameArea.appendChild(element);
     state.debris.push({ element });
+}
+
+function applyMachinegunProjectileObstacleHit(projectile, obstacle) {
+    if (!projectile || !obstacle) {
+        return;
+    }
+
+    createHitEffect(projectile.x - 12, projectile.y - 12);
+
+    if (!isDestructibleObstacle(obstacle)) {
+        return;
+    }
+
+    obstacle.hitsTaken = (obstacle.hitsTaken || 0) + 1;
+    if (obstacle.hitsTaken < (obstacle.maxHits || 2)) {
+        markObstacleDamaged(obstacle);
+        return;
+    }
+
+    obstacle.element?.remove();
+    createDestructionBurst(obstacle);
+    createEnvironmentalDebris(obstacle);
+    playEnvironmentBreakSound(obstacle.type);
+    state.obstacles = state.obstacles.filter((entry) => entry !== obstacle);
 }
 
 function updateSlidingChairs(delta) {
@@ -5504,6 +6339,16 @@ function hitsObstacle(entity) {
     });
 }
 
+function findCollidingObstacle(entity) {
+    const colRect = getCollisionRect(entity);
+    return state.obstacles.find((obstacle) => {
+        if (isLaunchableObstacle(obstacle) && obstacle.sliding) {
+            return false;
+        }
+        return rectsIntersect(colRect, obstacle);
+    }) || null;
+}
+
 function getPowerUpSpawnWindowDelay() {
     return randomBetween(5000, 10000);
 }
@@ -5523,7 +6368,7 @@ function getRandomBinPowerUpType() {
         types = ["coffee", "shield", "speed", "super_hammer", "coffee", "speed"];
     }
 
-    if ((state.currentLevel === 3 && state.boss) || state.currentLevel >= 7) {
+    if (state.currentLevel === 3 && state.boss) {
         types.push("studia");
     }
 
@@ -5598,9 +6443,15 @@ function advanceToNextLevel() {
             }
         } else if (state.currentLevel === 6) {
             intermissionTitle.textContent = "Gazebo Salvo... per ora. 📲";
-            intermissionMessage.textContent = "Hai contenuto il caos, ma dietro tutto questo c'e' un'entita' digitale ancora peggiore. Nel Livello 7 verra' evocato il Signore dello SPID e riceverai una mitraglietta speciale poco prima dello scontro.";
+            intermissionMessage.textContent = "Hai contenuto il caos, ma dietro tutto questo c'e' un'entita' digitale ancora peggiore. Nel Livello 7 verra' evocato il Signore dello SPID e San Nicola di Bari apparira' per consegnarti una mitraglietta speciale poco prima dello scontro.";
             if (intermissionButton) {
                 intermissionButton.textContent = "Entra nel Livello 7 (Boss Finale)";
+            }
+        } else if (state.currentLevel === 7) {
+            intermissionTitle.textContent = "Si e' fatta sera. 🌙";
+            intermissionMessage.textContent = "Hai battuto il Signore dello SPID, ma nel parcheggio ti aspetta la beffa: la macchina e' sparita. Te l'hanno rubata. Da qui in poi devi rientrare a casa a piedi, attraversando Bari Vecchia in modalita' stealth: muoviti con direzionali o joystick, usa Ctrl o il tasto schivata per uno scatto breve, richiama i Carabinieri con Shift o col tasto 🚓, resta nelle ombre ed evita i lampioni impazziti. Niente cuori: se gli zampi ti vedono, ti derubano.";
+            if (intermissionButton) {
+                intermissionButton.textContent = "Entra nel Livello 8: Rientro Notturno";
             }
         } else {
             intermissionTitle.textContent = `Livello ${state.currentLevel} Completato!`;
@@ -5630,8 +6481,6 @@ function spawnPowerUp() {
     // Nel livello 3, aumenta molto la probabilita' del power-up "studia" solo quando il boss e' presente.
     if (state.currentLevel === 3 && state.boss) {
         types = ["coffee", "shield", "speed", "super_hammer", "studia", "studia", "studia", "studia", "studia", "studia"];
-    } else if (state.currentLevel >= 7 && (state.boss || state.summoningActive)) {
-        types = ["coffee", "shield", "speed", "super_hammer", "studia", "studia", "studia", "studia"];
     } else if (state.currentLevel >= 5) {
         types = ["coffee", "shield", "speed", "super_hammer", "coffee", "speed"];
     }
@@ -6097,6 +6946,8 @@ function finishGame(isVictory) {
     } else {
         if (state.currentLevel === 4) {
             endMessage.textContent = `${teacher.name} non e' riuscito ad arrivare in piazza. Riprova il tragitto e schiva il caos sulla strada.`;
+        } else if (state.currentLevel === 8) {
+            endMessage.textContent = `${teacher.name} e' stato visto nei vicoli di Bari Vecchia e gli zampi l'hanno derubato. Riprova, resta nelle ombre e torna a casa a piedi.`;
         } else {
             endMessage.textContent = state.currentLevel >= 5
             ? `Il caos digitale ha travolto ${teacher.name}. Riprova e salva l'evento Aulab dalla folla in panico.`
@@ -6127,8 +6978,11 @@ function updateHud() {
         renderLives(state.player.lives);
         updateStaminaHud();
     }
+    if (hudLivesLabel) {
+        hudLivesLabel.textContent = isStealthActive() ? "Stealth" : "Vite";
+    }
     if (studentsChip?.childNodes?.[0]) {
-        studentsChip.childNodes[0].textContent = isRoadTripActive() ? "KM: " : "Studenti: ";
+        studentsChip.childNodes[0].textContent = isRoadTripActive() ? "KM: " : isStealthActive() ? "Zampi: " : "Studenti: ";
     }
     if (isRoadTripActive()) {
         const remaining = Math.max(0, Math.ceil((state.bonusRoad.goalDistance - state.bonusRoad.distance) / 100));
@@ -6140,6 +6994,16 @@ function updateHud() {
         }
         if (levelChip) {
             levelChip.dataset.roadtripWarning = getRoadTripStatusText();
+        }
+    } else if (isStealthActive()) {
+        studentsValue.textContent = `${state.stealth?.guards?.length || 0}`;
+        studentsChip?.classList.remove("roadtrip-chip");
+        levelChip?.classList.remove("roadtrip-chip");
+        if (studentsChip) {
+            delete studentsChip.dataset.roadtripWarning;
+        }
+        if (levelChip) {
+            delete levelChip.dataset.roadtripWarning;
         }
     } else {
         studentsValue.textContent = state.students.length;
@@ -6154,6 +7018,14 @@ function updateHud() {
     }
     if (levelValue) {
         levelValue.textContent = state.selectedHackademyId === "standard" ? state.currentLevel : "Sandbox";
+    }
+    if (hudRageLabel) {
+        hudRageLabel.textContent = isStealthActive() ? "112" : "Furia";
+    }
+    if (isStealthActive()) {
+        updateStealthPoliceHud();
+    } else {
+        updateRageBarVisual();
     }
 }
 
@@ -6180,6 +7052,14 @@ function updateStaminaHud() {
 function renderLives(currentLives) {
     const maxLives = GAME.spawnLives;
     livesValue.innerHTML = "";
+
+    if (isStealthActive()) {
+        livesValue.parentElement?.classList.add("stealth-chip");
+        livesValue.innerHTML = `<span class="stealth-readout">${state.stealth?.litPlayer ? "ALLA LUCE" : "NELL'OMBRA"}</span>`;
+        return;
+    }
+
+    livesValue.parentElement?.classList.remove("stealth-chip");
 
     for (let index = 0; index < maxLives; index += 1) {
         const heart = document.createElement("span");
@@ -6672,6 +7552,25 @@ function playRoadTripNosSound(level = 1) {
     });
 }
 
+function playPoliceSirenSound() {
+    playToneBurst({
+        frequencies: [659.25, 523.25, 659.25, 523.25],
+        duration: 1.3,
+        type: "square",
+        peakGain: 0.08,
+        stagger: 0.18,
+        slideTo: 587.33
+    });
+    playToneBurst({
+        frequencies: [164.81, 196, 164.81],
+        duration: 0.95,
+        type: "triangle",
+        peakGain: 0.05,
+        stagger: 0.16,
+        slideTo: 146.83
+    });
+}
+
 function playRampBoostSound() {
     playToneBurst({
         frequencies: [220, 440, 880, 1174.66],
@@ -7158,45 +8057,67 @@ function syncBossFigureVariant(rootElement, kind) {
     }
 }
 
-function spawnBoss() {
-    const config = getBossConfig();
+function buildBossFigureElement(kind, extraClasses = []) {
+    const config = getBossConfig(kind);
     const element = document.createElement("div");
-    element.className = `entity boss ${config.className} student`;
-    
+    const classNames = ["entity", "boss", config.className, "student", ...extraClasses];
+    element.className = classNames.join(" ");
+
     const wrapper = document.createElement("div");
     wrapper.className = "boss-wrapper";
     wrapper.style.width = "100%";
     wrapper.style.height = "100%";
-    
-    // Costruisci la struttura visiva dello studente
+
     const figure = document.createElement("div");
     figure.className = "student-figure";
-    
+
     const head = document.createElement("span");
     head.className = "student-head";
-    
+
     const body = document.createElement("span");
     body.className = "student-body";
-    
+
     const armLeft = document.createElement("span");
     armLeft.className = "student-arm arm-left";
-    
+
     const armRight = document.createElement("span");
     armRight.className = "student-arm arm-right";
-    
+
     const legLeft = document.createElement("span");
     legLeft.className = "student-leg leg-left";
-    
+
     const legRight = document.createElement("span");
     legRight.className = "student-leg leg-right";
-    
+
     const stone = document.createElement("span");
     stone.className = "student-hand-stone";
-    
+
     figure.append(head, body, armLeft, armRight, legLeft, legRight, stone);
     wrapper.appendChild(figure);
     element.appendChild(wrapper);
     syncBossFigureVariant(element, config.kind);
+
+    return element;
+}
+
+function renderBossIntroFigure(kind) {
+    const introBossRoot = document.getElementById("bossIntroBoss");
+    if (!introBossRoot) {
+        return;
+    }
+
+    introBossRoot.innerHTML = "";
+    const previewBoss = buildBossFigureElement(kind, ["boss-intro-preview"]);
+    previewBoss.classList.remove("active", "boss-leaping", "boss-defeated");
+    previewBoss.style.left = "auto";
+    previewBoss.style.top = "auto";
+    previewBoss.style.transform = "";
+    introBossRoot.appendChild(previewBoss);
+}
+
+function spawnBoss() {
+    const config = getBossConfig();
+    const element = buildBossFigureElement(config.kind);
     
     gameArea.appendChild(element);
     
@@ -7279,14 +8200,13 @@ function triggerSecondBossWeaponVision(onComplete) {
     clearCutsceneTimers();
 
     const teacher = getSelectedTeacher();
-    const teacherName = teacher?.name || "Il docente";
     let finished = false;
 
     if (weaponVisionTeacherFace) {
         weaponVisionTeacherFace.style.backgroundImage = teacher?.image ? `url(${teacher.image})` : "";
     }
     if (weaponVisionCaption) {
-        weaponVisionCaption.textContent = "Segnale dal cloud... upgrade in arrivo.";
+        weaponVisionCaption.textContent = "Appare San Nicola.";
     }
     if (weaponVisionProgress) {
         weaponVisionProgress.style.width = "8%";
@@ -7336,44 +8256,44 @@ function triggerSecondBossWeaponVision(onComplete) {
 
     registerCutsceneTimeout(() => {
         if (weaponVisionCaption) {
-            weaponVisionCaption.textContent = "Una figura celestiale attraversa le nuvole sopra l'arena.";
+            weaponVisionCaption.textContent = "Benedice l'arena.";
         }
         if (weaponVisionProgress) {
             weaponVisionProgress.style.width = "28%";
         }
-    }, 600);
+    }, 1000);
 
     registerCutsceneTimeout(() => {
         if (weaponVisionCaption) {
-            weaponVisionCaption.textContent = `${teacherName} viene chiamato al centro del campo di battaglia.`;
+            weaponVisionCaption.textContent = "Chiama il docente.";
         }
         if (weaponVisionProgress) {
             weaponVisionProgress.style.width = "54%";
         }
         triggerScreenShake(260, 2);
-    }, 1600);
+    }, 2400);
 
     registerCutsceneTimeout(() => {
         if (weaponVisionCaption) {
-            weaponVisionCaption.textContent = "Nuova arma ricevuta: pistola mitragliatrice anti-SPID.";
+            weaponVisionCaption.textContent = "Consegna l'arma.";
         }
         if (weaponVisionProgress) {
             weaponVisionProgress.style.width = "82%";
         }
         playTeacherRangedSound();
         triggerScreenShake(420, 4);
-    }, 2550);
+    }, 4000);
 
     registerCutsceneTimeout(() => {
         if (weaponVisionCaption) {
-            weaponVisionCaption.textContent = `${teacherName} e' pronto per lo scontro finale.`;
+            weaponVisionCaption.textContent = "Scontro finale.";
         }
         if (weaponVisionProgress) {
             weaponVisionProgress.style.width = "100%";
         }
-    }, 3350);
+    }, 5400);
 
-    registerCutsceneTimeout(finishSequence, 4300);
+    registerCutsceneTimeout(finishSequence, 6800);
 }
 
 function playBossIntroOverlay() {
@@ -7396,7 +8316,7 @@ function playBossIntroOverlay() {
     if (subtitleEl) {
         subtitleEl.textContent = bossConfig.introSubtitle;
     }
-    syncBossFigureVariant(document.querySelector(".boss-intro-avatar-container .boss-giant-student"), bossConfig.kind);
+    renderBossIntroFigure(bossConfig.kind);
 
     const progressEl = document.getElementById("bossIntroProgress");
     if (progressEl) {
@@ -8340,9 +9260,13 @@ function deactivateRageMode() {
 }
 
 function updateRageBarVisual() {
-    const barFill = document.getElementById("rageBarFill");
-    if (barFill) {
-        barFill.style.width = `${state.rageMeter}%`;
+    if (isStealthActive()) {
+        updateStealthPoliceHud();
+        return;
+    }
+
+    if (rageBarFill) {
+        rageBarFill.style.width = `${state.rageMeter}%`;
     }
 }
 
